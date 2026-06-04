@@ -43,17 +43,29 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
     try {
       const meetings = await indexedDBService.getAllMeetings();
 
-      // Filter out meetings older than 7 days and newer than 15 seconds
-      // The 15 seconds threshold prevents showing meetings from the current session(jus in case)
-      // where recording just stopped but hasn't been fully saved yet
-      const cutoffTime = Date.now() - (7 * 24 * 60 * 60 * 1000);
-      const secondsAgo = Date.now() - (15 * 1000);
+      // Insurance guard: never surface the *current* (still-recording or mid-save) session.
+      // `indexeddb_current_meeting_id` is set at recording start (TranscriptContext) and
+      // cleared once the meeting is persisted (markMeetingAsSaved / stop-flow cleanup), so it
+      // identifies the live, not-yet-saved meeting. This backs up the savedToSQLite filter
+      // across the brief stop→save window (the original purpose of the removed 15s heuristic).
+      // It lives in sessionStorage, so it does NOT survive a crash/quit: a crashed session has
+      // no current id on relaunch and therefore still surfaces for recovery (the R-1 fix).
+      const activeMeetingId = sessionStorage.getItem('indexeddb_current_meeting_id');
 
-      const recentMeetings = meetings.filter(m => {
-        const isWithinRetention = m.lastUpdated > cutoffTime; // Not older than 7 days
-        const isOldEnough = m.lastUpdated < secondsAgo; // Older than 15 seconds
-        return isWithinRetention && isOldEnough;
-      });
+      // Keep only meetings within the 7-day retention window.
+      // (getAllMeetings already filters to unsaved meetings via savedToSQLite === false.)
+      //
+      // We intentionally do NOT exclude meetings updated in the last 15s. That older
+      // guard suppressed a crashed session on a fast relaunch and, because the scan is
+      // mount-driven and never re-runs that session, the recovery dialog could be missed
+      // entirely until a later launch (the "one-launch delay" — see R-1). Meetily Pro
+      // omits the 15s filter as well.
+      const cutoffTime = Date.now() - (7 * 24 * 60 * 60 * 1000);
+
+      const recentMeetings = meetings.filter(m =>
+        m.lastUpdated > cutoffTime &&        // within 7-day retention
+        m.meetingId !== activeMeetingId      // not the live / mid-save current session
+      );
 
       // Verify audio checkpoint availability for each meeting
       const meetingsWithAudioStatus = await Promise.all(
