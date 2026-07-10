@@ -7,6 +7,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { useTranslations } from 'next-intl';
+import { useDateFnsLocale } from '@/lib/date-locale';
 import { AlertCircle, CheckCircle2, Clock, FileText, Trash2, XCircle } from 'lucide-react';
 import {
   Dialog,
@@ -21,7 +23,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MeetingMetadata, StoredTranscript } from '@/services/indexedDBService';
 import { cn } from '@/lib/utils';
-import { useTranslations } from "next-intl";
 
 interface TranscriptRecoveryProps {
   isOpen: boolean;
@@ -45,8 +46,9 @@ export function TranscriptRecovery({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const t = useTranslations('settings');
+  const dateFnsLocale = useDateFnsLocale();
 
-  const t = useTranslations("transcript");
 
   // Reset selection when dialog opens
   useEffect(() => {
@@ -149,7 +151,7 @@ export function TranscriptRecovery({
                         <p className="font-medium text-sm truncate">{meeting.title}</p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                           <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(meeting.lastUpdated), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(meeting.lastUpdated), { addSuffix: true, locale: dateFnsLocale })}
                         </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                           <FileText className="w-3 h-3" />
