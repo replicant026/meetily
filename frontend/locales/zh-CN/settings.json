@@ -88,7 +88,17 @@
     "save_success": "模型设置已保存",
     "load_failed": "加载模型设置失败",
     "save_failed": "保存模型设置失败",
-    "model_description": "配置用于生成会议摘要的 AI 模型。"
+    "model_description": "配置用于生成会议摘要的 AI 模型。",
+    "failover_title": "提供商故障转移（实验性）",
+    "failover_hint": "当主提供商失败时自动切换到备用提供商。",
+    "failover_warning": "每个提供商可能分别计费。仅在可靠性优先于成本时启用。",
+    "failover_empty": "尚未配置备用提供商。请在下方添加。",
+    "failover_add": "添加提供商",
+    "failover_remove": "从链中移除",
+    "failover_reset": "恢复默认",
+    "failover_model_placeholder": "模型名称（如 gpt-4o、llama3.2:latest）",
+    "failover_move_up": "上移",
+    "failover_move_down": "下移"
   },
   "analytics": {
     "consent_title": "分享匿名使用数据",

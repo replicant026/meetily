@@ -88,7 +88,17 @@
     "save_success": "Model settings saved successfully",
     "load_failed": "Failed to load model settings",
     "save_failed": "Failed to save model settings",
-    "model_description": "Configure the AI model used for generating meeting summaries."
+    "model_description": "Configure the AI model used for generating meeting summaries.",
+    "failover_title": "Provider Failover (Experimental)",
+    "failover_hint": "Automatically fall back to a secondary provider if the primary fails.",
+    "failover_warning": "Each provider may bill your account separately. Use only when reliability outweighs cost.",
+    "failover_empty": "No fallback providers configured. Add one or more below.",
+    "failover_add": "Add provider",
+    "failover_remove": "Remove from chain",
+    "failover_reset": "Reset to default",
+    "failover_model_placeholder": "Model name (e.g. gpt-4o, llama3.2:latest)",
+    "failover_move_up": "Move up",
+    "failover_move_down": "Move down"
   },
   "analytics": {
     "consent_title": "Share anonymous usage data",
