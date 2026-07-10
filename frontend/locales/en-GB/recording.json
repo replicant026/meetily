@@ -45,5 +45,16 @@
     "device_permission_message": "Recording permissions are required. Please:\n\u2022 Grant microphone access in System Settings\n\u2022 Grant screen recording access for system audio (macOS)\n\u2022 Restart the app after granting permissions",
     "device_generic_title": "Recording Failed",
     "device_generic_message": "Unable to start recording. Please check your audio device settings and try again."
-  }
+  },
+  "orphan_checkpoints_title": "Unfinished Recording Detected",
+  "orphan_checkpoints_description": "Meetily found audio left over from a previous session that did not finish saving. Recover it to keep the recording, or discard it to free disk space.",
+  "orphan_checkpoints_dismiss": "Dismiss all",
+  "orphan_checkpoint_chunks": "{count, plural, one {# chunk} other {# chunks}}",
+  "orphan_checkpoint_duration": "~{duration}",
+  "orphan_checkpoint_recover": "Recover",
+  "orphan_checkpoint_discard": "Discard",
+  "orphan_checkpoint_recovered": "Recording recovered",
+  "orphan_checkpoint_recovered_failed": "Recovery failed",
+  "orphan_checkpoint_discarded": "Recording discarded",
+  "orphan_checkpoint_discarded_failed": "Discard failed"
 }

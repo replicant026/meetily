@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 
 use super::manager::DatabaseManager;
+use super::orphan_checkpoints::{discard_orphan_checkpoint, scan_orphan_checkpoints, OrphanCheckpoint};
 use crate::state::AppState;
 
 #[derive(Serialize)]
@@ -275,4 +276,20 @@ pub async fn open_database_folder(app: AppHandle) -> Result<(), String> {
 
     info!("Opened database folder: {}", folder_path);
     Ok(())
+}
+
+// ===== PR-33: Orphan checkpoint commands =====
+
+#[tauri::command]
+pub async fn scan_orphan_checkpoints_cmd(app: AppHandle) -> Result<Vec<OrphanCheckpoint>, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    Ok(scan_orphan_checkpoints(&app_data_dir))
+}
+
+#[tauri::command]
+pub async fn discard_orphan_checkpoint_cmd(meeting_folder: String) -> Result<(), String> {
+    discard_orphan_checkpoint(std::path::Path::new(&meeting_folder))
 }

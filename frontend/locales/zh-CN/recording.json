@@ -45,5 +45,16 @@
     "device_permission_message": "需要录音权限，请：\n• 在系统设置中授予麦克风权限\n• 授予屏幕录制权限（macOS）\n• 授予权限后重启应用",
     "device_generic_title": "录音失败",
     "device_generic_message": "无法开始录音，请检查音频设备设置后重试。"
-  }
+  },
+  "orphan_checkpoints_title": "检测到未完成录音",
+  "orphan_checkpoints_description": "检测到上次未完成保存的录音片段。选择恢复以保留录音,或选择丢弃以释放磁盘空间。",
+  "orphan_checkpoints_dismiss": "全部关闭",
+  "orphan_checkpoint_chunks": "{count} 个片段",
+  "orphan_checkpoint_duration": "约 {duration}",
+  "orphan_checkpoint_recover": "恢复",
+  "orphan_checkpoint_discard": "丢弃",
+  "orphan_checkpoint_recovered": "录音已恢复",
+  "orphan_checkpoint_recovered_failed": "恢复失败",
+  "orphan_checkpoint_discarded": "录音已丢弃",
+  "orphan_checkpoint_discarded_failed": "丢弃失败"
 }

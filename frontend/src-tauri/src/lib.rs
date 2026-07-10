@@ -494,6 +494,25 @@ pub fn run() {
             //     });
             // }
 
+            // PR-33: Scan for orphan checkpoints after a short delay (avoid blocking UI startup).
+            let app_handle_for_orphans = _app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                let app_data_dir = match app_handle_for_orphans.path().app_data_dir() {
+                    Ok(p) => p,
+                    Err(e) => {
+                        log::warn!("Failed to resolve app_data_dir for orphan scan: {}", e);
+                        return;
+                    }
+                };
+                let orphans = database::orphan_checkpoints::scan_orphan_checkpoints(&app_data_dir);
+                if !orphans.is_empty() {
+                    log::info!("Detected {} orphan checkpoint(s) on startup", orphans.len());
+                    if let Err(e) = app_handle_for_orphans.emit("orphan-checkpoints-detected", &orphans) {
+                        log::warn!("Failed to emit orphan-checkpoints-detected: {}", e);
+                    }
+                }
+            });
             // Initialize database (handles first launch detection and conditional setup)
             tauri::async_runtime::block_on(async {
                 database::setup::initialize_database_on_startup(&_app.handle()).await
@@ -727,6 +746,8 @@ pub fn run() {
             database::commands::check_homebrew_database,
             database::commands::import_and_initialize_database,
             database::commands::initialize_fresh_database,
+            database::commands::scan_orphan_checkpoints_cmd,
+            database::commands::discard_orphan_checkpoint_cmd,
             // Database and Models path commands
             database::commands::get_database_directory,
             database::commands::open_database_folder,

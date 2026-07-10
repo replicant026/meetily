@@ -22,6 +22,7 @@ import { DownloadProgressToastProvider } from '@/components/shared/DownloadProgr
 import { UpdateCheckProvider } from '@/components/UpdateCheckProvider'
 import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcessingProvider'
 import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
+import { OrphanCheckpointListener } from '@/components/OrphanCheckpointListener'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
 
@@ -176,6 +177,7 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
                             handleImportDialogClose={handleImportDialogClose}
                             importFilePath={importFilePath}
                           />
+                          <OrphanCheckpointListener />
                         </ImportDialogProvider>
                       </RecordingPostProcessingProvider>
                     </TooltipProvider>
