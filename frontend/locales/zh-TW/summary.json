@@ -1,68 +1,68 @@
 {
-  "title": "Summary",
+  "title": "摘要",
   "panel": {
-    "title": "Meeting Summary",
-    "generating": "Generating AI Summary...",
+    "title": "會議摘要",
+    "generating": "正在產生摘要...",
     "sections": {
-      "key_points": "Key Points",
-      "action_items": "Action Items",
-      "decisions": "Decisions",
-      "main_topics": "Main Topics",
-      "full_summary": "Full Summary"
+      "key_points": "關鍵要點",
+      "action_items": "行動項目",
+      "decisions": "決議",
+      "main_topics": "主要議題",
+      "full_summary": "完整摘要"
     },
-    "auto_language_subtitle": "Uses dominant transcript language",
-    "saved_locally_subtitle": "Saved on this device for folderless meetings",
-    "summary_language_tooltip": "Summary language: {label}",
-    "summary_language_tooltip_fallback": "Summary language: {label} (saved on this device)",
-    "set_summary_language": "Set summary language"
+    "auto_language_subtitle": "使用轉寫中最常見的語言",
+    "saved_locally_subtitle": "已儲存至本機（無錄製目錄）",
+    "summary_language_tooltip": "摘要語言：{label}",
+    "summary_language_tooltip_fallback": "摘要語言：{label}（已儲存至本機）",
+    "set_summary_language": "設定摘要語言"
   },
   "actions": {
-    "generate": "Generate Summary",
-    "regenerate": "Regenerate",
-    "edit": "Edit Summary",
-    "copy": "Copy Summary",
-    "retranscription_complete": "Retranscription complete! {count} segments created.",
-    "retranscription_cancelled": "Retranscription cancelled"
+    "generate": "產生摘要",
+    "regenerate": "重新產生",
+    "edit": "編輯摘要",
+    "copy": "複製摘要",
+    "retranscription_complete": "重新轉寫完成，共產生 {count} 個片段。",
+    "retranscription_cancelled": "已取消重新轉寫"
   },
   "status": {
-    "idle": "No summary yet",
-    "generating": "Generating summary...",
-    "ready": "Summary ready",
-    "failed": "Failed to generate summary",
-    "finalizing": "Finalizing transcription...",
-    "saving": "Saving transcript...",
-    "saved_locally": "Summary language saved on this device",
-    "failed_to_save_lang": "Failed to save summary language",
-    "failed_to_load_lang": "Could not load saved summary language",
-    "load_failed_description": "Using Auto until meeting metadata can be read.",
-    "saved_locally_description": "This meeting has no recording folder, so the preference cannot be written to meeting metadata."
+    "idle": "尚無摘要",
+    "generating": "正在產生摘要...",
+    "ready": "摘要已產生",
+    "failed": "產生摘要失敗",
+    "finalizing": "正在完成轉寫...",
+    "saving": "正在儲存轉寫...",
+    "saved_locally": "摘要語言已儲存到本機",
+    "failed_to_save_lang": "儲存摘要語言失敗",
+    "failed_to_load_lang": "無法載入已儲存的摘要語言",
+    "load_failed_description": "讀取會議資訊前，先使用自動偵測。",
+    "saved_locally_description": "該會議無錄製目錄，摘要語言偏好無法寫入元資料。"
   },
-  "empty": "Generate a summary to see key points and action items here.",
+  "empty": "產生摘要後，要點和行動項目將在此顯示。",
   "language": {
-    "label": "Summary Language",
-    "auto_translate": "Auto-translate to English",
-    "auto_label": "Auto"
+    "label": "摘要語言",
+    "auto_translate": "自動翻譯為英文",
+    "auto_label": "自動"
   },
   "meeting": {
-    "custom_prompt_placeholder": "Add context for AI summary. For example people involved, meeting overview, objective etc..."
+    "custom_prompt_placeholder": "補充會議背景，例如與會人員、概覽、目標等。"
   },
   "errors": {
-    "no_model_selected": "No built-in AI model selected",
-    "no_model_selected_description": "Please select a model in settings",
-    "model_not_found": "Model not found",
-    "model_not_found_description": "Could not find information for model: {model}",
-    "model_download_in_progress": "Model download in progress",
-    "model_not_downloaded": "Model not downloaded",
-    "model_file_corrupted": "Model file corrupted",
-    "model_file_corrupted_description": "{model} file is corrupted. Please delete and re-download.",
-    "model_error": "Model error",
-    "model_not_available": "Model not available",
-    "model_not_available_description": "The selected model is not ready for use",
-    "check_model_status_failed": "Failed to check model status",
-    "ollama_no_models": "No Ollama models found. Please download gemma2:2b from Model Settings.",
-    "ollama_not_installed": "Ollama is not installed",
-    "ollama_not_installed_description": "Please download and install Ollama to use local models.",
-    "ollama_install_action": "Download",
-    "ollama_check_failed": "Failed to check Ollama models. Please check if Ollama is running and download a model."
+    "no_model_selected": "未選擇內建 AI 模型",
+    "no_model_selected_description": "請在設定中選擇模型",
+    "model_not_found": "找不到模型",
+    "model_not_found_description": "找不到模型資訊：{model}",
+    "model_download_in_progress": "正在下載模型",
+    "model_not_downloaded": "模型尚未下載",
+    "model_file_corrupted": "模型檔案已損毀",
+    "model_file_corrupted_description": "{model} 檔案已損毀，請刪除後重新下載。",
+    "model_error": "模型錯誤",
+    "model_not_available": "模型無法使用",
+    "model_not_available_description": "所選模型尚未就緒",
+    "check_model_status_failed": "檢查模型狀態失敗",
+    "ollama_no_models": "找不到 Ollama 模型，請在模型設定中下載 gemma2:2b。",
+    "ollama_not_installed": "未安裝 Ollama",
+    "ollama_not_installed_description": "請下載安裝 Ollama 以使用本地模型。",
+    "ollama_install_action": "下載",
+    "ollama_check_failed": "檢查 Ollama 模型失敗。請確認 Ollama 正在執行，且已下載模型。"
   }
 }
