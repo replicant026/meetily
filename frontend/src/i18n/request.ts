@@ -7,13 +7,27 @@ import summaryEn from "../../locales/en-US/summary.json";
 import settingsEn from "../../locales/en-US/settings.json";
 import errorsEn from "../../locales/en-US/errors.json";
 import sidebarEn from "../../locales/en-US/sidebar.json";
-import commonZh from "../../locales/zh-CN/common.json";
-import recordingZh from "../../locales/zh-CN/recording.json";
-import transcriptZh from "../../locales/zh-CN/transcript.json";
-import summaryZh from "../../locales/zh-CN/summary.json";
-import settingsZh from "../../locales/zh-CN/settings.json";
-import errorsZh from "../../locales/zh-CN/errors.json";
-import sidebarZh from "../../locales/zh-CN/sidebar.json";
+import commonEnGb from "../../locales/en-GB/common.json";
+import recordingEnGb from "../../locales/en-GB/recording.json";
+import transcriptEnGb from "../../locales/en-GB/transcript.json";
+import summaryEnGb from "../../locales/en-GB/summary.json";
+import settingsEnGb from "../../locales/en-GB/settings.json";
+import errorsEnGb from "../../locales/en-GB/errors.json";
+import sidebarEnGb from "../../locales/en-GB/sidebar.json";
+import commonZhCn from "../../locales/zh-CN/common.json";
+import recordingZhCn from "../../locales/zh-CN/recording.json";
+import transcriptZhCn from "../../locales/zh-CN/transcript.json";
+import summaryZhCn from "../../locales/zh-CN/summary.json";
+import settingsZhCn from "../../locales/zh-CN/settings.json";
+import errorsZhCn from "../../locales/zh-CN/errors.json";
+import sidebarZhCn from "../../locales/zh-CN/sidebar.json";
+import commonZhTw from "../../locales/zh-TW/common.json";
+import recordingZhTw from "../../locales/zh-TW/recording.json";
+import transcriptZhTw from "../../locales/zh-TW/transcript.json";
+import summaryZhTw from "../../locales/zh-TW/summary.json";
+import settingsZhTw from "../../locales/zh-TW/settings.json";
+import errorsZhTw from "../../locales/zh-TW/errors.json";
+import sidebarZhTw from "../../locales/zh-TW/sidebar.json";
 
 /**
  * Read the user stored UI language via the get_ui_language Tauri command
@@ -57,14 +71,32 @@ const MESSAGES: Record<Locale, Messages> = {
     errors: errorsEn,
     sidebar: sidebarEn,
   },
+  "en-GB": {
+    common: commonEnGb,
+    recording: recordingEnGb,
+    transcript: transcriptEnGb,
+    summary: summaryEnGb,
+    settings: settingsEnGb,
+    errors: errorsEnGb,
+    sidebar: sidebarEnGb,
+  },
   "zh-CN": {
-    common: commonZh,
-    recording: recordingZh,
-    transcript: transcriptZh,
-    summary: summaryZh,
-    settings: settingsZh,
-    errors: errorsZh,
-    sidebar: sidebarZh,
+    common: commonZhCn,
+    recording: recordingZhCn,
+    transcript: transcriptZhCn,
+    summary: summaryZhCn,
+    settings: settingsZhCn,
+    errors: errorsZhCn,
+    sidebar: sidebarZhCn,
+  },
+  "zh-TW": {
+    common: commonZhTw,
+    recording: recordingZhTw,
+    transcript: transcriptZhTw,
+    summary: summaryZhTw,
+    settings: settingsZhTw,
+    errors: errorsZhTw,
+    sidebar: sidebarZhTw,
   },
 };
 

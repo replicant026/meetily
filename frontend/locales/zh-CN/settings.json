@@ -42,7 +42,9 @@
       "open_folder": "打开文件夹",
       "loading": "加载中...",
       "note": "提示：数据库和模型一同存储在应用数据目录中。"
-    }
+    },
+    "locale_name_en_gb": "English (UK)",
+    "locale_name_zh_tw": "繁體中文"
   },
   "recording": {
     "title": "录音设置",

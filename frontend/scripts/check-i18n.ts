@@ -9,8 +9,8 @@
 
 import { readFileSync, readdirSync } from "fs";
 import { join, resolve } from "path";
+import { LOCALES } from "../src/i18n/config";
 
-const LOCALES = ["en-US", "zh-CN"];
 const FRONTEND_DIR = resolve(__dirname, "..");
 const LOCALES_DIR = join(FRONTEND_DIR, "locales");
 
