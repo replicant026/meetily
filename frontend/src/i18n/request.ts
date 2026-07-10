@@ -6,12 +6,14 @@ import transcriptEn from "../../locales/en-US/transcript.json";
 import summaryEn from "../../locales/en-US/summary.json";
 import settingsEn from "../../locales/en-US/settings.json";
 import errorsEn from "../../locales/en-US/errors.json";
+import sidebarEn from "../../locales/en-US/sidebar.json";
 import commonZh from "../../locales/zh-CN/common.json";
 import recordingZh from "../../locales/zh-CN/recording.json";
 import transcriptZh from "../../locales/zh-CN/transcript.json";
 import summaryZh from "../../locales/zh-CN/summary.json";
 import settingsZh from "../../locales/zh-CN/settings.json";
 import errorsZh from "../../locales/zh-CN/errors.json";
+import sidebarZh from "../../locales/zh-CN/sidebar.json";
 
 /**
  * Read the user stored UI language via the get_ui_language Tauri command
