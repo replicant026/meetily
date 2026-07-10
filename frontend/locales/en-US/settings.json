@@ -6,7 +6,11 @@
     "transcript": "Transcript",
     "summary": "Summary",
     "models": "Models",
-    "about": "About"
+    "about": "About",
+    "beta": "Beta"
+  },
+  "shell": {
+    "back": "Back"
   },
   "model": {
     "download": "Download Model",

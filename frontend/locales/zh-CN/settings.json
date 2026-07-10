@@ -6,7 +6,11 @@
     "transcript": "转写",
     "summary": "总结",
     "models": "模型",
-    "about": "关于"
+    "about": "关于",
+    "beta": "Beta"
+  },
+  "shell": {
+    "back": "返回"
   },
   "model": {
     "download": "下载模型",
