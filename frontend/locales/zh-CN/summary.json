@@ -1,15 +1,32 @@
 {
   "title": "总结",
+  "panel": {
+    "title": "会议总结",
+    "generating": "正在生成 AI 总结...",
+    "sections": {
+      "key_points": "关键要点",
+      "action_items": "行动项",
+      "decisions": "决策",
+      "main_topics": "主要话题",
+      "full_summary": "完整总结"
+    }
+  },
   "actions": {
     "generate": "生成总结",
     "regenerate": "重新生成",
-    "edit": "编辑总结"
+    "edit": "编辑总结",
+    "copy": "复制总结"
   },
   "status": {
     "idle": "暂无总结",
     "generating": "正在生成总结...",
     "ready": "总结已完成",
-    "failed": "生成总结失败"
+    "failed": "生成总结失败",
+    "finalizing": "正在完成转写...",
+    "saving": "正在保存转写...",
+    "saved_locally": "总结语言已保存到本机",
+    "failed_to_save_lang": "保存总结语言失败",
+    "failed_to_load_lang": "无法加载已保存的总结语言"
   },
   "empty": "生成总结后，关键点和行动项将在此显示。",
   "language": {

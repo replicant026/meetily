@@ -1,15 +1,32 @@
 {
   "title": "Summary",
+  "panel": {
+    "title": "Meeting Summary",
+    "generating": "Generating AI Summary...",
+    "sections": {
+      "key_points": "Key Points",
+      "action_items": "Action Items",
+      "decisions": "Decisions",
+      "main_topics": "Main Topics",
+      "full_summary": "Full Summary"
+    }
+  },
   "actions": {
     "generate": "Generate Summary",
     "regenerate": "Regenerate",
-    "edit": "Edit Summary"
+    "edit": "Edit Summary",
+    "copy": "Copy Summary"
   },
   "status": {
     "idle": "No summary yet",
     "generating": "Generating summary...",
     "ready": "Summary ready",
-    "failed": "Failed to generate summary"
+    "failed": "Failed to generate summary",
+    "finalizing": "Finalizing transcription...",
+    "saving": "Saving transcript...",
+    "saved_locally": "Summary language saved on this device",
+    "failed_to_save_lang": "Failed to save summary language",
+    "failed_to_load_lang": "Could not load saved summary language"
   },
   "empty": "Generate a summary to see key points and action items here.",
   "language": {
