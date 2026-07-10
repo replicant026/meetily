@@ -9,7 +9,35 @@
 3. **Modify JSON** — update the corresponding JSON file by namespace
 4. **Add tests** — unit tests live in `frontend/tests/i18n/`
 5. **Run check:i18n** — verify with `pnpm run check:i18n` for missing keys
-6. **Open a PR** — label with `i18n` + `translation`
+6. **Open a PR** — labels `i18n` + `translation`; complete the i18n checklist in the PR template
+
+## Translation Quality Review Process
+
+For any PR that modifies `frontend/locales/zh-CN/**`:
+
+1. Author must:
+   - Run the three gates locally: `pnpm run check:i18n && pnpm test:i18n && pnpm build`
+   - Confirm no `MISSING_MESSAGE` warnings in the build output
+   - Verify all new English terms have been added to `glossary.md` with status `approved` (or a parallel PR adding them as `proposed`)
+   - Keep brand/proper nouns in English (Whisper / Parakeet / Ollama / OpenRouter / Claude / Groq / BlackHole)
+2. Reviewer must:
+   - Be a Chinese native speaker
+   - Verify translations read naturally (no machine-translation artifacts)
+   - Verify term consistency against `glossary.md`
+   - Verify no leftover English UI text in components (use `git diff` against `frontend/locales/en-US/`)
+3. CI must:
+   - Pass the `i18n-check` workflow (see below) before merge
+
+## Automated CI
+
+The `.github/workflows/i18n-check.yml` workflow runs on every push to active wave branches and on PRs to `main` / `devtest`. It performs:
+
+1. `pnpm install --frozen-lockfile`
+2. `pnpm run check:i18n` — verifies en-US / zh-CN key parity and rejects empty values
+3. `pnpm test:i18n` — 15 unit tests covering message loading, locale switching, and the check script
+4. `pnpm build` — production build; catches `MISSING_MESSAGE` regressions that runtime tests miss
+
+A failed workflow blocks PR merge.
 
 ## Key Naming Convention
 
@@ -31,6 +59,13 @@ Format: `{namespace}.{action}.{object}`, all lowercase with underscores.
 1. Create `frontend/locales/en-US/<name>.json` and `frontend/locales/zh-CN/<name>.json`
 2. Update `loadMessages` in `frontend/src/i18n/request.ts` to add an import
 3. Run `pnpm run check:i18n` to verify
+
+## Adding a New Term to the Glossary
+
+1. Add a row at the bottom of the table in `glossary.md` with status `proposed`
+2. Open a PR labeled `i18n` + `glossary`; one Chinese native-speaker approval is required
+3. After merge, change status to `approved`; the term is now usable in JSON
+4. To retire a term, set status to `deprecated`; consumers must replace it within the next PR cycle
 
 ## Handling Missing Keys
 
