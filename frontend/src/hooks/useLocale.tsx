@@ -34,14 +34,10 @@ export function LocaleProvider({
     if (!isSupportedLocale(next)) {
       throw new Error("Unsupported locale: " + next);
     }
-    // Persist to Tauri settings (PR-12 will own this command).
-    // Wave 1 falls back to a no-op if the command is not yet registered.
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_ui_language", { language: next });
-    } catch {
-      // PR-12 not yet merged - accept the change in-memory only.
-    }
+    // Persist to Tauri settings via the set_ui_language command (PR-12).
+    // Throws on failure; UI caller is responsible for surfacing the error.
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("set_ui_language", { language: next });
     setLocaleState(next);
   }, []);
 

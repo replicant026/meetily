@@ -14,20 +14,25 @@ import settingsZh from "../../locales/zh-CN/settings.json";
 import errorsZh from "../../locales/zh-CN/errors.json";
 
 /**
- * Read the user stored UI language. In Wave 1 this is a placeholder
- * returning the default because the Tauri command is not yet registered
- * (PR-12 will own it). The function is also called from the client
- * (LocaleProvider) once PR-12 lands.
+ * Read the user stored UI language via the get_ui_language Tauri command
+ * (registered by PR-12). Returns DEFAULT_LOCALE if no value has been saved yet
+ * (first launch) or the stored value is not a supported locale.
  */
 export async function getStoredLocale(): Promise<Locale> {
   try {
     const { invoke } = await import("@tauri-apps/api/core");
-    const stored = await invoke<string>("get_ui_language");
-    if (isSupportedLocale(stored)) return stored;
-  } catch {
-    // Tauri command not available (e.g. plain next dev without Tauri shell).
+    const stored = await invoke<string | null>("get_ui_language");
+    if (stored && isSupportedLocale(stored)) return stored;
+    return DEFAULT_LOCALE;
+  } catch (e) {
+    // SSR / build / non-Tauri context: the Tauri shell is not present.
+    // We log a single warning the first time this fires, then fall back to
+    // DEFAULT_LOCALE so the build and unit tests can render.
+    if (typeof console !== "undefined") {
+      console.warn("[i18n] get_ui_language unavailable, using default locale:", String(e));
+    }
+    return DEFAULT_LOCALE;
   }
-  return DEFAULT_LOCALE;
 }
 
 type Messages = {
