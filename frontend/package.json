@@ -93,17 +93,21 @@
     "@tailwindcss/typography": "^0.5.15",
     "@tauri-apps/cli": "^2.1.0",
     "@tauri-apps/plugin-fs": "~2.4.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitest/ui": "^4.1.10",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/ui": "^3.2.7",
     "autoprefixer": "^10.0.1",
     "concurrently": "^8.2.2",
+    "jsdom": "^29.1.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.23.0",
     "typescript": "^5.7.2",
-    "vitest": "^4.1.10",
+    "vitest": "^3.2.7",
     "wait-on": "^7.2.0"
   }
 }
