@@ -1,0 +1,28 @@
+{
+  "app": {
+    "name": "Meetily",
+    "tagline": "隐私优先的 AI 会议助手"
+  },
+  "nav": {
+    "home": "首页",
+    "meetings": "会议",
+    "settings": "设置",
+    "notes": "笔记"
+  },
+  "actions": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "confirm": "确认",
+    "back": "返回",
+    "next": "下一步"
+  },
+  "status": {
+    "loading": "加载中...",
+    "saving": "保存中...",
+    "success": "成功",
+    "failed": "失败"
+  }
+}

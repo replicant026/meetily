@@ -1,0 +1,19 @@
+{
+  "title": "总结",
+  "actions": {
+    "generate": "生成总结",
+    "regenerate": "重新生成",
+    "edit": "编辑总结"
+  },
+  "status": {
+    "idle": "暂无总结",
+    "generating": "正在生成总结...",
+    "ready": "总结已完成",
+    "failed": "生成总结失败"
+  },
+  "empty": "生成总结后，关键点和行动项将在此显示。",
+  "language": {
+    "label": "总结语言",
+    "auto_translate": "自动翻译为英文"
+  }
+}

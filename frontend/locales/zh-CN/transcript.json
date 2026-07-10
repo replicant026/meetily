@@ -1,0 +1,20 @@
+{
+  "title": "转写",
+  "view": {
+    "empty": "暂无转写内容。开始录音即可在此查看转写。",
+    "loading": "正在加载转写...",
+    "search_placeholder": "搜索转写内容..."
+  },
+  "settings": {
+    "title": "转写设置",
+    "model": "模型",
+    "language": "语言",
+    "auto_detect": "自动检测"
+  },
+  "recovery": {
+    "title": "恢复未保存的转写",
+    "description": "检测到上次未完成的会话。是否恢复？",
+    "recover": "恢复",
+    "discard": "丢弃"
+  }
+}

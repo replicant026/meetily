@@ -1,0 +1,26 @@
+{
+  "title": "Recording",
+  "controls": {
+    "start": "Start Recording",
+    "stop": "Stop Recording",
+    "pause": "Pause",
+    "resume": "Resume"
+  },
+  "status": {
+    "idle": "Ready to record",
+    "recording": "Recording in progress",
+    "paused": "Recording paused",
+    "saving": "Saving recording...",
+    "saved": "Recording saved"
+  },
+  "device": {
+    "microphone": "Microphone",
+    "system_audio": "System Audio",
+    "select_device": "Select a device",
+    "no_device": "No device detected"
+  },
+  "duration": {
+    "minutes": "{minutes} min",
+    "seconds": "{seconds} sec"
+  }
+}

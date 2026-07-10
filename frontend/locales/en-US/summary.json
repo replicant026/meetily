@@ -1,0 +1,19 @@
+{
+  "title": "Summary",
+  "actions": {
+    "generate": "Generate Summary",
+    "regenerate": "Regenerate",
+    "edit": "Edit Summary"
+  },
+  "status": {
+    "idle": "No summary yet",
+    "generating": "Generating summary...",
+    "ready": "Summary ready",
+    "failed": "Failed to generate summary"
+  },
+  "empty": "Generate a summary to see key points and action items here.",
+  "language": {
+    "label": "Summary Language",
+    "auto_translate": "Auto-translate to English"
+  }
+}

@@ -1,5 +1,17 @@
 import { getRequestConfig } from "next-intl/server";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "./config";
+import commonEn from "../../locales/en-US/common.json";
+import recordingEn from "../../locales/en-US/recording.json";
+import transcriptEn from "../../locales/en-US/transcript.json";
+import summaryEn from "../../locales/en-US/summary.json";
+import settingsEn from "../../locales/en-US/settings.json";
+import errorsEn from "../../locales/en-US/errors.json";
+import commonZh from "../../locales/zh-CN/common.json";
+import recordingZh from "../../locales/zh-CN/recording.json";
+import transcriptZh from "../../locales/zh-CN/transcript.json";
+import summaryZh from "../../locales/zh-CN/summary.json";
+import settingsZh from "../../locales/zh-CN/settings.json";
+import errorsZh from "../../locales/zh-CN/errors.json";
 
 /**
  * Read the user stored UI language. In Wave 1 this is a placeholder
@@ -9,43 +21,52 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "./config";
  */
 export async function getStoredLocale(): Promise<Locale> {
   try {
-    // Dynamic import so the build does not require @tauri-apps/api
-    // when running unit tests outside a Tauri context.
     const { invoke } = await import("@tauri-apps/api/core");
     const stored = await invoke<string>("get_ui_language");
     if (isSupportedLocale(stored)) return stored;
   } catch {
     // Tauri command not available (e.g. plain next dev without Tauri shell).
-    // PR-19 will add OS locale fallback. For now, return default.
   }
   return DEFAULT_LOCALE;
 }
 
-// Build the messages import using runtime concatenation so this module
-// compiles even before the JSON files exist (PR-11 ships them in the same wave).
-function localePath(locale: Locale, file: string) {
-  return "../../locales/" + locale + "/" + file + ".json";
+type Messages = {
+  common: typeof commonEn;
+  recording: typeof recordingEn;
+  transcript: typeof transcriptEn;
+  summary: typeof summaryEn;
+  settings: typeof settingsEn;
+  errors: typeof errorsEn;
+};
+
+const MESSAGES: Record<Locale, Messages> = {
+  "en-US": {
+    common: commonEn,
+    recording: recordingEn,
+    transcript: transcriptEn,
+    summary: summaryEn,
+    settings: settingsEn,
+    errors: errorsEn,
+  },
+  "zh-CN": {
+    common: commonZh,
+    recording: recordingZh,
+    transcript: transcriptZh,
+    summary: summaryZh,
+    settings: settingsZh,
+    errors: errorsZh,
+  },
+};
+
+export function loadMessages(locale: Locale): Messages {
+  if (!isSupportedLocale(locale)) return MESSAGES[DEFAULT_LOCALE];
+  return MESSAGES[locale];
 }
 
-export async function loadMessages(locale: Locale) {
-  const [common, recording, transcript, summary, settings, errors] = await Promise.all([
-    import(localePath(locale, "common")),
-    import(localePath(locale, "recording")),
-    import(localePath(locale, "transcript")),
-    import(localePath(locale, "summary")),
-    import(localePath(locale, "settings")),
-    import(localePath(locale, "errors")),
-  ]);
+export default getRequestConfig(async ({ locale }) => {
+  const safeLocale: Locale = locale && isSupportedLocale(locale) ? locale : DEFAULT_LOCALE;
   return {
-    common: common.default,
-    recording: recording.default,
-    transcript: transcript.default,
-    summary: summary.default,
-    settings: settings.default,
-    errors: errors.default,
+    locale: safeLocale,
+    messages: loadMessages(safeLocale),
   };
-}
-
-export default getRequestConfig(async ({ locale }) => ({
-  messages: await loadMessages((locale as Locale) ?? DEFAULT_LOCALE),
-}));
+});

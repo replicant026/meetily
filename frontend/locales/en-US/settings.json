@@ -1,0 +1,27 @@
+{
+  "title": "Settings",
+  "tabs": {
+    "general": "General",
+    "recording": "Recording",
+    "transcript": "Transcript",
+    "summary": "Summary",
+    "models": "Models",
+    "about": "About"
+  },
+  "model": {
+    "download": "Download Model",
+    "downloading": "Downloading...",
+    "downloaded": "Downloaded",
+    "delete": "Delete Model",
+    "select": "Select Model"
+  },
+  "preference": {
+    "title": "Preferences",
+    "language": "Interface Language",
+    "theme": "Theme"
+  },
+  "analytics": {
+    "consent_title": "Share anonymous usage data",
+    "consent_description": "Help improve Meetily by sharing anonymous usage statistics."
+  }
+}

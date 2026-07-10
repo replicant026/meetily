@@ -1,0 +1,26 @@
+{
+  "title": "录音",
+  "controls": {
+    "start": "开始录音",
+    "stop": "停止录音",
+    "pause": "暂停",
+    "resume": "继续"
+  },
+  "status": {
+    "idle": "准备录音",
+    "recording": "正在录音",
+    "paused": "录音已暂停",
+    "saving": "正在保存录音...",
+    "saved": "录音已保存"
+  },
+  "device": {
+    "microphone": "麦克风",
+    "system_audio": "系统音频",
+    "select_device": "选择设备",
+    "no_device": "未检测到设备"
+  },
+  "duration": {
+    "minutes": "{minutes} 分钟",
+    "seconds": "{seconds} 秒"
+  }
+}

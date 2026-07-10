@@ -1,0 +1,20 @@
+{
+  "title": "Transcription",
+  "view": {
+    "empty": "No transcript yet. Start recording to see transcription here.",
+    "loading": "Loading transcript...",
+    "search_placeholder": "Search transcript..."
+  },
+  "settings": {
+    "title": "Transcription Settings",
+    "model": "Model",
+    "language": "Language",
+    "auto_detect": "Auto-detect"
+  },
+  "recovery": {
+    "title": "Recover Unsaved Transcript",
+    "description": "We found a previous session that did not finish. Recover it?",
+    "recover": "Recover",
+    "discard": "Discard"
+  }
+}

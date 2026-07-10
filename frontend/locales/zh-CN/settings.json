@@ -1,0 +1,27 @@
+{
+  "title": "设置",
+  "tabs": {
+    "general": "通用",
+    "recording": "录音",
+    "transcript": "转写",
+    "summary": "总结",
+    "models": "模型",
+    "about": "关于"
+  },
+  "model": {
+    "download": "下载模型",
+    "downloading": "下载中...",
+    "downloaded": "已下载",
+    "delete": "删除模型",
+    "select": "选择模型"
+  },
+  "preference": {
+    "title": "偏好设置",
+    "language": "界面语言",
+    "theme": "主题"
+  },
+  "analytics": {
+    "consent_title": "分享匿名使用数据",
+    "consent_description": "通过分享匿名使用统计帮助改进 Meetily。"
+  }
+}
