@@ -18,7 +18,12 @@
   "preference": {
     "title": "Preferences",
     "language": "Interface Language",
-    "theme": "Theme"
+    "theme": "Theme",
+    "locale_name_en_us": "English (US)",
+    "locale_name_zh_cn": "Simplified Chinese",
+    "locale_search": "Search languages...",
+    "locale_empty": "No matching language",
+    "locale_change_failed": "Failed to switch language"
   },
   "analytics": {
     "consent_title": "Share anonymous usage data",

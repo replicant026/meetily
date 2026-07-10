@@ -18,7 +18,12 @@
   "preference": {
     "title": "偏好设置",
     "language": "界面语言",
-    "theme": "主题"
+    "theme": "主题",
+    "locale_name_en_us": "English (US)",
+    "locale_name_zh_cn": "简体中文",
+    "locale_search": "搜索语言...",
+    "locale_empty": "没有匹配的语言",
+    "locale_change_failed": "切换语言失败"
   },
   "analytics": {
     "consent_title": "分享匿名使用数据",

@@ -6,9 +6,12 @@ import { FolderOpen } from "lucide-react"
 import { invoke } from "@tauri-apps/api/core"
 import Analytics from "@/lib/analytics"
 import AnalyticsConsentSwitch from "./AnalyticsConsentSwitch"
-import { useConfig, NotificationSettings } from "@/contexts/ConfigContext"
+import { useConfig, NotificationSettings } from "@/contexts/ConfigContext";
+import { UiLanguagePicker } from "./UiLanguagePicker";
+import { useTranslations } from "next-intl";
 
 export function PreferenceSettings() {
+  const t = useTranslations("settings");
   const {
     notificationSettings,
     storageLocations,
@@ -148,6 +151,17 @@ export function PreferenceSettings() {
 
   return (
     <div className="space-y-6">
+      {/* Interface Language */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("preference.title")}</h3>
+            <p className="text-sm text-gray-600">{t("preference.language")}</p>
+          </div>
+          <UiLanguagePicker />
+        </div>
+      </div>
+
       {/* Notifications Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <div className="flex items-center justify-between">
