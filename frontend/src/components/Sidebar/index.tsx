@@ -626,7 +626,7 @@ const Sidebar: React.FC = () => {
                         handleEditStart(item.id, item.title);
                       }}
                       className="hover:text-blue-600 p-1 rounded-md hover:bg-blue-50 flex-shrink-0"
-                      aria-label="Edit meeting title"
+                      aria-label={t("meeting_list.edit_title_aria")}
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
@@ -636,7 +636,7 @@ const Sidebar: React.FC = () => {
                         setDeleteModalState({ isOpen: true, itemId: item.id });
                       }}
                       className="hover:text-red-600 p-1 rounded-md hover:bg-red-50 flex-shrink-0"
-                      aria-label="Delete meeting"
+                      aria-label={t("meeting_list.delete_aria")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
