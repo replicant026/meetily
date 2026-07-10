@@ -118,11 +118,11 @@ export function SummaryPanel({
   const { addRecent } = useRecentLanguages();
   const t = useTranslations("summary");
 
-  const effectiveLangLabel = summaryLang ? labelForCode(summaryLang) : 'Auto';
+  const effectiveLangLabel = summaryLang ? labelForCode(summaryLang) : t('language.auto_label');
   const isLocalFallbackLanguage = summaryLangStorage === 'local_fallback';
   const autoSubtitle = isLocalFallbackLanguage
-    ? 'Saved on this device for folderless meetings'
-    : 'Uses dominant transcript language';
+    ? t('panel.saved_locally_subtitle')
+    : t('panel.auto_language_subtitle');
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +139,7 @@ export function SummaryPanel({
       } catch (err) {
         console.error('Failed to load summary language:', err);
         toast.warning(t('status.failed_to_load_lang'), {
-          description: 'Using Auto until meeting metadata can be read.',
+          description: t('status.load_failed_description'),
         });
         if (!cancelled && languageLoadVersionRef.current === loadVersion) setSummaryLang(null);
       }
@@ -172,7 +172,7 @@ export function SummaryPanel({
             setSummaryLangStorage(saved.storage);
             if (saved.storage === 'local_fallback') {
               toast.info(t('status.saved_locally'), {
-                description: 'This meeting has no recording folder, so the preference cannot be written to meeting metadata.',
+                description: t('status.saved_locally_description'),
               });
             }
             if (request.language) {
@@ -232,8 +232,8 @@ export function SummaryPanel({
         <Button
           variant="outline"
           size="sm"
-          title={`Summary language: ${effectiveLangLabel}${isLocalFallbackLanguage ? ' (saved on this device)' : ''}`}
-          aria-label="Set summary language"
+          title={isLocalFallbackLanguage ? t('panel.summary_language_tooltip_fallback', { label: effectiveLangLabel }) : t('panel.summary_language_tooltip', { label: effectiveLangLabel })}
+          aria-label={t("panel.set_summary_language")}
         >
           <Languages size={18} />
           <span className="hidden lg:inline">{effectiveLangLabel}</span>
