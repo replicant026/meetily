@@ -43,6 +43,7 @@ pub mod console_utils;
 pub mod database;
 pub mod notifications;
 pub mod ollama;
+pub mod i18n;
 pub mod onboarding;
 pub mod openai;
 pub mod anthropic;
@@ -87,9 +88,9 @@ async fn start_recording<R: Runtime>(
     system_device_name: Option<String>,
     meeting_name: Option<String>,
 ) -> Result<(), String> {
-    log_info!("🔥 CALLED start_recording with meeting: {:?}", meeting_name);
+    log_info!("馃敟 CALLED start_recording with meeting: {:?}", meeting_name);
     log_info!(
-        "📋 Backend received parameters - mic: {:?}, system: {:?}, meeting: {:?}",
+        "馃搵 Backend received parameters - mic: {:?}, system: {:?}, meeting: {:?}",
         mic_device_name,
         system_device_name,
         meeting_name
@@ -310,7 +311,7 @@ async fn start_recording_with_devices_and_meeting<R: Runtime>(
     system_device_name: Option<String>,
     meeting_name: Option<String>,
 ) -> Result<(), String> {
-    log_info!("🚀 CALLED start_recording_with_devices_and_meeting - Mic: {:?}, System: {:?}, Meeting: {:?}",
+    log_info!("馃殌 CALLED start_recording_with_devices_and_meeting - Mic: {:?}, System: {:?}, Meeting: {:?}",
              mic_device_name, system_device_name, meeting_name);
 
     // Clone meeting_name for notification use later
@@ -731,7 +732,9 @@ pub fn run() {
             database::commands::open_database_folder,
             whisper_engine::commands::open_models_folder,
             // Onboarding commands
-            onboarding::get_onboarding_status,
+            i18n::get_ui_language,
+            i18n::set_ui_language,
+            i18n::reset_ui_language_cmd,
             onboarding::save_onboarding_status_cmd,
             onboarding::reset_onboarding_status_cmd,
             onboarding::complete_onboarding,
