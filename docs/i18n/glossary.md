@@ -23,10 +23,10 @@
 | Built-in AI | 内置 AI | 内嵌 AI 模型 | Model selection | approved |
 | Cancel | 取消 | 终止操作 | Global | approved |
 | Chunk | 音频块 | 录音分片 | Recovery/Performance | approved |
-| Chunk Drop | 音频块丢失 | 实时转录丢块 | Performance warning | approved |
+| Chunk Drop | 音频块丢失 | 实时转写丢块 | Performance warning | approved |
 | Claude | Claude | Anthropic 模型 | Model selection | approved (proper noun) |
 | Compliance | 合规 | 法律合规要求 | ComplianceNotification | approved |
-| Confidence | 置信度 | 转录可靠度 | Transcript | approved |
+| Confidence | 置信度 | 转写可靠度 | Transcript | approved |
 | Confidence Indicator | 置信度指示 | 颜色圆点显示置信度 | Settings | approved |
 | Configuration | 配置 | 参数设置 | Global | approved |
 | Copy | 复制 | 复制到剪贴板 | Global | approved |
@@ -97,9 +97,9 @@
 | System Audio | 系统音频 | 操作系统音频输出 | Device | approved |
 | Tag | 标签 | 分类标签 | Notes | approved |
 | Threshold | 阈值 | 触发门限 | Settings | approved |
-| Transcript | 转录 | 语音转文字 | Transcript | approved |
-| Transcribe | 转录 | 语音转文字（动词） | Transcript | approved |
-| Transcription Model | 转录模型 | 语音转文字所用模型 | Model | approved |
+| Transcript | 转写 | 语音转文字 | Transcript | approved |
+| Transcribe | 转写 | 语音转文字（动词） | Transcript | approved |
+| Transcription Model | 转写模型 | 语音转文字所用模型 | Model | approved |
 | Unpin | 取消固定 | 解除默认 | Summary language | approved |
 | Update | 更新 | 升级到新版本 | Update | approved |
 | Upgrade | 升级 | 升级 | About | approved |
