@@ -24,5 +24,11 @@
     "saving": "Saving...",
     "success": "Success",
     "failed": "Failed"
+  },
+  "recovery": {
+    "success_title": "Meeting recovered successfully!",
+    "transcripts_and_audio": "Transcripts and audio recovered",
+    "transcripts_only": "Transcripts recovered (no audio available)",
+    "view_meeting": "View Meeting"
   }
 }

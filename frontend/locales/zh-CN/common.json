@@ -24,5 +24,11 @@
     "saving": "保存中...",
     "success": "成功",
     "failed": "失败"
+  },
+  "recovery": {
+    "success_title": "会议已成功恢复！",
+    "transcripts_and_audio": "转写和音频已恢复",
+    "transcripts_only": "转写已恢复（无可用音频）",
+    "view_meeting": "查看会议"
   }
 }

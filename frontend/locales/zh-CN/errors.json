@@ -6,5 +6,7 @@
   "transcription_failed": "转写失败。请重试。",
   "network_offline": "网络不可用。正在以离线模式工作。",
   "update_available": "有可用更新。",
-  "update_failed": "更新失败。请稍后重试。"
+  "update_failed": "更新失败。请稍后重试。",
+  "recovery_failed": "恢复会议失败，请重试。",
+  "unknown_error": "发生未知错误"
 }

@@ -6,5 +6,7 @@
   "transcription_failed": "Transcription failed. Please try again.",
   "network_offline": "Network unavailable. Working in offline mode.",
   "update_available": "An update is available.",
-  "update_failed": "Update failed. Please try again later."
+  "update_failed": "Update failed. Please try again later.",
+  "recovery_failed": "Failed to recover meeting. Please try again.",
+  "unknown_error": "Unknown error occurred"
 }
