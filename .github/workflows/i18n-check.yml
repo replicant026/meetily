@@ -1,0 +1,36 @@
+﻿name: i18n-check
+
+on:
+  push:
+    branches: [main, devtest, feature/i18n-wave1, feature/i18n-design-spec]
+  pull_request:
+    branches: [main, devtest]
+
+jobs:
+  i18n:
+    name: Check i18n completeness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - name: Check i18n completeness
+        run: pnpm run check:i18n
+        working-directory: frontend
+
+      - name: Run i18n unit tests
+        run: pnpm test:i18n
+        working-directory: frontend
