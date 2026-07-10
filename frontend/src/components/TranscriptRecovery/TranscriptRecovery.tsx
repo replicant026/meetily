@@ -21,6 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MeetingMetadata, StoredTranscript } from '@/services/indexedDBService';
 import { cn } from '@/lib/utils';
+import { useTranslations } from "next-intl";
 
 interface TranscriptRecoveryProps {
   isOpen: boolean;
@@ -44,6 +45,8 @@ export function TranscriptRecovery({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const t = useTranslations("transcript");
 
   // Reset selection when dialog opens
   useEffect(() => {
@@ -118,7 +121,7 @@ export function TranscriptRecovery({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6">
-          <DialogTitle className="text-2xl">Recover Interrupted Meetings</DialogTitle>
+          <DialogTitle className="text-2xl">{t("recovery.dialog_title")}</DialogTitle>
           <DialogDescription>
             We found {recoverableMeetings.length} meeting{recoverableMeetings.length !== 1 ? 's' : ''} that {recoverableMeetings.length !== 1 ? 'were' : 'was'} interrupted. Select a meeting to preview and recover it.
           </DialogDescription>
@@ -127,7 +130,7 @@ export function TranscriptRecovery({
         <div className="flex-1 flex gap-4 px-6 pb-6 overflow-hidden">
           {/* Meeting List */}
           <div className="w-1/3 flex flex-col">
-            <h3 className="text-sm font-medium mb-2">Interrupted Meetings</h3>
+            <h3 className="text-sm font-medium mb-2">{t("recovery.interrupted_label")}</h3>
             <ScrollArea className="flex-1 border rounded-lg">
               <div className="p-2 space-y-2">
                 {recoverableMeetings.map((meeting) => (
@@ -171,7 +174,7 @@ export function TranscriptRecovery({
 
           {/* Preview Panel */}
           <div className="flex-1 flex flex-col">
-            <h3 className="text-sm font-medium mb-2">Preview</h3>
+            <h3 className="text-sm font-medium mb-2">{t("recovery.preview_label")}</h3>
             <div className="flex-1 border rounded-lg overflow-hidden flex flex-col">
               {selectedMeeting ? (
                 <>

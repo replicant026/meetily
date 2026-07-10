@@ -3,7 +3,11 @@
   "view": {
     "empty": "暂无转写内容。开始录音即可在此查看转写。",
     "loading": "正在加载转写...",
-    "search_placeholder": "搜索转写内容..."
+    "search_placeholder": "搜索转写内容...",
+    "copy": "复制",
+    "copy_title": "复制转写",
+    "language": "语言",
+    "language_title": "语言"
   },
   "settings": {
     "title": "转写设置",
@@ -15,6 +19,9 @@
     "title": "恢复未保存的转写",
     "description": "检测到上次未完成的会话。是否恢复？",
     "recover": "恢复",
-    "discard": "丢弃"
+    "discard": "丢弃",
+    "dialog_title": "恢复未完成的会议",
+    "interrupted_label": "未完成会议",
+    "preview_label": "预览"
   }
 }

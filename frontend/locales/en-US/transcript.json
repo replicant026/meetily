@@ -3,7 +3,11 @@
   "view": {
     "empty": "No transcript yet. Start recording to see transcription here.",
     "loading": "Loading transcript...",
-    "search_placeholder": "Search transcript..."
+    "search_placeholder": "Search transcript...",
+    "copy": "Copy",
+    "copy_title": "Copy Transcript",
+    "language": "Language",
+    "language_title": "Language"
   },
   "settings": {
     "title": "Transcription Settings",
@@ -15,6 +19,9 @@
     "title": "Recover Unsaved Transcript",
     "description": "We found a previous session that did not finish. Recover it?",
     "recover": "Recover",
-    "discard": "Discard"
+    "discard": "Discard",
+    "dialog_title": "Recover Interrupted Meetings",
+    "interrupted_label": "Interrupted Meetings",
+    "preview_label": "Preview"
   }
 }
