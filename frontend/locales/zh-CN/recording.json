@@ -14,7 +14,13 @@
     "recording": "正在录音",
     "paused": "录音已暂停",
     "saving": "正在保存录音...",
-    "saved": "录音已保存"
+    "saved": "录音已保存",
+    "pausing": "正在暂停...",
+    "resuming": "正在恢复...",
+    "stopping": "正在停止...",
+    "validating": "正在校验语音识别...",
+    "pause_tooltip": "暂停录音",
+    "resume_tooltip": "继续录音"
   },
   "device": {
     "microphone": "麦克风",
@@ -25,5 +31,19 @@
   "duration": {
     "minutes": "{minutes} 分钟",
     "seconds": "{seconds} 秒"
+  },
+  "errors": {
+    "init_failed": "无法初始化录音。请查看控制台详情。",
+    "pause_failed": "无法暂停录音。请查看控制台详情。",
+    "resume_failed": "无法恢复录音。请查看控制台详情。",
+    "close_alert": "关闭提醒",
+    "device_mic_title": "麦克风不可用",
+    "device_mic_message": "无法访问麦克风。请检查：\n\u2022 麦克风是否已连接\n\u2022 应用是否获得麦克风权限\n\u2022 没有其它应用正在占用麦克风",
+    "device_speaker_title": "系统音频不可用",
+    "device_speaker_message": "无法录制系统音频。请检查：\n\u2022 已安装虚拟音频设备（如 BlackHole）\n\u2022 应用已获得屏幕录制权限（macOS）\n\u2022 系统音频已正确配置",
+    "device_permission_title": "需要授权",
+    "device_permission_message": "需要录音权限。请：\n\u2022 在系统设置中授予麦克风权限\n\u2022 授予系统音频的屏幕录制权限（macOS）\n\u2022 授予权限后重启应用",
+    "device_generic_title": "录音失败",
+    "device_generic_message": "无法开始录音。请检查音频设备设置后重试。"
   }
 }
