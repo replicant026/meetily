@@ -44,6 +44,7 @@ type Messages = {
   summary: typeof summaryEn;
   settings: typeof settingsEn;
   errors: typeof errorsEn;
+  sidebar: typeof sidebarEn;
 };
 
 const MESSAGES: Record<Locale, Messages> = {
@@ -54,6 +55,7 @@ const MESSAGES: Record<Locale, Messages> = {
     summary: summaryEn,
     settings: settingsEn,
     errors: errorsEn,
+    sidebar: sidebarEn,
   },
   "zh-CN": {
     common: commonZh,
@@ -62,6 +64,7 @@ const MESSAGES: Record<Locale, Messages> = {
     summary: summaryZh,
     settings: settingsZh,
     errors: errorsZh,
+    sidebar: sidebarZh,
   },
 };
 

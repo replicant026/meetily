@@ -4,7 +4,10 @@
     "start": "开始录音",
     "stop": "停止录音",
     "pause": "暂停",
-    "resume": "继续"
+    "resume": "继续",
+    "processing": "正在处理录音...",
+    "start_tooltip": "开始录音",
+    "stop_tooltip": "停止录音"
   },
   "status": {
     "idle": "准备录音",

@@ -4,7 +4,10 @@
     "start": "Start Recording",
     "stop": "Stop Recording",
     "pause": "Pause",
-    "resume": "Resume"
+    "resume": "Resume",
+    "processing": "Processing recording...",
+    "start_tooltip": "Start recording",
+    "stop_tooltip": "Stop recording"
   },
   "status": {
     "idle": "Ready to record",
