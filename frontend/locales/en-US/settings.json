@@ -27,7 +27,66 @@
     "locale_name_zh_cn": "Simplified Chinese",
     "locale_search": "Search languages...",
     "locale_empty": "No matching language",
-    "locale_change_failed": "Failed to switch language"
+    "locale_change_failed": "Failed to switch language",
+    "loading": "Loading Preferences...",
+    "notifications": {
+      "title": "Notifications",
+      "description": "Enable or disable notifications of start and end of meeting"
+    },
+    "storage": {
+      "title": "Data Storage Locations",
+      "description": "View and access where Meetily stores your data",
+      "database": "Database",
+      "models": "Whisper Models",
+      "recordings": "Meeting Recordings",
+      "open_folder": "Open Folder",
+      "loading": "Loading...",
+      "note": "Note: Database and models are stored together in your application data directory for unified management."
+    }
+  },
+  "recording": {
+    "title": "Recording Settings",
+    "description": "Configure how your audio recordings are saved during meetings.",
+    "save_recordings_label": "Save Audio Recordings",
+    "save_recordings_desc": "Automatically save audio files when recording stops",
+    "save_location_label": "Save Location",
+    "save_location_default": "Default folder",
+    "open_folder": "Open Folder",
+    "file_format_label": "File Format:",
+    "recording_path_template": "Recordings are saved with timestamp: recording_YYYYMMDD_HHMMSS.{format}",
+    "default_audio_devices": "Default Audio Devices",
+    "default_audio_device_label": "Default",
+    "recording_disabled_note": "Audio recording is disabled. Enable \"Save Audio Recordings\" to automatically save your meeting audio.",
+    "preference_saved": "Preference saved",
+    "preference_save_failed": "Failed to save preference",
+    "devices_saved": "Device preferences saved",
+    "devices_save_failed": "Failed to save device preferences"
+  },
+  "transcript": {
+    "title": "Transcript Settings",
+    "model_label": "Transcript Model",
+    "select_provider": "Select provider"
+  },
+  "summary": {
+    "language": {
+      "pin_aria": "Pin {label} as default",
+      "unpin_aria": "Unpin {label} as default",
+      "set_default_title": "Click to set as default",
+      "unset_default_title": "Click to unset as default",
+      "remove_aria": "Remove {label}",
+      "header": "Summary Language",
+      "click_to_set_default": "Click any language to set it as your default. Max 5 quick-switch options.",
+      "default_label": "Default:",
+      "click_again_to_unset": "click it again to unset",
+      "description": "Pin one language as the default for new meetings. Unpinned languages remain as quick-switch options in the summary generator. Auto uses the dominant transcript language."
+    },
+    "auto_title": "Auto Summary",
+    "auto_description": "Auto Generating summary after meeting completion (Stopping)",
+    "config_title": "Summary Model Configuration",
+    "save_success": "Model settings saved successfully",
+    "load_failed": "Failed to load model settings",
+    "save_failed": "Failed to save model settings",
+    "model_description": "Configure the AI model used for generating meeting summaries."
   },
   "analytics": {
     "consent_title": "Share anonymous usage data",

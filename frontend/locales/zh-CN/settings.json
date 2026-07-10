@@ -27,7 +27,66 @@
     "locale_name_zh_cn": "简体中文",
     "locale_search": "搜索语言...",
     "locale_empty": "没有匹配的语言",
-    "locale_change_failed": "切换语言失败"
+    "locale_change_failed": "切换语言失败",
+    "loading": "正在加载偏好...",
+    "notifications": {
+      "title": "通知",
+      "description": "启用或禁用会议开始和结束的通知"
+    },
+    "storage": {
+      "title": "数据存储位置",
+      "description": "查看并访问 Meetily 数据的存储位置",
+      "database": "数据库",
+      "models": "Whisper 模型",
+      "recordings": "会议录音",
+      "open_folder": "打开文件夹",
+      "loading": "加载中...",
+      "note": "提示：数据库和模型一同存储在应用数据目录中以便统一管理。"
+    }
+  },
+  "recording": {
+    "title": "录音设置",
+    "description": "配置会议中录音文件的保存方式。",
+    "save_recordings_label": "保存音频录音",
+    "save_recordings_desc": "录音停止时自动保存音频文件",
+    "save_location_label": "保存位置",
+    "save_location_default": "默认文件夹",
+    "open_folder": "打开文件夹",
+    "file_format_label": "文件格式：",
+    "recording_path_template": "录音以时间戳命名：recording_YYYYMMDD_HHMMSS.{format}",
+    "default_audio_devices": "默认音频设备",
+    "default_audio_device_label": "默认",
+    "recording_disabled_note": "音频录音已禁用。启用「保存音频录音」后将自动保存会议音频。",
+    "preference_saved": "偏好已保存",
+    "preference_save_failed": "保存偏好失败",
+    "devices_saved": "设备偏好已保存",
+    "devices_save_failed": "保存设备偏好失败"
+  },
+  "transcript": {
+    "title": "转写设置",
+    "model_label": "转写模型",
+    "select_provider": "选择提供方"
+  },
+  "summary": {
+    "language": {
+      "pin_aria": "将 {label} 设为默认",
+      "unpin_aria": "取消将 {label} 设为默认",
+      "set_default_title": "点击设为默认",
+      "unset_default_title": "点击取消默认",
+      "remove_aria": "移除 {label}",
+      "header": "总结语言",
+      "click_to_set_default": "点击任意语言将其设为默认。最多 5 个快速切换选项。",
+      "default_label": "默认：",
+      "click_again_to_unset": "再次点击取消",
+      "description": "将一种语言固定为新会议的默认语言。未固定的语言在总结生成器中仍可快速切换。自动使用转写中最常见的语言。"
+    },
+    "auto_title": "自动总结",
+    "auto_description": "会议结束后（停止时）自动生成总结",
+    "config_title": "总结模型配置",
+    "save_success": "模型设置已保存",
+    "load_failed": "加载模型设置失败",
+    "save_failed": "保存模型设置失败",
+    "model_description": "配置用于生成会议摘要的 AI 模型。"
   },
   "analytics": {
     "consent_title": "分享匿名使用数据",
