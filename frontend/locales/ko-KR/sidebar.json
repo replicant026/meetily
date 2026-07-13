@@ -1,24 +1,24 @@
 {
   "nav": {
-    "home": "Home",
-    "meetings": "Meetings",
-    "import_audio": "Import Audio",
-    "notes": "Meeting Notes",
-    "settings": "Settings"
+    "home": "홈",
+    "meetings": "회의",
+    "import_audio": "오디오 가져오기",
+    "notes": "회의 메모",
+    "settings": "설정"
   },
   "meeting_list": {
-    "search_placeholder": "Search meeting content...",
-    "searching": "Searching...",
-    "edit_title_dialog_title": "Edit Meeting Title",
-    "edit_title_input_placeholder": "Enter meeting title",
-    "edit_title_label": "Meeting Title",
-    "save": "Save",
-    "cancel": "Cancel"
+    "search_placeholder": "회의 내용 검색...",
+    "searching": "검색 중...",
+    "edit_title_dialog_title": "회의 제목 편집",
+    "edit_title_input_placeholder": "회의 제목 입력",
+    "edit_title_label": "회의 제목",
+    "save": "저장",
+    "cancel": "취소"
   },
   "status": {
-    "recording_in_progress": "Recording in progress...",
-    "start_recording": "Start Recording",
-    "import_audio": "Import Audio"
+    "recording_in_progress": "녹음 중...",
+    "start_recording": "녹음 시작",
+    "import_audio": "오디오 가져오기"
   },
   "brand": "Meetily"
 }
