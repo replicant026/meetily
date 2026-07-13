@@ -44,7 +44,9 @@
       "note": "提示：数据库和模型一同存储在应用数据目录中。"
     },
     "locale_name_en_gb": "English (UK)",
-    "locale_name_zh_tw": "繁體中文"
+    "locale_name_zh_tw": "繁體中文",
+    "locale_name_ja_jp": "日语",
+    "locale_name_ko_kr": "韩语"
   },
   "recording": {
     "title": "录音设置",
@@ -255,5 +257,27 @@
   },
   "notes": {
     "not_found": "未找到笔记"
+  },
+  "recovery": {
+    "dialog_title": "中断的会议转录",
+    "dialog_description_one": "我们发现了一个中断的会议。录音在转录完成前停止了。",
+    "dialog_description_other": "我们发现了 {count} 个中断的会议。这些会议在转录完成前停止了。",
+    "interrupted_label": "中断的会议",
+    "preview_label": "预览",
+    "preview_select": "选择一个会议进行预览",
+    "preview_loading": "正在加载预览...",
+    "preview_empty": "没有可用的转录片段",
+    "preview_segments": "{count} 个片段",
+    "audio_available": "音频可用",
+    "audio_unavailable": "音频不可用",
+    "started_label": "开始时间：",
+    "recover": "恢复",
+    "recovering": "正在恢复...",
+    "delete": "删除",
+    "deleting": "正在删除...",
+    "cancel": "取消",
+    "confirm_delete": "确定要删除这个中断的会议吗？此操作无法撤销。",
+    "alert_recover_failed": "恢复会议失败",
+    "alert_delete_failed": "删除会议失败"
   }
 }
