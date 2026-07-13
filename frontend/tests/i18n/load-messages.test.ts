@@ -7,12 +7,12 @@ describe("i18n/config", () => {
     expect(isSupportedLocale("en-GB")).toBe(true);
     expect(isSupportedLocale("zh-CN")).toBe(true);
     expect(isSupportedLocale("zh-TW")).toBe(true);
+    expect(isSupportedLocale("ja-JP")).toBe(true);
+    expect(isSupportedLocale("ko-KR")).toBe(true);
   });
 
   it("isSupportedLocale returns false for unknown locales", () => {
     expect(isSupportedLocale("fr-FR")).toBe(false);
-    expect(isSupportedLocale("ja-JP")).toBe(false);
-    expect(isSupportedLocale("ko-KR")).toBe(false);
     expect(isSupportedLocale("")).toBe(false);
   });
 
@@ -38,9 +38,18 @@ describe("i18n/config", () => {
     expect(resolveLocaleFromOs("en-CA")).toBe("en-US");
   });
 
+  it("resolveLocaleFromOs maps ja-* / ja to ja-JP", () => {
+    expect(resolveLocaleFromOs("ja-JP")).toBe("ja-JP");
+    expect(resolveLocaleFromOs("ja")).toBe("ja-JP");
+  });
+
+  it("resolveLocaleFromOs maps ko-* / ko to ko-KR", () => {
+    expect(resolveLocaleFromOs("ko-KR")).toBe("ko-KR");
+    expect(resolveLocaleFromOs("ko")).toBe("ko-KR");
+  });
+
   it("resolveLocaleFromOs falls back to DEFAULT_LOCALE", () => {
     expect(resolveLocaleFromOs("fr-FR")).toBe(DEFAULT_LOCALE);
-    expect(resolveLocaleFromOs("ja-JP")).toBe(DEFAULT_LOCALE);
     expect(resolveLocaleFromOs(null)).toBe(DEFAULT_LOCALE);
     expect(resolveLocaleFromOs(undefined)).toBe(DEFAULT_LOCALE);
     expect(resolveLocaleFromOs("")).toBe(DEFAULT_LOCALE);

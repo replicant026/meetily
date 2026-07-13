@@ -27,6 +27,8 @@
     "locale_name_zh_cn": "简体中文",
     "locale_name_en_gb": "English (UK)",
     "locale_name_zh_tw": "繁體中文",
+    "locale_name_ja_jp": "日語",
+    "locale_name_ko_kr": "韓語",
     "locale_search": "搜尋語言...",
     "locale_empty": "沒有符合的語言",
     "locale_change_failed": "切換語言失敗",
@@ -255,5 +257,28 @@
   },
   "notes": {
     "not_found": "找不到筆記"
+  }
+,
+  "recovery": {
+    "dialog_title": "中斷的會議轉錄",
+    "dialog_description_one": "我們發現了一個中斷的會議。錄音在轉錄完成前停止了。",
+    "dialog_description_other": "我們發現了 {count} 個中斷的會議。這些會議在轉錄完成前停止了。",
+    "interrupted_label": "中斷的會議",
+    "preview_label": "預覽",
+    "preview_select": "選擇一個會議進行預覽",
+    "preview_loading": "正在載入預覽...",
+    "preview_empty": "沒有可用的轉錄片段",
+    "preview_segments": "{count} 個片段",
+    "audio_available": "音訊可用",
+    "audio_unavailable": "音訊不可用",
+    "started_label": "開始時間：",
+    "recover": "復原",
+    "recovering": "正在復原...",
+    "delete": "刪除",
+    "deleting": "正在刪除...",
+    "cancel": "取消",
+    "confirm_delete": "確定要刪除這個中斷的會議嗎？此操作無法復原。",
+    "alert_recover_failed": "復原會議失敗",
+    "alert_delete_failed": "刪除會議失敗"
   }
 }

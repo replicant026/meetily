@@ -44,7 +44,9 @@
       "note": "Note: Database and models are stored together in your application data directory for unified management."
     },
     "locale_name_en_gb": "English (UK)",
-    "locale_name_zh_tw": "繁體中文"
+    "locale_name_zh_tw": "繁體中文",
+    "locale_name_ja_jp": "Japanese",
+    "locale_name_ko_kr": "Korean"
   },
   "recording": {
     "title": "Recording Settings",
@@ -255,5 +257,28 @@
   },
   "notes": {
     "not_found": "Note not found"
+  }
+,
+  "recovery": {
+    "dialog_title": "Interrupted Meeting Transcripts",
+    "dialog_description_one": "We found an interrupted meeting. The recording stopped before the transcript was completed.",
+    "dialog_description_other": "We found {count} interrupted meetings. The recording stopped before the transcripts were completed.",
+    "interrupted_label": "Interrupted meetings",
+    "preview_label": "Preview",
+    "preview_select": "Select a meeting to preview",
+    "preview_loading": "Loading preview...",
+    "preview_empty": "No transcript segments available",
+    "preview_segments": "{count} segments",
+    "audio_available": "Audio available",
+    "audio_unavailable": "Audio not available",
+    "started_label": "Started:",
+    "recover": "Recover",
+    "recovering": "Recovering...",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "cancel": "Cancel",
+    "confirm_delete": "Are you sure you want to delete this interrupted meeting? This action cannot be undone.",
+    "alert_recover_failed": "Failed to recover meeting",
+    "alert_delete_failed": "Failed to delete meeting"
   }
 }

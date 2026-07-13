@@ -45,8 +45,8 @@
     },
     "locale_name_en_gb": "English (UK)",
     "locale_name_zh_tw": "繁體中文",
-    "locale_name_ja_jp": "Japanese",
-    "locale_name_ko_kr": "Korean"
+    "locale_name_ja_jp": "日本語",
+    "locale_name_ko_kr": "韓国語"
   },
   "recording": {
     "title": "Recording Settings",
@@ -260,25 +260,25 @@
   }
 ,
   "recovery": {
-    "dialog_title": "Interrupted Meeting Transcripts",
-    "dialog_description_one": "We found an interrupted meeting. The recording stopped before the transcript was completed.",
-    "dialog_description_other": "We found {count} interrupted meetings. The recording stopped before the transcripts were completed.",
-    "interrupted_label": "Interrupted meetings",
-    "preview_label": "Preview",
-    "preview_select": "Select a meeting to preview",
-    "preview_loading": "Loading preview...",
-    "preview_empty": "No transcript segments available",
-    "preview_segments": "{count} segments",
-    "audio_available": "Audio available",
-    "audio_unavailable": "Audio not available",
-    "started_label": "Started:",
-    "recover": "Recover",
-    "recovering": "Recovering...",
-    "delete": "Delete",
-    "deleting": "Deleting...",
-    "cancel": "Cancel",
-    "confirm_delete": "Are you sure you want to delete this interrupted meeting? This action cannot be undone.",
-    "alert_recover_failed": "Failed to recover meeting",
-    "alert_delete_failed": "Failed to delete meeting"
+    "dialog_title": "中断された会議の文字起こし",
+    "dialog_description_one": "中断された会議が見つかりました。文字起こしが完了する前に録音が停止しました。",
+    "dialog_description_other": "{count} 件の中断された会議が見つかりました。文字起こしが完了する前に録音が停止しました。",
+    "interrupted_label": "中断された会議",
+    "preview_label": "プレビュー",
+    "preview_select": "プレビューする会議を選択",
+    "preview_loading": "プレビューを読み込み中...",
+    "preview_empty": "文字起こしセグメントがありません",
+    "preview_segments": "{count} セグメント",
+    "audio_available": "音声あり",
+    "audio_unavailable": "音声なし",
+    "started_label": "開始時刻：",
+    "recover": "復元",
+    "recovering": "復元中...",
+    "delete": "削除",
+    "deleting": "削除中...",
+    "cancel": "キャンセル",
+    "confirm_delete": "この中断された会議を削除してもよろしいですか？この操作は元に戻せません。",
+    "alert_recover_failed": "会議の復元に失敗しました",
+    "alert_delete_failed": "会議の削除に失敗しました"
   }
 }

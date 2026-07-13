@@ -28,6 +28,20 @@ import summaryZhTw from "../../locales/zh-TW/summary.json";
 import settingsZhTw from "../../locales/zh-TW/settings.json";
 import errorsZhTw from "../../locales/zh-TW/errors.json";
 import sidebarZhTw from "../../locales/zh-TW/sidebar.json";
+import commonJaJp from "../../locales/ja-JP/common.json";
+import recordingJaJp from "../../locales/ja-JP/recording.json";
+import transcriptJaJp from "../../locales/ja-JP/transcript.json";
+import summaryJaJp from "../../locales/ja-JP/summary.json";
+import settingsJaJp from "../../locales/ja-JP/settings.json";
+import errorsJaJp from "../../locales/ja-JP/errors.json";
+import sidebarJaJp from "../../locales/ja-JP/sidebar.json";
+import commonKoKr from "../../locales/ko-KR/common.json";
+import recordingKoKr from "../../locales/ko-KR/recording.json";
+import transcriptKoKr from "../../locales/ko-KR/transcript.json";
+import summaryKoKr from "../../locales/ko-KR/summary.json";
+import settingsKoKr from "../../locales/ko-KR/settings.json";
+import errorsKoKr from "../../locales/ko-KR/errors.json";
+import sidebarKoKr from "../../locales/ko-KR/sidebar.json";
 
 /**
  * Read the user stored UI language via the get_ui_language Tauri command
@@ -97,6 +111,24 @@ const MESSAGES: Record<Locale, Messages> = {
     settings: settingsZhTw,
     errors: errorsZhTw,
     sidebar: sidebarZhTw,
+  },
+  "ja-JP": {
+    common: commonJaJp,
+    recording: recordingJaJp,
+    transcript: transcriptJaJp,
+    summary: summaryJaJp,
+    settings: settingsJaJp,
+    errors: errorsJaJp,
+    sidebar: sidebarJaJp,
+  },
+  "ko-KR": {
+    common: commonKoKr,
+    recording: recordingKoKr,
+    transcript: transcriptKoKr,
+    summary: summaryKoKr,
+    settings: settingsKoKr,
+    errors: errorsKoKr,
+    sidebar: sidebarKoKr,
   },
 };
 
