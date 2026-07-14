@@ -22,24 +22,21 @@ any segment seeks the audio player to that position.
 
 ## What does NOT ship in this PR
 
-- **mp4-only meetings are silently disabled.** Meetily records audio in
-  AAC-in-MP4 (`encode.rs`), which the browser cannot decode via Web
-  Audio API. The current lookup only resolves `audio.wav`. Until PR-44e
-  adds a parallel WAV export at recording time, meetings recorded
-  after Wave 13 will return `audioPath = null` and the player UI will
-  stay hidden. Legacy WAV recordings (if any exist) light up
-  immediately.
-- **Audio file discovery from `meeting.folder_path`** — PR-44d (this
-  release) adds the `get_meeting_audio_path` Tauri command + the
-  `useMeetingAudioPath` hook. The command joins `meeting.folder_path`
-  with the conventional filename and returns the absolute path or `null`.
+- **Audio file discovery from `meeting.folder_path`** — PR-44d adds the
+  `get_meeting_audio_path` Tauri command + the `useMeetingAudioPath`
+  hook. The command joins `meeting.folder_path` with the conventional
+  filename and returns the absolute path or `null`.
+- **Parallel WAV export at recording time** — PR-44e closes the mp4-vs-WAV
+  gap: `incremental_saver::finalize()` now writes `audio.wav` alongside
+  `audio.mp4`, so every meeting recorded after PR-44e ships auto-lights
+  the player. Pre-PR-44e meetings (no wav) resolve to `null` and stay
+  hidden — legacy support is graceful.
 - **Auto-discovery of non-conventional filenames** — if the audio file
   in the meeting folder is named anything other than `audio.wav`, the
   hook returns `null`. Add more probe filenames in the backend command
   if needed.
 - **Waveform visualization**, **speaker-relative time**, and other
   richer player features — tracked for future waves.
-
 ## How to enable click-to-jump on a meeting
 
 In the meeting-details page (or any future surface that mounts a
