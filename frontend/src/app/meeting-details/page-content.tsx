@@ -18,6 +18,7 @@ import { useCopyOperations } from '@/hooks/meeting-details/useCopyOperations';
 import { useMeetingOperations } from '@/hooks/meeting-details/useMeetingOperations';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useTranslations } from 'next-intl';
+import { useMeetingAudioPath } from '@/hooks/useMeetingAudioPath';
 
 export default function PageContent({
   meeting,
@@ -112,6 +113,9 @@ export default function PageContent({
     }
   };
 
+  // Resolve browser-decodable audio path for click-to-jump (Wave 14 PR-44d)
+  const { audioPath } = useMeetingAudioPath(meeting?.id);
+
   const summaryGeneration = useSummaryGeneration({
     meeting,
     transcripts: meetingData.transcripts,
@@ -193,6 +197,8 @@ export default function PageContent({
           meetingId={meeting.id}
           meetingFolderPath={meeting.folder_path}
           onRefetchTranscripts={onRefetchTranscripts}
+          // Audio jump props (Wave 14 PR-44d): null disables the player gracefully
+          audioPath={audioPath}
         />
         <SummaryPanel
           meeting={meeting}

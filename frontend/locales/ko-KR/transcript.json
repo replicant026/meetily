@@ -7,7 +7,18 @@
     "copy": "복사",
     "copy_title": "전사 복사",
     "language": "언어",
-    "language_title": "언어"
+    "language_title": "언어",
+    "player": {
+      "play": "재생",
+      "pause": "일시정지",
+      "play_title": "오디오 재생",
+      "pause_title": "오디오 일시정지",
+      "no_audio": "이 회의에 재생 가능한 오디오가 없습니다",
+      "seek_title": "지정된 위치로 이동",
+      "timestamp_jump_tooltip": "타임스탬프를 클릭하여 오디오 위치로 이동",
+      "loading": "오디오 불러오는 중...",
+      "error": "오디오 재생 실패"
+    }
   },
   "settings": {
     "title": "전사 설정",

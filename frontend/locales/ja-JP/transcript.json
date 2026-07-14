@@ -7,7 +7,18 @@
     "copy": "コピー",
     "copy_title": "文字起こしをコピー",
     "language": "言語",
-    "language_title": "言語"
+    "language_title": "言語",
+    "player": {
+      "play": "再生",
+      "pause": "一時停止",
+      "play_title": "音声を再生",
+      "pause_title": "音声を一時停止",
+      "no_audio": "この会議には再生可能な音声がありません",
+      "seek_title": "指定位置にシーク",
+      "timestamp_jump_tooltip": "タイムスタンプをクリックして音声位置にジャンプ",
+      "loading": "音声を読み込み中...",
+      "error": "音声の再生に失敗しました"
+    }
   },
   "settings": {
     "title": "文字起こし設定",
