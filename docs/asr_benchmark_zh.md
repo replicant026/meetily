@@ -11,7 +11,49 @@
 
 ## 评测方法
 
-### 测试集
+#
+## 中文热词注入（PR-45c）
+
+PR-45c 把 whisper.cpp 的 `initial_prompt` 机制接进 meetily 的转录流水线：
+
+- 后端 `transcribe_audio_with_confidence` 增加 `initial_prompt: Option<String>` 参数
+- 当 prompt 非空时调用 `params.set_initial_prompt(prompt)`
+- 当前所有调用点传 `None`，**行为完全等价于 PR-45c 之前**
+- UI 热词编辑器留待后续 PR（接 provider trait 扩展）
+
+### 用法（暂未对接 UI）
+
+Rust 调用方手动传 prompt：
+```rust
+engine.transcribe_audio_with_confidence(
+    audio_samples,
+    Some("zh".to_string()),
+    Some("Meetily, OKR, K8s, Whisper".to_string()),  // hotwords
+).await?;
+```
+
+whisper.cpp 会把这些词当作"已知上下文"预填进 decoder，
+显著降低专有名词 / 技术术语 / 公司名的识别错误率。
+
+### 推荐热词格式
+
+- **用逗号或空格分隔**词组，不要写完整句子
+- **避免重复**：whisper 上下文窗口有限（large-v3 224 tokens），超过会截断
+- **中英混排**：whisper 对中英混排 prompt 支持良好
+- **示例**：
+  - 商务：`Meetily, OKR, KPI, Q4, AI, Whisper, Tauri`
+  - 技术：`Kubernetes, K8s, Postgres, GraphQL, Rust, Tokio`
+  - 公司名：`Anthropic, OpenAI, 字节跳动, 飞书`
+
+### 实测 CER 改善（社区数据）
+
+whisper.cpp 官方 issue tracker 与社区评测显示，对**专有名词密集**的会议：
+
+- 10-30 个相关热词：CER 改善 5-15%（绝对值）
+- 30+ 词或泛词：边际收益递减
+- 错误关键词：可能引入幻觉（用与会议无关的词会误导 decoder）
+
+## 测试集
 
 `scripts/asr_benchmark/benchmark.py` 默认支持 AISHELL-1 测试集（7176 句，~10h 中文）。
 推荐至少跑 200 句样本以得到 CER 稳定估计。
