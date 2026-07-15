@@ -8,6 +8,12 @@
     "copy_title": "文字起こしをコピー",
     "language": "言語",
     "language_title": "言語",
+    "export": "文字起こしをエクスポート",
+    "export_markdown": "Markdown（.md）",
+    "export_docx": "Word 文書（.docx）",
+    "export_success": "文字起こしをエクスポートしました",
+    "export_failed": "文字起こしのエクスポートに失敗しました",
+    "export_no_transcript": "エクスポートできる文字起こしがありません",
     "player": {
       "play": "再生",
       "pause": "一時停止",

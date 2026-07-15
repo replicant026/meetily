@@ -7,6 +7,7 @@ import { useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useSpeakerNames } from '@/hooks/useSpeakerNames';
+import { TranscriptExportFormat } from '@/lib/transcript-export';
 import { Play, Pause, AlertCircle } from 'lucide-react';
 
 interface TranscriptPanelProps {
@@ -14,6 +15,7 @@ interface TranscriptPanelProps {
   customPrompt: string;
   onPromptChange: (value: string) => void;
   onCopyTranscript: () => void;
+  onExportTranscript: (format: TranscriptExportFormat) => Promise<void>;
   onOpenMeetingFolder: () => Promise<void>;
   isRecording: boolean;
   disableAutoScroll?: boolean;
@@ -49,6 +51,7 @@ export function TranscriptPanel({
   customPrompt,
   onPromptChange,
   onCopyTranscript,
+  onExportTranscript,
   onOpenMeetingFolder,
   isRecording,
   disableAutoScroll = false,
@@ -96,6 +99,7 @@ export function TranscriptPanel({
         <TranscriptButtonGroup
           transcriptCount={usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0)}
           onCopyTranscript={onCopyTranscript}
+          onExportTranscript={onExportTranscript}
           onOpenMeetingFolder={onOpenMeetingFolder}
           meetingId={meetingId}
           meetingFolderPath={meetingFolderPath}

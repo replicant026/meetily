@@ -8,6 +8,12 @@
     "copy_title": "전사 복사",
     "language": "언어",
     "language_title": "언어",
+    "export": "전사 내보내기",
+    "export_markdown": "Markdown(.md)",
+    "export_docx": "Word 문서(.docx)",
+    "export_success": "전사를 내보냈습니다",
+    "export_failed": "전사 내보내기 실패",
+    "export_no_transcript": "내보낼 전사가 없습니다",
     "player": {
       "play": "재생",
       "pause": "일시정지",

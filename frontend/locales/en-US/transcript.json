@@ -8,6 +8,12 @@
     "copy_title": "Copy Transcript",
     "language": "Language",
     "language_title": "Language",
+    "export": "Export transcript",
+    "export_markdown": "Markdown (.md)",
+    "export_docx": "Word document (.docx)",
+    "export_success": "Transcript exported",
+    "export_failed": "Failed to export transcript",
+    "export_no_transcript": "No transcript available to export",
     "player": {
       "play": "Play",
       "pause": "Pause",

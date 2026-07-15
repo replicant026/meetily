@@ -8,6 +8,12 @@
     "copy_title": "复制转写",
     "language": "语言",
     "language_title": "转写语言",
+    "export": "导出转写",
+    "export_markdown": "Markdown（.md）",
+    "export_docx": "Word 文档（.docx）",
+    "export_success": "转写已导出",
+    "export_failed": "转写导出失败",
+    "export_no_transcript": "没有可导出的转写内容",
     "player": {
       "play": "播放",
       "pause": "暂停",

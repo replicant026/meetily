@@ -1,9 +1,11 @@
 import { useCallback, RefObject } from 'react';
+import { useTranslations } from 'next-intl';
 import { Transcript, Summary } from '@/types';
 import { BlockNoteSummaryViewRef } from '@/components/AISummary/BlockNoteSummaryView';
 import { toast } from 'sonner';
 import Analytics from '@/lib/analytics';
 import { invoke as invokeTauri } from '@tauri-apps/api/core';
+import { downloadTranscript, TranscriptExportFormat } from '@/lib/transcript-export';
 
 interface UseCopyOperationsProps {
   meeting: any;
@@ -20,6 +22,7 @@ export function useCopyOperations({
   aiSummary,
   blockNoteSummaryRef,
 }: UseCopyOperationsProps) {
+  const tTranscript = useTranslations('transcript.view');
 
   // Helper function to fetch ALL transcripts for copying (not just paginated data)
   const fetchAllTranscripts = useCallback(async (meetingId: string): Promise<Transcript[]> => {
@@ -104,6 +107,28 @@ export function useCopyOperations({
     });
   }, [meeting, meetingTitle, fetchAllTranscripts]);
 
+  const handleExportTranscript = useCallback(async (format: TranscriptExportFormat) => {
+    const allTranscripts = await fetchAllTranscripts(meeting.id);
+    if (!allTranscripts.length) {
+      toast.error(tTranscript('export_no_transcript'));
+      return;
+    }
+
+    try {
+      downloadTranscript(
+        allTranscripts,
+        {
+          title: meetingTitle || meeting.title || 'Transcript',
+          createdAt: meeting.created_at,
+        },
+        format,
+      );
+      toast.success(tTranscript('export_success'));
+    } catch (error) {
+      console.error('Failed to export transcript:', error);
+      toast.error(tTranscript('export_failed'));
+    }
+  }, [fetchAllTranscripts, meeting, meetingTitle, tTranscript]);
   // Copy summary to clipboard
   const handleCopySummary = useCallback(async () => {
     try {
@@ -191,6 +216,7 @@ export function useCopyOperations({
 
   return {
     handleCopyTranscript,
+    handleExportTranscript,
     handleCopySummary,
   };
 }

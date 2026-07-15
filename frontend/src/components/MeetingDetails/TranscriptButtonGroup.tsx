@@ -1,17 +1,21 @@
 "use client";
 
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
-import { Copy, FolderOpen, RefreshCw } from 'lucide-react';
+import { Copy, Download, FolderOpen, RefreshCw } from 'lucide-react';
 import Analytics from '@/lib/analytics';
 import { RetranscribeDialog } from './RetranscribeDialog';
 import { useConfig } from '@/contexts/ConfigContext';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { TranscriptExportFormat } from '@/lib/transcript-export';
 
 
 interface TranscriptButtonGroupProps {
   transcriptCount: number;
   onCopyTranscript: () => void;
+  onExportTranscript: (format: TranscriptExportFormat) => Promise<void>;
   onOpenMeetingFolder: () => Promise<void>;
   meetingId?: string;
   meetingFolderPath?: string | null;
@@ -22,12 +26,14 @@ interface TranscriptButtonGroupProps {
 export function TranscriptButtonGroup({
   transcriptCount,
   onCopyTranscript,
+  onExportTranscript,
   onOpenMeetingFolder,
   meetingId,
   meetingFolderPath,
   onRefetchTranscripts,
 }: TranscriptButtonGroupProps) {
   const { betaFeatures } = useConfig();
+  const t = useTranslations('transcript.view');
   const [showRetranscribeDialog, setShowRetranscribeDialog] = useState(false);
 
   const handleRetranscribeComplete = useCallback(async () => {
@@ -54,6 +60,27 @@ export function TranscriptButtonGroup({
           <span className="hidden lg:inline">Copy</span>
         </Button>
 
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={transcriptCount === 0}
+              title={transcriptCount === 0 ? t('export_no_transcript') : t('export')}
+            >
+              <Download size={18} />
+              <span className="hidden lg:inline">{t('export')}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onSelect={() => void onExportTranscript('markdown')}>
+              {t('export_markdown')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void onExportTranscript('docx')}>
+              {t('export_docx')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           size="sm"
           variant="outline"
