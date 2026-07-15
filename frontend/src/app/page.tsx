@@ -35,7 +35,7 @@ export default function Home() {
   const recordingState = useRecordingState();
 
   // Extract status from global state
-  const { status, isStopping, isProcessing, isSaving } = recordingState;
+  const { status, statusMessage, isStopping, isProcessing } = recordingState;
 
   // Hooks
   const { hasMicrophone } = usePermissionCheck();
@@ -190,7 +190,7 @@ export default function Home() {
   }, [recordingState.isRecording]);
 
   // Computed values using global status
-  const isProcessingStop = status === RecordingStatus.PROCESSING_TRANSCRIPTS || isProcessing;
+  const isProcessingStop = isStopping || status === RecordingStatus.PROCESSING_TRANSCRIPTS || isProcessing;
 
   return (
     <motion.div
@@ -224,6 +224,7 @@ export default function Home() {
 
         {/* Recording controls - only show when permissions are granted or already recording and not showing status messages */}
         {(hasMicrophone || isRecording) &&
+          status !== RecordingStatus.STOPPING &&
           status !== RecordingStatus.PROCESSING_TRANSCRIPTS &&
           status !== RecordingStatus.SAVING && (
             <div className="fixed bottom-12 left-0 right-0 z-10">
@@ -258,8 +259,8 @@ export default function Home() {
 
         {/* Status Overlays - Processing and Saving */}
         <StatusOverlays
-          isProcessing={status === RecordingStatus.PROCESSING_TRANSCRIPTS && !recordingState.isRecording}
-          isSaving={status === RecordingStatus.SAVING}
+          status={status}
+          statusMessage={statusMessage}
           sidebarCollapsed={sidebarCollapsed}
         />
       </div>
