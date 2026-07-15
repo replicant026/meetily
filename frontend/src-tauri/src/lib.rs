@@ -44,6 +44,7 @@ pub mod database;
 pub mod notifications;
 pub mod ollama;
 pub mod i18n;
+pub mod transcription_preferences;
 pub mod onboarding;
 pub mod openai;
 pub mod anthropic;
@@ -757,6 +758,8 @@ pub fn run() {
             i18n::get_ui_language,
             i18n::set_ui_language,
             i18n::reset_ui_language_cmd,
+            transcription_preferences::get_transcription_hotwords,
+            transcription_preferences::set_transcription_hotwords,
             onboarding::save_onboarding_status_cmd,
             onboarding::reset_onboarding_status_cmd,
             onboarding::complete_onboarding,

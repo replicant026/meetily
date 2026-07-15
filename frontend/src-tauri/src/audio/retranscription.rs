@@ -94,6 +94,7 @@ pub async fn start_retranscription<R: Runtime>(
     language: Option<String>,
     model: Option<String>,
     provider: Option<String>,
+    initial_prompt: Option<String>,
 ) -> Result<RetranscriptionResult> {
     // Acquire guard - ensures flag is cleared even on panic/early return
     let _guard = RetranscriptionGuard::acquire().map_err(|e| anyhow!(e))?;
@@ -378,7 +379,11 @@ async fn run_retranscription<R: Runtime>(
         } else {
             let engine = whisper_engine.as_ref().unwrap();
             let (text, conf, _) = engine
-                .transcribe_audio_with_confidence(segment.samples.clone(), language.clone(), None)
+                .transcribe_audio_with_confidence(
+                    segment.samples.clone(),
+                    language.clone(),
+                    initial_prompt.clone(),
+                )
                 .await
                 .map_err(|e| anyhow!("Whisper transcription failed on segment {}: {}", i, e))?;
             (text, conf)
@@ -790,6 +795,10 @@ pub async fn start_retranscription_command<R: Runtime>(
         return Err("Retranscription already in progress".to_string());
     }
 
+    let initial_prompt = crate::transcription_preferences::load_transcription_hotwords(&app)
+        .await
+        .map_err(|error| format!("Failed to load transcription hotwords: {}", error))?;
+
     // Clone values for the spawned task
     let meeting_id_clone = meeting_id.clone();
 
@@ -802,6 +811,7 @@ pub async fn start_retranscription_command<R: Runtime>(
             language,
             model,
             provider,
+            initial_prompt,
         )
         .await;
 

@@ -106,6 +106,10 @@ pub async fn start_recording_with_meeting_name<R: Runtime>(
     }
     info!("✅ Transcription model validation passed");
 
+    let initial_prompt = crate::transcription_preferences::load_transcription_hotwords(&app)
+        .await
+        .map_err(|error| format!("Failed to load transcription hotwords: {}", error))?;
+
     // Async-first approach - no more blocking operations!
     info!("🚀 Starting async recording initialization");
 
@@ -251,7 +255,11 @@ pub async fn start_recording_with_meeting_name<R: Runtime>(
     reset_speech_detected_flag(); // Reset for new recording session
 
     // Start optimized parallel transcription task and store handle
-    let task_handle = transcription::start_transcription_task(app.clone(), transcription_receiver);
+    let task_handle = transcription::start_transcription_task(
+        app.clone(),
+        transcription_receiver,
+        initial_prompt,
+    );
     {
         let mut global_task = TRANSCRIPTION_TASK.lock().unwrap();
         *global_task = Some(task_handle);
@@ -352,6 +360,10 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
     }
     info!("✅ Transcription model validation passed");
 
+    let initial_prompt = crate::transcription_preferences::load_transcription_hotwords(&app)
+        .await
+        .map_err(|error| format!("Failed to load transcription hotwords: {}", error))?;
+
     // Parse devices
     let mic_device = if let Some(ref name) = mic_device_name {
         Some(Arc::new(parse_audio_device(name).map_err(|e| {
@@ -422,7 +434,11 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
     reset_speech_detected_flag(); // Reset for new recording session
 
     // Start optimized parallel transcription task and store handle
-    let task_handle = transcription::start_transcription_task(app.clone(), transcription_receiver);
+    let task_handle = transcription::start_transcription_task(
+        app.clone(),
+        transcription_receiver,
+        initial_prompt,
+    );
     {
         let mut global_task = TRANSCRIPTION_TASK.lock().unwrap();
         *global_task = Some(task_handle);

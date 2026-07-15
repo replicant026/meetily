@@ -258,6 +258,7 @@ pub async fn start_import<R: Runtime>(
     language: Option<String>,
     model: Option<String>,
     provider: Option<String>,
+    initial_prompt: Option<String>,
 ) -> Result<ImportResult> {
     // Acquire guard - ensures flag is cleared even on panic/early return
     let _guard = ImportGuard::acquire().map_err(|e| anyhow!(e))?;
@@ -273,6 +274,7 @@ pub async fn start_import<R: Runtime>(
         language,
         model,
         provider,
+        initial_prompt,
     )
     .await;
 
@@ -315,6 +317,7 @@ async fn run_import<R: Runtime>(
     language: Option<String>,
     model: Option<String>,
     provider: Option<String>,
+    initial_prompt: Option<String>,
 ) -> Result<ImportResult> {
     let source = PathBuf::from(&source_path);
 
@@ -589,7 +592,11 @@ async fn run_import<R: Runtime>(
         } else {
             let engine = whisper_engine.as_ref().unwrap();
             let (text, conf, _) = engine
-                .transcribe_audio_with_confidence(segment.samples.clone(), language.clone(), None)
+                .transcribe_audio_with_confidence(
+                    segment.samples.clone(),
+                    language.clone(),
+                    initial_prompt.clone(),
+                )
                 .await
                 .map_err(|e| anyhow!("Whisper transcription failed on segment {}: {}", i, e))?;
             (text, conf)
@@ -974,9 +981,22 @@ pub async fn start_import_audio_command<R: Runtime>(
         return Err("Import already in progress".to_string());
     }
 
+    let initial_prompt = crate::transcription_preferences::load_transcription_hotwords(&app)
+        .await
+        .map_err(|error| format!("Failed to load transcription hotwords: {}", error))?;
+
     // Spawn import in background
     tauri::async_runtime::spawn(async move {
-        let result = start_import(app, source_path, title, language, model, provider).await;
+        let result = start_import(
+            app,
+            source_path,
+            title,
+            language,
+            model,
+            provider,
+            initial_prompt,
+        )
+        .await;
 
         if let Err(e) = result {
             error!("Import failed: {}", e);

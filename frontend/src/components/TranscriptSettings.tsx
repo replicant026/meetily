@@ -5,9 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { toast } from 'sonner';
 import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { ModelManager } from './WhisperModelManager';
 import { ParakeetModelManager } from './ParakeetModelManager';
+
+const MAX_HOTWORD_CHARS = 500;
 
 
 export interface TranscriptModelProps {
@@ -28,6 +32,11 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
     const [isApiKeyLocked, setIsApiKeyLocked] = useState<boolean>(true);
     const [isLockButtonVibrating, setIsLockButtonVibrating] = useState<boolean>(false);
     const [uiProvider, setUiProvider] = useState<TranscriptModelProps['provider']>(transcriptModelConfig.provider);
+    const [hotwords, setHotwords] = useState('');
+    const [savedHotwords, setSavedHotwords] = useState('');
+    const [isLoadingHotwords, setIsLoadingHotwords] = useState(true);
+    const [isSavingHotwords, setIsSavingHotwords] = useState(false);
+    const [hotwordsLoadFailed, setHotwordsLoadFailed] = useState(false);
   const t = useTranslations('settings');
 
     // Sync uiProvider when backend config changes (e.g., after model selection or initial load)
@@ -40,6 +49,50 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
             setApiKey(null);
         }
     }, [transcriptModelConfig.provider]);
+
+    useEffect(() => {
+        let active = true;
+
+        invoke<string | null>('get_transcription_hotwords')
+            .then((value) => {
+                if (!active) return;
+                const loaded = value ?? '';
+                setHotwords(loaded);
+                setSavedHotwords(loaded);
+            })
+            .catch((error) => {
+                console.error('Failed to load transcription hotwords:', error);
+                if (active) setHotwordsLoadFailed(true);
+            })
+            .finally(() => {
+                if (active) setIsLoadingHotwords(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const hotwordCharCount = Array.from(hotwords).length;
+    const isOverHotwordLimit = hotwordCharCount > MAX_HOTWORD_CHARS;
+
+    const handleSaveHotwords = async () => {
+        if (isOverHotwordLimit) return;
+
+        setIsSavingHotwords(true);
+        try {
+            const saved = await invoke<string | null>('set_transcription_hotwords', { hotwords });
+            const normalized = saved ?? '';
+            setHotwords(normalized);
+            setSavedHotwords(normalized);
+            toast.success(t('transcript.hotwords_save_success'));
+        } catch (error) {
+            console.error('Failed to save transcription hotwords:', error);
+            toast.error(t('transcript.hotwords_save_failed'));
+        } finally {
+            setIsSavingHotwords(false);
+        }
+    };
 
     const fetchApiKey = async (provider: string) => {
         try {
@@ -175,6 +228,54 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                     )}
 
 
+                    <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div>
+                            <Label htmlFor="transcription-hotwords" className="text-sm font-medium text-gray-900">
+                                {t('transcript.hotwords_title')}
+                            </Label>
+                            <p className="mt-1 text-sm text-gray-600">
+                                {t('transcript.hotwords_description')}
+                            </p>
+                        </div>
+                        <Textarea
+                            id="transcription-hotwords"
+                            value={hotwords}
+                            onChange={(event) => setHotwords(event.target.value)}
+                            maxLength={MAX_HOTWORD_CHARS}
+                            rows={6}
+                            disabled={isLoadingHotwords || hotwordsLoadFailed}
+                            placeholder={t('transcript.hotwords_placeholder')}
+                        />
+                        <div className="flex items-center justify-between gap-4">
+                            <span className={`text-xs ${isOverHotwordLimit ? 'text-red-600' : 'text-gray-500'}`}>
+                                {hotwordCharCount}/{MAX_HOTWORD_CHARS}
+                            </span>
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleSaveHotwords}
+                                disabled={
+                                    isLoadingHotwords ||
+                                    isSavingHotwords ||
+                                    hotwordsLoadFailed ||
+                                    isOverHotwordLimit ||
+                                    hotwords === savedHotwords
+                                }
+                            >
+                                {isSavingHotwords
+                                    ? t('transcript.hotwords_saving')
+                                    : t('transcript.hotwords_save')}
+                            </Button>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            {t('transcript.hotwords_local_whisper_only')}
+                        </p>
+                        {hotwordsLoadFailed && (
+                            <p className="text-sm text-red-600">
+                                {t('transcript.hotwords_load_failed')}
+                            </p>
+                        )}
+                    </div>
                     {requiresApiKey && (
                         <div>
                             <Label className="block text-sm font-medium text-gray-700 mb-1">
