@@ -69,7 +69,10 @@
   "transcript": {
     "title": "轉寫設定",
     "model_label": "轉寫模型",
-    "select_provider": "選擇提供方"
+    "select_provider": "選擇提供方",
+    "speaker_rename_placeholder": "輸入姓名（如：陳總）",
+    "speaker_rename_save": "儲存",
+    "speaker_rename_cancel": "取消"
   },
   "summary": {
     "language": {

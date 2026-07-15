@@ -69,7 +69,10 @@
   "transcript": {
     "title": "전사 설정",
     "model_label": "전사 모델",
-    "select_provider": "공급자 선택"
+    "select_provider": "공급자 선택",
+    "speaker_rename_placeholder": "이름 입력 (예: 김과장)",
+    "speaker_rename_save": "저장",
+    "speaker_rename_cancel": "취소"
   },
   "summary": {
     "language": {

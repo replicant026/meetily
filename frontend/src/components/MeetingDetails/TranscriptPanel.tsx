@@ -6,6 +6,7 @@ import { TranscriptButtonGroup } from './TranscriptButtonGroup';
 import { useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useSpeakerNames } from '@/hooks/useSpeakerNames';
 import { Play, Pause, AlertCircle } from 'lucide-react';
 
 interface TranscriptPanelProps {
@@ -77,8 +78,11 @@ export function TranscriptPanel({
       endTime: t.audio_end_time,
       text: t.text,
       confidence: t.confidence,
+      speaker: t.speaker,
     }));
   }, [transcripts, usePagination, segments]);
+
+  const speakerNames = useSpeakerNames(meetingId ?? null);
 
   const handleTimestampClick = useCallback((sec: number) => {
     audioPlayer.seek(sec);
@@ -149,6 +153,8 @@ export function TranscriptPanel({
           totalCount={totalCount}
           loadedCount={loadedCount}
           onLoadMore={onLoadMore}
+          customSpeakerNames={speakerNames.allNames}
+          onSpeakerRename={speakerNames.setName}
         />
       </div>
 

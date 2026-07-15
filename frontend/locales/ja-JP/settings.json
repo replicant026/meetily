@@ -69,7 +69,10 @@
   "transcript": {
     "title": "文字起こし設定",
     "model_label": "文字起こしモデル",
-    "select_provider": "プロバイダーを選択"
+    "select_provider": "プロバイダーを選択",
+    "speaker_rename_placeholder": "名前を入力（例：田中）",
+    "speaker_rename_save": "保存",
+    "speaker_rename_cancel": "キャンセル"
   },
   "summary": {
     "language": {

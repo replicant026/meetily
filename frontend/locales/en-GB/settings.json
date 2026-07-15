@@ -69,7 +69,10 @@
   "transcript": {
     "title": "Transcript Settings",
     "model_label": "Transcript Model",
-    "select_provider": "Select provider"
+    "select_provider": "Select provider",
+    "speaker_rename_placeholder": "Enter name (e.g. Alice)",
+    "speaker_rename_save": "Save",
+    "speaker_rename_cancel": "Cancel"
   },
   "summary": {
     "language": {

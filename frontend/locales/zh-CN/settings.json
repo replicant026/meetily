@@ -69,7 +69,10 @@
   "transcript": {
     "title": "转写设置",
     "model_label": "转写模型",
-    "select_provider": "选择提供方"
+    "select_provider": "选择提供方",
+    "speaker_rename_placeholder": "输入姓名（如：陈总）",
+    "speaker_rename_save": "保存",
+    "speaker_rename_cancel": "取消"
   },
   "summary": {
     "language": {
