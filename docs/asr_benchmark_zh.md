@@ -168,6 +168,50 @@ CI 可考虑加 nightly benchmark job（但不在 PR-45a 范围）。
 
 ## 测试
 
+## 真实会议样本 (PR-53)
+
+AISHELL-1 是读音数据集（播音员朗读），与实际会议场景差异较大。
+PR-53 增加了 `--dataset custom` 模式，让用户可以用自己录的会议做评测：
+
+```
+samples/
+  meeting-001.wav
+  meeting-001.txt   # 参考转写（一行）
+  meeting-002.wav
+  meeting-002.txt
+```
+
+```bash
+python scripts/asr_benchmark/benchmark.py \
+    --binary ./whisper.cpp/build/bin/whisper-cli \
+    --models-dir ./models \
+    --dataset custom \
+    --dataset-root ./samples \
+    --models large-v3 large-v3-turbo
+```
+
+注意：参考转写应人工标注，2-5 段足够做模型横向对比。
+
+## 报告生成 (PR-53)
+
+benchmark.py 输出 JSON 后，可一键生成中文 markdown 报告：
+
+```bash
+python scripts/asr_benchmark/generate_report.py results.json --output report.md
+```
+
+输出按 mean CER 升序排列：
+
+```markdown
+# ASR 基准报告
+
+| Rank | Model | Mean CER | Mean RTF | Samples | Audio (s) |
+|------|-------|---------:|---------:|--------:|----------:|
+| 1 | `large-v3-turbo` | 0.048 | 0.25 | 1 | 10.0 |
+| 2 | `large-v3` | 0.050 | 0.55 | 2 | 30.0 |
+```
+
+
 `scripts/asr_benchmark/test_benchmark.py` 含 16 个单元测试，验证：
 - CER 计算：完美匹配 / 单字符替换 / 插入 / 删除 / 空串 / 全错
 - WER 计算：完美 / 单词错 / 插入

@@ -197,8 +197,19 @@ def iter_aishell(root: Path):
                 yield sample_id, wav, text
 
 
+def iter_custom(root: Path):
+    """Yield (sample_id, wav_path, reference_text) for a user-supplied
+    directory of <id>.wav / <id>.txt pairs (Wave 18 PR-53)."""
+    for wav in sorted(root.glob("*.wav")):
+        txt = wav.with_suffix(".txt")
+        if not txt.exists():
+            continue
+        yield wav.stem, wav, txt.read_text(encoding="utf-8").strip()
+
+
 DATASETS = {
     "aishell": iter_aishell,
+    "custom": iter_custom,
 }
 
 
