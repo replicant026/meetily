@@ -400,34 +400,80 @@ impl WhisperEngine {
 
     // Check for obviously meaningless patterns
     fn is_meaningless_output(text: &str) -> bool {
-        let text_lower = text.to_lowercase();
+        // Wave 18 PR-51: detect CJK content so we do not destroy Chinese
+        // interjections like `嗯嗯嗯嗯` or `啊啊啊啊啊啊啊啊啊啊` that
+        // Whisper emits in Chinese meetings.
+        let cjk_ratio_value = Self::cjk_ratio(text);
 
-        // Check for common meaningless patterns
-        let meaningless_patterns = [
-            "thank you for watching",
-            "thanks for watching",
-            "like and subscribe",
-            "music playing",
-            "applause",
-            "laughter",
-            "um um um",
-            "uh uh uh",
-            "ah ah ah",
-        ];
+        // English-style meaningless patterns only apply to non-CJK text.
+        // Without this guard, any future English pattern added would risk
+        // silently swallowing legitimate Chinese phrases.
+        if cjk_ratio_value < 0.5 {
+            let text_lower = text.to_lowercase();
+            let meaningless_patterns = [
+                "thank you for watching",
+                "thanks for watching",
+                "like and subscribe",
+                "music playing",
+                "applause",
+                "laughter",
+                "um um um",
+                "uh uh uh",
+                "ah ah ah",
+            ];
 
-        for pattern in &meaningless_patterns {
-            if text_lower.contains(pattern) {
-                return true;
+            for pattern in &meaningless_patterns {
+                if text_lower.contains(pattern) {
+                    return true;
+                }
             }
         }
 
-        // Check if text is mostly the same character or very short repetitive patterns
+        // Character-statistic heuristic.
+        // For CJK text: only treat as meaningless when the entire text is one
+        // repeated character AND it is long enough to clearly be a
+        // transcription stall (e.g. 30+ identical `嗯`s). Short CJK
+        // interjections that speakers actually say (`嗯嗯嗯嗯`, `啊啊啊`)
+        // are preserved.
+        // For non-CJK text: keep the original `unique_chars <= 3` heuristic.
         let unique_chars: HashSet<char> = text.chars().collect();
-        if unique_chars.len() <= 3 && text.len() > 10 {
+        if cjk_ratio_value >= 0.5 {
+            if unique_chars.len() <= 1 && text.chars().count() > 30 {
+                return true;
+            }
+        } else if unique_chars.len() <= 3 && text.len() > 10 {
             return true;
         }
 
         false
+    }
+
+    // Wave 18 PR-51: ratio of CJK ideographs to total alphabetic characters.
+    fn cjk_ratio(text: &str) -> f32 {
+        let mut cjk_count: usize = 0;
+        let mut total_count: usize = 0;
+        for c in text.chars() {
+            if c.is_alphabetic() {
+                total_count += 1;
+                if Self::is_cjk_char(c) {
+                    cjk_count += 1;
+                }
+            }
+        }
+        if total_count == 0 {
+            0.0
+        } else {
+            cjk_count as f32 / total_count as f32
+        }
+    }
+
+    // Wave 18 PR-51: true for CJK ideographs used by Chinese text.
+    fn is_cjk_char(c: char) -> bool {
+        matches!(c,
+            '\u{4E00}'..='\u{9FFF}' |
+            '\u{3400}'..='\u{4DBF}' |
+            '\u{F900}'..='\u{FAFF}'
+        )
     }
 
     // Enhanced word repetition removal

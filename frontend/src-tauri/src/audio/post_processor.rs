@@ -2,6 +2,8 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use anyhow::Result;
 use log::{info, warn, error};
+use once_cell::sync::Lazy;
+use regex::Regex;
 
 /// Post-processing request for transcript text
 #[derive(Debug, Clone)]
@@ -29,6 +31,38 @@ pub struct PostProcessor {
     response_receiver: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<PostProcessResponse>>>,
     _handle: tokio::task::JoinHandle<()>,
 }
+
+// Wave 18 PR-51: pre-compiled contraction regexes with word-boundary anchors.
+// Substring `.replace` would mangle real words like `vacant` -> `vacan't`,
+// `scant` -> `scan't`, `cantilever` -> `can'tilever`. Each rule is wrapped in
+// `\b...\b` and the input literal is regex-escaped, so the rules never fire
+// inside a larger word.
+static CONTRACTION_RULES: Lazy<Vec<(Regex, &str)>> = Lazy::new(|| {
+    let raw: &[(&str, &str)] = &[
+        ("cant", "can't"),
+        ("wont", "won't"),
+        ("dont", "don't"),
+        ("doesnt", "doesn't"),
+        ("didnt", "didn't"),
+        ("wouldnt", "wouldn't"),
+        ("couldnt", "couldn't"),
+        ("shouldnt", "shouldn't"),
+        ("isnt", "isn't"),
+        ("arent", "aren't"),
+        ("wasnt", "wasn't"),
+        ("werent", "weren't"),
+        ("hasnt", "hasn't"),
+        ("havent", "haven't"),
+        ("hadnt", "hadn't"),
+    ];
+    raw.iter()
+        .map(|(pat, repl)| {
+            let re = Regex::new(&format!("\\b{}\\b", regex::escape(pat)))
+                .expect("contraction regex must compile");
+            (re, *repl)
+        })
+        .collect()
+});
 
 impl PostProcessor {
     /// Create a new post-processor with background processing
@@ -240,32 +274,129 @@ impl PostProcessor {
 
     /// Apply contextual improvements for final transcripts
     fn apply_contextual_improvements(text: &str) -> String {
+        // Wave 18 PR-51: pre-compiled word-boundary regexes (see CONTRACTION_RULES).
+        // The previous substring-based `.replace` mangled real words like
+        // `vacant` -> `vacan't`. `\b...\b` + `regex::escape` guarantees we
+        // only rewrite a token when it stands alone, and `match_case`
+        // preserves the original capitalisation (`Cant` -> `Can't`).
         let mut improved = text.to_string();
-
-        // Common word corrections (could be expanded with a dictionary)
-        let corrections = [
-            ("cant", "can't"),
-            ("wont", "won't"),
-            ("dont", "don't"),
-            ("doesnt", "doesn't"),
-            ("didnt", "didn't"),
-            ("wouldnt", "wouldn't"),
-            ("couldnt", "couldn't"),
-            ("shouldnt", "shouldn't"),
-            ("isnt", "isn't"),
-            ("arent", "aren't"),
-            ("wasnt", "wasn't"),
-            ("werent", "weren't"),
-            ("hasnt", "hasn't"),
-            ("havent", "haven't"),
-            ("hadnt", "hadn't"),
-        ];
-
-        for (incorrect, correct) in &corrections {
-            improved = improved.replace(incorrect, correct);
+        for (re, replacement) in CONTRACTION_RULES.iter() {
+            let result = re.replace_all(&improved, |caps: &regex::Captures<'_>| {
+                let matched = caps.get(0).map(|m| m.as_str()).unwrap_or("");
+                Self::match_case(replacement, matched)
+            });
+            improved = result.into_owned();
         }
-
         improved
+    }
+
+    // Wave 18 PR-51: mirror the case style of `original` onto `template`.
+    //   match_case("can't", "cant") == "can't"
+    //   match_case("can't", "Cant") == "Can't"
+    //   match_case("can't", "CANT") == "CAN'T"
+    fn match_case(template: &str, original: &str) -> String {
+        if !original.is_empty() && original.chars().all(|c| c.is_uppercase()) {
+            return template.to_uppercase();
+        }
+        let mut chars = template.chars();
+        if let Some(first) = chars.next() {
+            if original.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
+                let mut out = first.to_uppercase().to_string();
+                out.push_str(chars.as_str());
+                return out;
+            }
+        }
+        template.to_string()
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- clean_repetitive_text ----
+
+    #[test]
+    fn cjk_short_interjection_preserved() {
+        // 4x 嗯 = 12 UTF-8 bytes. Previously dropped as `unique_chars == 1 && text.len() > 10`.
+        assert_eq!(PostProcessor::clean_repetitive_text("嗯嗯嗯嗯"), "嗯嗯嗯嗯");
+    }
+
+    #[test]
+    fn cjk_long_interjection_preserved() {
+        // 10x 啊 = 30 UTF-8 bytes. Below the new CJK threshold of 30 chars.
+        assert_eq!(
+            PostProcessor::clean_repetitive_text("啊啊啊啊啊啊啊啊啊啊啊啊"),
+            "啊啊啊啊啊啊啊啊啊啊啊啊"
+        );
+    }
+
+    #[test]
+    fn english_uh_uh_uh_still_filtered() {
+        assert_eq!(PostProcessor::clean_repetitive_text("uh uh uh"), "");
+    }
+
+    #[test]
+    fn english_thanks_for_watching_still_filtered() {
+        assert_eq!(
+            PostProcessor::clean_repetitive_text("thank you for watching"),
+            ""
+        );
+    }
+
+    #[test]
+    fn chinese_person_name_preserved() {
+        assert_eq!(PostProcessor::clean_repetitive_text("张三丰"), "张三丰");
+    }
+
+    #[test]
+    fn chinese_two_char_name_preserved() {
+        assert_eq!(PostProcessor::clean_repetitive_text("李四"), "李四");
+    }
+
+    // ---- apply_contextual_improvements ----
+
+    #[test]
+    fn contractions_skip_inside_vacant() {
+        assert_eq!(PostProcessor::apply_contextual_improvements("vacant"), "vacant");
+    }
+
+    #[test]
+    fn contractions_skip_inside_scant() {
+        assert_eq!(PostProcessor::apply_contextual_improvements("scant"), "scant");
+    }
+
+    #[test]
+    fn contractions_skip_inside_cantilever() {
+        assert_eq!(
+            PostProcessor::apply_contextual_improvements("cantilever"),
+            "cantilever"
+        );
+    }
+
+    #[test]
+    fn contractions_apply_standalone() {
+        assert_eq!(
+            PostProcessor::apply_contextual_improvements("cant believe it"),
+            "can't believe it"
+        );
+    }
+
+    #[test]
+    fn contractions_case_preserved_capitalised() {
+        assert_eq!(
+            PostProcessor::apply_contextual_improvements("Cant believe"),
+            "Can't believe"
+        );
+    }
+
+    #[test]
+    fn contractions_coexist_with_cjk() {
+        assert_eq!(
+            PostProcessor::apply_contextual_improvements("张三 said cant"),
+            "张三 said can't"
+        );
     }
 }
 
