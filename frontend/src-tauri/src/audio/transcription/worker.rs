@@ -45,6 +45,7 @@ pub struct TranscriptUpdate {
 pub fn start_transcription_task<R: Runtime>(
     app: AppHandle<R>,
     transcription_receiver: tokio::sync::mpsc::UnboundedReceiver<AudioChunk>,
+    initial_prompt: Option<String>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         info!("🚀 Starting optimized parallel transcription task - guaranteeing zero chunk loss");
@@ -88,6 +89,7 @@ pub fn start_transcription_task<R: Runtime>(
             let chunks_completed_clone = chunks_completed.clone();
             let input_finished_clone = input_finished.clone();
             let chunks_queued_clone = chunks_queued.clone();
+            let initial_prompt_clone = initial_prompt.clone();
 
             let worker_handle = tokio::spawn(async move {
                 info!("👷 Worker {} started", worker_id);
@@ -148,6 +150,7 @@ pub fn start_transcription_task<R: Runtime>(
                                 &engine_clone,
                                 chunk,
                                 &app_clone,
+                                initial_prompt_clone.clone(),
                             )
                             .await
                             {
@@ -409,6 +412,7 @@ async fn transcribe_chunk_with_provider<R: Runtime>(
     engine: &TranscriptionEngine,
     chunk: AudioChunk,
     app: &AppHandle<R>,
+    initial_prompt: Option<String>,
 ) -> std::result::Result<(String, Option<f32>, bool), TranscriptionError> {
     // Convert to 16kHz mono for transcription
     let transcription_data = if chunk.sample_rate != 16000 {
@@ -449,7 +453,7 @@ async fn transcribe_chunk_with_provider<R: Runtime>(
             let language = crate::get_language_preference_internal();
 
             match whisper_engine
-                .transcribe_audio_with_confidence(speech_samples, language, None)
+                .transcribe_audio_with_confidence(speech_samples, language, initial_prompt)
                 .await
             {
                 Ok((text, confidence, is_partial)) => {
