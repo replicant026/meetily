@@ -117,5 +117,93 @@ class TestModelResultAggregations(unittest.TestCase):
         self.assertAlmostEqual(r.total_inference_seconds, 6)
 
 
+
+
+class TestIterCustom(unittest.TestCase):
+    """Wave 18 PR-53: --dataset custom mode (user-supplied wav+txt pairs)."""
+
+    def _make_pair(self, root: Path, stem: str, ref: str) -> None:
+        import wave
+        wav = root / f"{stem}.wav"
+        with wave.open(str(wav), "wb") as fh:
+            fh.setnchannels(1)
+            fh.setsampwidth(2)
+            fh.setframerate(16000)
+            fh.writeframes(b"\x00\x00" * 160)  # 0.01 s of silence
+        (root / f"{stem}.txt").write_text(ref, encoding="utf-8")
+
+    def test_basic_pair(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._make_pair(root, "m1", "你好世界")
+            self._make_pair(root, "m2", "项目会议")
+            pairs = list(bm.iter_custom(root))
+        self.assertEqual([p[0] for p in pairs], ["m1", "m2"])
+        self.assertEqual(pairs[0][2], "你好世界")
+        self.assertEqual(pairs[1][2], "项目会议")
+
+    def test_missing_txt_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._make_pair(root, "m1", "有参考")
+            (root / "lone.wav").write_bytes(b"")
+            pairs = list(bm.iter_custom(root))
+        self.assertEqual([p[0] for p in pairs], ["m1"])
+
+    def test_empty_directory(self):
+        with tempfile.TemporaryDirectory() as d:
+            pairs = list(bm.iter_custom(Path(d)))
+        self.assertEqual(pairs, [])
+
+    def test_strips_whitespace_in_txt(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._make_pair(root, "m1", "  带空格的转写  \n")
+            pairs = list(bm.iter_custom(root))
+        self.assertEqual(pairs[0][2], "带空格的转写")
+
+
+class TestGenerateReport(unittest.TestCase):
+    """Wave 18 PR-53: scripts/asr_benchmark/generate_report.py."""
+
+    def _make(self, name: str, cers: list[float], rtf: float = 0.5) -> dict:
+        return {
+            "model_name": name,
+            "language": "zh",
+            "samples": [
+                {
+                    "sample_id": f"{name}-{i}",
+                    "audio_path": f"/p/{name}-{i}.wav",
+                    "reference": "x",
+                    "hypothesis": "x",
+                    "cer": c,
+                    "audio_seconds": 10.0,
+                    "inference_seconds": 10.0 * rtf,
+                    "rtf": rtf,
+                }
+                for i, c in enumerate(cers)
+            ],
+        }
+
+    def test_sorted_by_cer_ascending(self):
+        import generate_report as gr
+        models = [self._make("b", [0.5]), self._make("a", [0.1])]
+        out = gr.render(models)
+        self.assertLess(out.index("`a`"), out.index("`b`"))
+        self.assertIn("| 1 |", out)
+        self.assertIn("| 2 |", out)
+
+    def test_empty_list_renders_placeholder(self):
+        import generate_report as gr
+        out = gr.render([])
+        self.assertIn("无模型数据", out)
+
+    def test_markdown_columns_present(self):
+        import generate_report as gr
+        out = gr.render([self._make("large-v3", [0.04, 0.05])])
+        for col in ("Mean CER", "Mean RTF", "Samples", "Audio (s)"):
+            self.assertIn(col, out)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
