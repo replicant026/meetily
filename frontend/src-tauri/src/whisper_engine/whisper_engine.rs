@@ -682,7 +682,12 @@ impl WhisperEngine {
         }
 
         let final_result = result.trim().to_string();
-        let cleaned_result = Self::clean_repetitive_text(&final_result);
+        // Wave 18 PR-55: pre-pass protected terms so clean_repetitive_text can
+        // never touch names, casing, or digits inside them; post-pass restores
+        // the originals verbatim. No-op when no protected terms are configured.
+        let (guarded, mapping) = crate::audio::post_processor::protect_terms(&final_result);
+        let cleaned_guarded = Self::clean_repetitive_text(&guarded);
+        let cleaned_result = crate::audio::post_processor::restore_protected_terms(&cleaned_guarded, &mapping);
 
         let avg_confidence = if segment_count > 0 {
             total_confidence / segment_count as f32

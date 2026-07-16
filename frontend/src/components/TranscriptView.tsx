@@ -131,7 +131,7 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({ transcripts, isR
   const lastStreamedIdRef = useRef<string | null>(null); // Track which transcript we've streamed
 
   // Load preference for showing confidence indicator
-  const hotwords = useHotwords();
+  const { rules: hotwords, protectedSet } = useHotwords();
   const t = useTranslations();
   const handleHotwordCopy = useCallback((value: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -326,7 +326,7 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({ transcripts, isR
                         {sizerText}
                       </p>
                       <p className="text-base text-gray-800 leading-relaxed absolute top-0 left-0">
-                        {wrapHotwords(displayText, hotwords, handleHotwordCopy).nodes}
+                        {wrapHotwords(displayText, hotwords, handleHotwordCopy, protectedSet).nodes}
                       </p>
                     </div>
                   </div>

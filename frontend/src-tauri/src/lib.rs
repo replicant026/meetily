@@ -761,6 +761,7 @@ pub fn run() {
             i18n::reset_ui_language_cmd,
             transcription_preferences::get_transcription_hotwords,
             transcription_preferences::set_transcription_hotwords,
+            transcription_preferences::get_protected_terms,
             onboarding::save_onboarding_status_cmd,
             onboarding::reset_onboarding_status_cmd,
             onboarding::complete_onboarding,
