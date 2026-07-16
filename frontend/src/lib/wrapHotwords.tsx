@@ -15,6 +15,7 @@ export function wrapHotwords(
     text: string,
     rules: HotwordRule[],
     onMatch: (value: string) => void,
+    protectedSet?: Set<string>,
 ): WrapResult {
     if (rules.length === 0 || text.length === 0) {
         return { nodes: [text], matchedCount: 0 };
@@ -58,11 +59,11 @@ export function wrapHotwords(
                 {
                     key: `hw-${key++}`,
                     className: 'hotword-mark',
-                    title: value,
+                    title: (protectedSet && protectedSet.has(value)) ? '🔒 ' + value : value,
                     onClick: () => onMatch(value),
                     style: { background: '#fef3c7', color: 'inherit', padding: '0 2px', borderRadius: 2, cursor: 'pointer' },
                 },
-                matched,
+                protectedSet && protectedSet.has(value) ? React.createElement('u', null, matched) : matched,
             ),
         );
         matchedCount += 1;

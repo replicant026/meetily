@@ -63,6 +63,11 @@ pub async fn save_transcription_hotwords<R: Runtime>(
             .map(|value| value.chars().count())
             .unwrap_or(0)
     );
+    // Wave 18 PR-55: refresh the global protected-terms cache so the next
+    // postprocess call sees the latest `!`-prefixed entries. No-op when the
+    // chain never runs or no terms are protected.
+    let raw_for_protected = normalized.clone().unwrap_or_default();
+    crate::audio::post_processor::set_protected_terms(extract_protected_terms(&raw_for_protected));
     Ok(normalized)
 }
 
@@ -70,9 +75,15 @@ pub async fn save_transcription_hotwords<R: Runtime>(
 pub async fn get_transcription_hotwords<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<Option<String>, String> {
-    load_transcription_hotwords(&app)
+    let loaded = load_transcription_hotwords(&app)
         .await
-        .map_err(|error| format!("Failed to load transcription hotwords: {}", error))
+        .map_err(|error| format!("Failed to load transcription hotwords: {}", error))?;
+    // Wave 18 PR-55: refresh the protected-terms global cache so the first
+    // postprocess call after app start picks up `!`-prefixed entries even
+    // when the user never edits the hotword list.
+    let raw_for_protected = loaded.clone().unwrap_or_default();
+    crate::audio::post_processor::set_protected_terms(extract_protected_terms(&raw_for_protected));
+    Ok(loaded)
 }
 
 #[tauri::command]
@@ -83,6 +94,43 @@ pub async fn set_transcription_hotwords<R: Runtime>(
     save_transcription_hotwords(&app, hotwords)
         .await
         .map_err(|error| format!("Failed to save transcription hotwords: {}", error))
+}
+
+
+/// Wave 18 PR-55: extract protected terms from the raw hotwords string.
+/// A term is "protected" when prefixed with `!` (with optional whitespace).
+/// Returns deduplicated, byte-length-descending list (longest match wins
+/// for the postprocess restoration step).
+fn extract_protected_terms(raw: &str) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut terms: Vec<String> = raw
+        .split(|c: char| matches!(c, '\n' | '\r' | '\t') || c == ' ')
+        .filter_map(|s| {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                return None;
+            }
+            trimmed.strip_prefix('!').map(|rest| rest.trim().to_string())
+        })
+        .filter(|s| !s.is_empty())
+        .filter(|s| seen.insert(s.clone()))
+        .collect();
+    terms.sort_by(|a, b| b.len().cmp(&a.len()));
+    terms
+}
+
+/// Wave 18 PR-55: Tauri command returning the protected-term list.
+/// Frontend calls this once on app start (and after hotword edits) and
+/// forwards the result to the postprocessor for restoration.
+#[tauri::command]
+pub async fn get_protected_terms<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Vec<String>, String> {
+    let raw = load_transcription_hotwords(&app)
+        .await
+        .map_err(|e| format!("Failed to load hotwords: {}", e))?
+        .unwrap_or_default();
+    Ok(extract_protected_terms(&raw))
 }
 
 #[cfg(test)]
@@ -113,4 +161,31 @@ mod tests {
         let error = normalize_hotwords("术".repeat(MAX_HOTWORD_CHARS + 1)).unwrap_err();
         assert!(error.to_string().contains("500"));
     }
+
+    // ---- extract_protected_terms ----
+
+    #[test]
+    fn protected_terms_empty_when_no_bang_prefix() {
+        assert!(extract_protected_terms("").is_empty());
+        assert!(extract_protected_terms("Meetily\n张三").is_empty());
+    }
+
+    #[test]
+    fn protected_terms_extracts_bang_prefixed_words() {
+        let result = extract_protected_terms("Meetily\n!张三\n!字节跳动\n!OpenAI");
+        assert_eq!(result, vec!["字节跳动", "OpenAI", "张三"]);
+    }
+
+    #[test]
+    fn protected_terms_dedup() {
+        let result = extract_protected_terms("!张三\n!张三\n!OpenAI\n!OpenAI");
+        assert_eq!(result, vec!["OpenAI", "张三"]);
+    }
+
+    #[test]
+    fn protected_terms_allow_whitespace_after_bang() {
+        let result = extract_protected_terms("! 张三\n!\t字节跳动");
+        assert_eq!(result, vec!["字节跳动", "张三"]);
+    }
+
 }

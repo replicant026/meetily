@@ -97,6 +97,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
     hotwords: HotwordRule[];
+    protectedSet?: Set<string>;
 }) {
     const t = useTranslations('settings.transcript');
     const handleHotwordCopy = useCallback((value: string) => {
@@ -107,7 +108,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
         }
     }, [t]);
     const displayText = cleanStopWords(text) || (text.trim() === '' ? '[Silence]' : text);
-    const hotwordNodes = wrapHotwords(displayText, hotwords, handleHotwordCopy).nodes;
+    const hotwordNodes = wrapHotwords(displayText, hotwords, handleHotwordCopy, protectedSet).nodes;
     const customName = speaker ? customSpeakerNames?.[speaker] : undefined;
     const [isRenaming, setIsRenaming] = useState(false);
     const [draftName, setDraftName] = useState('');
@@ -217,7 +218,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     onSpeakerRename,
 }) => {
     // Wave 18 PR-52: shared hotword rules so every TranscriptSegment uses the same list.
-    const hotwords = useHotwords();
+    const { rules: hotwords, protectedSet } = useHotwords();
     // Create scroll ref first - shared between virtualizer and auto-scroll hook
     const scrollRef = useRef<HTMLDivElement>(null);
     // Ref for infinite scroll trigger element
@@ -394,6 +395,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onSpeakerRename={onSpeakerRename}
                                         onTimestampClick={onTimestampClick}
                                         hotwords={hotwords}
+                                        protectedSet={protectedSet}
+                                        protectedSet={protectedSet}
                                     />
                                 </div>
                             );
