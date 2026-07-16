@@ -750,6 +750,7 @@ pub fn run() {
             database::commands::initialize_fresh_database,
             database::commands::scan_orphan_checkpoints_cmd,
             database::commands::discard_orphan_checkpoint_cmd,
+            database::commands::recover_orphan_meeting_cmd,
             // Database and Models path commands
             database::commands::get_database_directory,
             database::commands::open_database_folder,
