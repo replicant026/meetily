@@ -79,6 +79,7 @@
     "hotwords_save_success": "Hotwords saved",
     "hotwords_save_failed": "Failed to save hotwords",
     "hotwords_load_failed": "Unable to load saved hotwords",
+    "hotword_copy_success": "Copied: {value}",
     "speaker_rename_placeholder": "Enter name (e.g. Alice)",
     "speaker_rename_save": "Save",
     "speaker_rename_cancel": "Cancel"

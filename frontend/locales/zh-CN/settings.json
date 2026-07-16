@@ -79,6 +79,7 @@
     "hotwords_save_success": "热词已保存",
     "hotwords_save_failed": "热词保存失败",
     "hotwords_load_failed": "无法读取已保存的热词",
+    "hotword_copy_success": "已复制：{value}",
     "speaker_rename_placeholder": "输入姓名（如：陈总）",
     "speaker_rename_save": "保存",
     "speaker_rename_cancel": "取消"

@@ -1,7 +1,11 @@
 'use client';
 
 import { Transcript } from '@/types';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useHotwords } from '@/hooks/useHotwords';
+import { wrapHotwords } from '@/lib/wrapHotwords';
+import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { ConfidenceIndicator } from './ConfidenceIndicator';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { RecordingStatusBar } from './RecordingStatusBar';
@@ -127,6 +131,15 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({ transcripts, isR
   const lastStreamedIdRef = useRef<string | null>(null); // Track which transcript we've streamed
 
   // Load preference for showing confidence indicator
+  const hotwords = useHotwords();
+  const t = useTranslations();
+  const handleHotwordCopy = useCallback((value: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(value).then(() => {
+        toast.success(t('settings.transcript.hotword_copy_success', { value }));
+      });
+    }
+  }, [t]);
   const [showConfidence, setShowConfidence] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('showConfidenceIndicator');
@@ -313,7 +326,7 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({ transcripts, isR
                         {sizerText}
                       </p>
                       <p className="text-base text-gray-800 leading-relaxed absolute top-0 left-0">
-                        {displayText}
+                        {wrapHotwords(displayText, hotwords, handleHotwordCopy).nodes}
                       </p>
                     </div>
                   </div>

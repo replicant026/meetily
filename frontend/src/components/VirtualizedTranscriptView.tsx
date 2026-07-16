@@ -4,6 +4,9 @@ import { useCallback, useRef, useReducer, startTransition, useEffect, useState, 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { useTranscriptStreaming } from "@/hooks/useTranscriptStreaming";
+import { useHotwords, type HotwordRule } from "@/hooks/useHotwords";
+import { wrapHotwords } from "@/lib/wrapHotwords";
+import { toast } from "sonner";
 import { ConfidenceIndicator } from "./ConfidenceIndicator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { RecordingStatusBar } from "./RecordingStatusBar";
@@ -81,6 +84,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     speaker,
     customSpeakerNames,
     onSpeakerRename,
+    hotwords,
 }: {
     id: string;
     timestamp: number;
@@ -92,9 +96,18 @@ const TranscriptSegment = memo(function TranscriptSegment({
     speaker?: string | null;
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
+    hotwords: HotwordRule[];
 }) {
     const t = useTranslations('settings.transcript');
+    const handleHotwordCopy = useCallback((value: string) => {
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+            navigator.clipboard.writeText(value).then(() => {
+                toast.success(t('hotword_copy_success', { value }));
+            });
+        }
+    }, [t]);
     const displayText = cleanStopWords(text) || (text.trim() === '' ? '[Silence]' : text);
+    const hotwordNodes = wrapHotwords(displayText, hotwords, handleHotwordCopy).nodes;
     const customName = speaker ? customSpeakerNames?.[speaker] : undefined;
     const [isRenaming, setIsRenaming] = useState(false);
     const [draftName, setDraftName] = useState('');
@@ -174,10 +187,10 @@ const TranscriptSegment = memo(function TranscriptSegment({
                 <div className="flex-1">
                     {isStreaming ? (
                         <div className="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
-                            <p className="text-base text-gray-800 leading-relaxed">{displayText}</p>
+                            <p className="text-base text-gray-800 leading-relaxed">{hotwordNodes}</p>
                         </div>
                     ) : (
-                        <p className="text-base text-gray-800 leading-relaxed">{displayText}</p>
+                        <p className="text-base text-gray-800 leading-relaxed">{hotwordNodes}</p>
                     )}
                 </div>
             </div>
@@ -203,6 +216,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     customSpeakerNames,
     onSpeakerRename,
 }) => {
+    // Wave 18 PR-52: shared hotword rules so every TranscriptSegment uses the same list.
+    const hotwords = useHotwords();
     // Create scroll ref first - shared between virtualizer and auto-scroll hook
     const scrollRef = useRef<HTMLDivElement>(null);
     // Ref for infinite scroll trigger element
@@ -378,6 +393,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         customSpeakerNames={customSpeakerNames}
                                         onSpeakerRename={onSpeakerRename}
                                         onTimestampClick={onTimestampClick}
+                                        hotwords={hotwords}
                                     />
                                 </div>
                             );
@@ -438,6 +454,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         customSpeakerNames={customSpeakerNames}
                                         onSpeakerRename={onSpeakerRename}
                                         onTimestampClick={onTimestampClick}
+                                        hotwords={hotwords}
                                     />
                                 </motion.div>
                             );
