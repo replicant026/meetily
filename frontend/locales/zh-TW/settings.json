@@ -79,6 +79,7 @@
     "hotwords_save_success": "熱詞已儲存",
     "hotwords_save_failed": "熱詞儲存失敗",
     "hotwords_load_failed": "無法讀取已儲存的熱詞",
+    "hotword_copy_success": "已複製：{value}",
     "speaker_rename_placeholder": "輸入姓名（如：陳總）",
     "speaker_rename_save": "儲存",
     "speaker_rename_cancel": "取消"
