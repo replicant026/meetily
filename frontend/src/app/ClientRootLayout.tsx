@@ -23,6 +23,7 @@ import { UpdateCheckProvider } from '@/components/UpdateCheckProvider'
 import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcessingProvider'
 import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
 import { OrphanCheckpointListener } from '@/components/OrphanCheckpointListener'
+import { RecoveryFailureBanner } from '@/components/RecoveryFailureBanner'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
 
@@ -178,6 +179,7 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
                             importFilePath={importFilePath}
                           />
                           <OrphanCheckpointListener />
+                          <RecoveryFailureBanner />
                         </ImportDialogProvider>
                       </RecordingPostProcessingProvider>
                     </TooltipProvider>

@@ -54,6 +54,7 @@
   "orphan_checkpoint_recover": "복구",
   "orphan_checkpoint_discard": "삭제",
   "orphan_checkpoint_recovered": "녹음 복구 완료",
+  "orphan_checkpoint_recovering": "복구를 시작했습니다. 상단 배너에서 진행 상황을 확인하세요",
   "orphan_checkpoint_recovered_failed": "복구 실패",
   "orphan_checkpoint_discarded": "녹음 삭제 완료",
   "orphan_checkpoint_discarded_failed": "삭제 실패"

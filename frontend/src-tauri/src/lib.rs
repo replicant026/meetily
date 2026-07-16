@@ -638,7 +638,6 @@ pub fn run() {
             // Playback device detection (Bluetooth warning)
             audio::recording_commands::get_active_audio_output,
             // Audio recovery commands (for transcript recovery feature)
-            audio::incremental_saver::recover_audio_from_checkpoints,
             audio::incremental_saver::cleanup_checkpoints,
             audio::incremental_saver::has_audio_checkpoints,
             console_utils::show_console,
@@ -751,6 +750,9 @@ pub fn run() {
             database::commands::scan_orphan_checkpoints_cmd,
             database::commands::discard_orphan_checkpoint_cmd,
             database::commands::recover_orphan_meeting_cmd,
+            database::commands::get_failed_recoveries_cmd,
+            database::commands::retry_recovery_cmd,
+            database::commands::discard_recovery_cmd,
             // Database and Models path commands
             database::commands::get_database_directory,
             database::commands::open_database_folder,
