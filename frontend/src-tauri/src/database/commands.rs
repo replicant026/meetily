@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 
 use super::manager::DatabaseManager;
+use crate::audio;
 use super::orphan_checkpoints::{discard_orphan_checkpoint, scan_orphan_checkpoints, OrphanCheckpoint};
 use super::repositories::meeting::MeetingsRepository;
 use crate::state::AppState;
@@ -295,6 +296,12 @@ pub async fn discard_orphan_checkpoint_cmd(meeting_folder: String) -> Result<(),
     discard_orphan_checkpoint(std::path::Path::new(&meeting_folder))
 }
 
+#[tauri::command]
+pub async fn recover_orphan_meeting_cmd(meeting_folder: String) -> Result<String, String> {
+    audio::recovery::merge_orphan_checkpoints(std::path::Path::new(&meeting_folder))
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| e.to_string())
+}
 
 /// Resolve the local audio file path for a meeting so the frontend can
 /// offer click-to-jump audio playback (Wave 14 PR-44d).
