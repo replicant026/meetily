@@ -82,7 +82,24 @@
     "hotword_copy_success": "コピーしました：{value}",
     "speaker_rename_placeholder": "名前を入力（例：田中）",
     "speaker_rename_save": "保存",
-    "speaker_rename_cancel": "キャンセル"
+    "speaker_rename_cancel": "キャンセル",
+    "stats": {
+      "title": "ホットワード命中率",
+      "description": "設定した各ホットワードが ASR で実際どれだけ当たったかを表示します。30 日以上ヒットがない項目は自動的に削除されます。",
+      "empty": "まだヒットデータはありません。会議を録音し始めると、ここで認識されたホットワードが表示されます。",
+      "loading": "ホットワード統計を読み込み中...",
+      "refresh": "更新",
+      "column_hotword": "ホットワード",
+      "column_hits": "ヒット数",
+      "column_last_hit": "最終ヒット",
+      "stale_hint": "古い（30 日以上）",
+      "just_now": "今",
+      "relative_seconds": "{count} 秒前",
+      "relative_minutes": "{count} 分前",
+      "relative_hours": "{count} 時間前",
+      "relative_days": "{count} 日前",
+      "relative_over_30_days": "30 日以上前"
+    }
   },
   "summary": {
     "language": {

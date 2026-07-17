@@ -69,6 +69,8 @@ pub async fn save_transcription_hotwords<R: Runtime>(
     let raw_for_protected = normalized.clone().unwrap_or_default();
     crate::audio::post_processor::set_protected_terms(extract_protected_terms(&raw_for_protected));
     crate::audio::post_processor::set_hotwords_for_llm(extract_all_hotwords(&raw_for_protected));
+    // PR-A: keep the cache the hit-rate counter reads in sync.
+    crate::hotword_stats::cache_raw(&raw_for_protected);
     Ok(normalized)
 }
 
@@ -85,6 +87,8 @@ pub async fn get_transcription_hotwords<R: Runtime>(
     let raw_for_protected = loaded.clone().unwrap_or_default();
     crate::audio::post_processor::set_protected_terms(extract_protected_terms(&raw_for_protected));
     crate::audio::post_processor::set_hotwords_for_llm(extract_all_hotwords(&raw_for_protected));
+    // PR-A: same sync as the save path.
+    crate::hotword_stats::cache_raw(&raw_for_protected);
     Ok(loaded)
 }
 
@@ -103,7 +107,7 @@ pub async fn set_transcription_hotwords<R: Runtime>(
 /// A term is "protected" when prefixed with `!` (with optional whitespace).
 /// Returns deduplicated, byte-length-descending list (longest match wins
 /// for the postprocess restoration step).
-fn extract_protected_terms(raw: &str) -> Vec<String> {
+pub(crate) fn extract_protected_terms(raw: &str) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     let mut terms: Vec<String> = raw
         .split(|c: char| matches!(c, '\n' | '\r' | '\t') || c == ' ')
@@ -125,7 +129,7 @@ fn extract_protected_terms(raw: &str) -> Vec<String> {
 /// raw hotwords string. Mirrors `extract_protected_terms` but keeps the
 /// `!` prefix so the LLM glossary block can see both lists. Returns
 /// deduplicated, byte-length-descending list (longest match wins).
-fn extract_all_hotwords(raw: &str) -> Vec<String> {
+pub(crate) fn extract_all_hotwords(raw: &str) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     let mut terms: Vec<String> = raw
         .split(|c: char| matches!(c, '\n' | '\r' | '\t') || c == ' ')

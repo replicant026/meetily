@@ -82,7 +82,24 @@
     "hotword_copy_success": "已複製：{value}",
     "speaker_rename_placeholder": "輸入姓名（如：陳總）",
     "speaker_rename_save": "儲存",
-    "speaker_rename_cancel": "取消"
+    "speaker_rename_cancel": "取消",
+    "stats": {
+      "title": "熱詞命中率",
+      "description": "展示每個已設定熱詞在轉寫中實際命中的次數。超過 30 天未命中的詞條會自動清除。",
+      "empty": "尚無命中資料。開始一次錄製會議後，被識別的熱詞會出現在此處。",
+      "loading": "正在載入熱詞統計...",
+      "refresh": "重新整理",
+      "column_hotword": "熱詞",
+      "column_hits": "命中次數",
+      "column_last_hit": "最後命中",
+      "stale_hint": "已過期（30 天以上）",
+      "just_now": "剛剛",
+      "relative_seconds": "{count} 秒前",
+      "relative_minutes": "{count} 分鐘前",
+      "relative_hours": "{count} 小時前",
+      "relative_days": "{count} 天前",
+      "relative_over_30_days": "30 天以上"
+    }
   },
   "summary": {
     "language": {

@@ -82,7 +82,24 @@
     "hotword_copy_success": "Copied: {value}",
     "speaker_rename_placeholder": "Enter name (e.g. Alice)",
     "speaker_rename_save": "Save",
-    "speaker_rename_cancel": "Cancel"
+    "speaker_rename_cancel": "Cancel",
+    "stats": {
+      "title": "Hotword hit rate",
+      "description": "Shows how often each configured hotword fires during ASR. Entries older than 30 days without hits are cleared automatically.",
+      "empty": "No hotword has fired yet. Hotwords will appear here once they are recognised during a recording.",
+      "loading": "Loading hotword statistics...",
+      "refresh": "Refresh",
+      "column_hotword": "Hotword",
+      "column_hits": "Hits",
+      "column_last_hit": "Last hit",
+      "stale_hint": "stale (>30 days)",
+      "just_now": "just now",
+      "relative_seconds": "{count}s ago",
+      "relative_minutes": "{count}m ago",
+      "relative_hours": "{count}h ago",
+      "relative_days": "{count}d ago",
+      "relative_over_30_days": "30d+ ago"
+    }
   },
   "summary": {
     "language": {

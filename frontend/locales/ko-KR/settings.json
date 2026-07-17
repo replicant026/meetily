@@ -82,7 +82,24 @@
     "hotword_copy_success": "복사됨: {value}",
     "speaker_rename_placeholder": "이름 입력 (예: 김과장)",
     "speaker_rename_save": "저장",
-    "speaker_rename_cancel": "취소"
+    "speaker_rename_cancel": "취소",
+    "stats": {
+      "title": "단어 적중률",
+      "description": "설정한 각 단어가 ASR 에서 실제로 얼마나 적중했는지 보여줍니다. 30 일 이상 적중이 없으면 자동으로 정리됩니다.",
+      "empty": "아직 적중 데이터가 없습니다. 회의를 녹음하기 시작하면 여기에 인식된 단어가 표시됩니다.",
+      "loading": "단어 통계 불러오는 중...",
+      "refresh": "새로 고침",
+      "column_hotword": "단어",
+      "column_hits": "적중 횟수",
+      "column_last_hit": "마지막 적중",
+      "stale_hint": "오래됨 (30 일 이상)",
+      "just_now": "방금",
+      "relative_seconds": "{count} 초 전",
+      "relative_minutes": "{count} 분 전",
+      "relative_hours": "{count} 시간 전",
+      "relative_days": "{count} 일 전",
+      "relative_over_30_days": "30 일 이상 전"
+    }
   },
   "summary": {
     "language": {

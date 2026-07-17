@@ -45,6 +45,7 @@ pub mod notifications;
 pub mod ollama;
 pub mod i18n;
 pub mod transcription_preferences;
+pub mod hotword_stats;
 pub mod onboarding;
 pub mod openai;
 pub mod anthropic;
@@ -520,6 +521,12 @@ pub fn run() {
             })
             .expect("Failed to initialize database");
 
+            // PR-A: hand the SQLite pool to the hotword hit-rate counter so both
+            // streaming and one-shot ASR paths can record per-hotword hits.
+            if let Some(state) = _app.try_state::<state::AppState>() {
+                hotword_stats::init(state.db_manager.pool().clone());
+            }
+
             // Initialize bundled templates directory for dynamic template discovery
             log::info!("Initializing bundled templates directory...");
             if let Ok(resource_path) = _app.handle().path().resource_dir() {
@@ -764,6 +771,7 @@ pub fn run() {
             transcription_preferences::get_transcription_hotwords,
             transcription_preferences::set_transcription_hotwords,
             transcription_preferences::get_protected_terms,
+            hotword_stats::get_hotword_hit_stats,
             onboarding::save_onboarding_status_cmd,
             onboarding::reset_onboarding_status_cmd,
             onboarding::complete_onboarding,
