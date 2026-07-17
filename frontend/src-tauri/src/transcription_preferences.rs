@@ -68,6 +68,7 @@ pub async fn save_transcription_hotwords<R: Runtime>(
     // chain never runs or no terms are protected.
     let raw_for_protected = normalized.clone().unwrap_or_default();
     crate::audio::post_processor::set_protected_terms(extract_protected_terms(&raw_for_protected));
+    crate::audio::post_processor::set_hotwords_for_llm(extract_all_hotwords(&raw_for_protected));
     Ok(normalized)
 }
 
@@ -83,6 +84,7 @@ pub async fn get_transcription_hotwords<R: Runtime>(
     // when the user never edits the hotword list.
     let raw_for_protected = loaded.clone().unwrap_or_default();
     crate::audio::post_processor::set_protected_terms(extract_protected_terms(&raw_for_protected));
+    crate::audio::post_processor::set_hotwords_for_llm(extract_all_hotwords(&raw_for_protected));
     Ok(loaded)
 }
 
@@ -112,6 +114,22 @@ fn extract_protected_terms(raw: &str) -> Vec<String> {
             }
             trimmed.strip_prefix('!').map(|rest| rest.trim().to_string())
         })
+        .filter(|s| !s.is_empty())
+        .filter(|s| seen.insert(s.clone()))
+        .collect();
+    terms.sort_by(|a, b| b.len().cmp(&a.len()));
+    terms
+}
+
+/// Wave 21 PR-F: extract all hotwords (both !-prefixed and bare) from the
+/// raw hotwords string. Mirrors `extract_protected_terms` but keeps the
+/// `!` prefix so the LLM glossary block can see both lists. Returns
+/// deduplicated, byte-length-descending list (longest match wins).
+fn extract_all_hotwords(raw: &str) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut terms: Vec<String> = raw
+        .split(|c: char| matches!(c, '\n' | '\r' | '\t') || c == ' ')
+        .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .filter(|s| seen.insert(s.clone()))
         .collect();
@@ -188,4 +206,23 @@ mod tests {
         assert_eq!(result, vec!["字节跳动", "张三"]);
     }
 
+
+
+    #[test]
+    fn extract_all_includes_bare_and_protected() {
+        let terms = extract_all_hotwords("OpenAI\n!AGI\nfoo");
+        assert_eq!(terms, vec!["OpenAI".to_string(), "AGI".to_string(), "foo".to_string()]);
+    }
+
+    #[test]
+    fn extract_all_dedupes() {
+        let terms = extract_all_hotwords("foo\nfoo\nbar");
+        assert_eq!(terms, vec!["foo".to_string(), "bar".to_string()]);
+    }
+
+    #[test]
+    fn extract_all_empty_input() {
+        assert!(extract_all_hotwords("").is_empty());
+        assert!(extract_all_hotwords("   \n  \t  ").is_empty());
+    }
 }

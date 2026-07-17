@@ -134,24 +134,57 @@ fn translation_system_prompt(target_language: &str) -> String {
     )
 }
 
+/// Wave 21 PR-F: short instruction telling the LLM to treat every term inside
+/// the <glossary> block as a proper noun (never modify / translate / reformat).
+/// Prepended to the 3 unprotected summary prompts.
+const GLOSSARY_PROTECTION_INSTRUCTION: &str =
+    "Treat every term inside the <glossary> block as a proper noun. \
+     NEVER modify, translate, reformat, normalize, expand, or split these terms. \
+     If a glossary term appears verbatim in the source, reproduce it byte-for-byte in your output.";
+
+/// Wave 21 PR-F: read the cached hotword list and render it as a <glossary>
+/// block. Returns None when no terms are configured (the caller should then
+/// omit the block entirely so zero-config users see no change).
+fn build_glossary_block() -> Option<String> {
+    let terms = crate::audio::post_processor::read_hotwords_for_llm();
+    if terms.is_empty() {
+        return None;
+    }
+    Some(format!("<glossary>\n{}\n</glossary>", terms.join("\n")))
+}
+
 fn build_chunk_summary_user_prompt(chunk: &str) -> String {
-    format!(
-        "{ENGLISH_BASE_SUMMARY_INSTRUCTION}\n\nProvide a concise but comprehensive summary of the following transcript chunk. Capture all key points, decisions, action items, and mentioned individuals.\n\n<transcript_chunk>\n{chunk}\n</transcript_chunk>"
-    )
+    let mut prompt = format!(
+        "{GLOSSARY_PROTECTION_INSTRUCTION}\n\n{ENGLISH_BASE_SUMMARY_INSTRUCTION}\n\nProvide a concise but comprehensive summary of the following transcript chunk. Capture all key points, decisions, action items, and mentioned individuals.\n\n<transcript_chunk>\n{chunk}\n"
+    );
+    if let Some(glossary) = build_glossary_block() {
+        prompt.push_str(&glossary);
+        prompt.push_str("\n");
+    }
+    prompt.push_str("</transcript_chunk>");
+    prompt
 }
 
 fn build_combine_summary_user_prompt(combined_text: &str) -> String {
-    format!(
-        "{ENGLISH_BASE_SUMMARY_INSTRUCTION}\n\nThe following are consecutive summaries of a meeting. Combine them into a single, coherent, and detailed narrative summary that retains all important details, organized logically.\n\n<summaries>\n{combined_text}\n</summaries>"
-    )
+    let mut prompt = format!(
+        "{GLOSSARY_PROTECTION_INSTRUCTION}\n\n{ENGLISH_BASE_SUMMARY_INSTRUCTION}\n\nThe following are consecutive summaries of a meeting. Combine them into a single, coherent, and detailed narrative summary that retains all important details, organized logically.\n\n<summaries>\n{combined_text}\n"
+    );
+    if let Some(glossary) = build_glossary_block() {
+        prompt.push_str(&glossary);
+        prompt.push_str("\n");
+    }
+    prompt.push_str("</summaries>");
+    prompt
 }
 
 fn build_final_report_system_prompt(
     section_instructions: &str,
     clean_template_markdown: &str,
 ) -> String {
-    format!(
-        r#"You are an expert meeting summarizer. Generate a final meeting report by filling in the provided Markdown template based on the source text.
+    let mut prompt = format!(
+        r#"{GLOSSARY_PROTECTION_INSTRUCTION}
+
+You are an expert meeting summarizer. Generate a final meeting report by filling in the provided Markdown template based on the source text.
 
 **CRITICAL INSTRUCTIONS:**
 1. {ENGLISH_BASE_SUMMARY_INSTRUCTION}
@@ -167,8 +200,14 @@ fn build_final_report_system_prompt(
 
 <template>
 {clean_template_markdown}
-</template>"#
-    )
+"
+    );
+    if let Some(glossary) = build_glossary_block() {
+        prompt.push_str(&glossary);
+        prompt.push_str("\n");
+    }
+    prompt.push_str("</template>");
+    prompt
 }
 
 /// Rough token count estimation using character count
@@ -852,5 +891,53 @@ mod tests {
     fn underscore_locale_variant_returns_none() {
         // OS locale APIs (notably macOS) may emit "en_GB" with underscore.
         assert_eq!(resolve_cached_english(Some("body"), Some("en_GB")), None);
+    }
+
+
+    #[test]
+    fn glossary_block_empty_when_no_terms() {
+        crate::audio::post_processor::set_hotwords_for_llm(vec![]);
+        assert!(build_glossary_block().is_none());
+    }
+
+    #[test]
+    fn glossary_block_formats_terms() {
+        crate::audio::post_processor::set_hotwords_for_llm(vec!["AGI".to_string(), "OpenAI".to_string()]);
+        let block = build_glossary_block().unwrap();
+        assert!(block.contains("<glossary>"));
+        assert!(block.contains("</glossary>"));
+        assert!(block.contains("AGI"));
+        assert!(block.contains("OpenAI"));
+        crate::audio::post_processor::set_hotwords_for_llm(vec![]);
+    }
+
+    #[test]
+    fn chunk_prompt_contains_glossary_when_present() {
+        crate::audio::post_processor::set_hotwords_for_llm(vec!["AGI".to_string()]);
+        let prompt = build_chunk_summary_user_prompt("hello world");
+        assert!(prompt.contains("AGI"));
+        assert!(prompt.to_lowercase().contains("glossary"));
+        crate::audio::post_processor::set_hotwords_for_llm(vec![]);
+    }
+
+    #[test]
+    fn chunk_prompt_omits_glossary_when_absent() {
+        crate::audio::post_processor::set_hotwords_for_llm(vec![]);
+        let prompt = build_chunk_summary_user_prompt("hello world");
+        assert!(!prompt.contains("<glossary>"));
+    }
+
+    #[test]
+    fn combine_prompt_contains_instruction() {
+        crate::audio::post_processor::set_hotwords_for_llm(vec![]);
+        let prompt = build_combine_summary_user_prompt("a\nb");
+        assert!(prompt.to_lowercase().contains("glossary"));
+    }
+
+    #[test]
+    fn final_report_prompt_contains_instruction() {
+        crate::audio::post_processor::set_hotwords_for_llm(vec![]);
+        let prompt = build_final_report_system_prompt("section", "template");
+        assert!(prompt.to_lowercase().contains("glossary"));
     }
 }
