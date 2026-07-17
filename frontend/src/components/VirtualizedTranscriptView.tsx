@@ -397,7 +397,6 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onTimestampClick={onTimestampClick}
                                         hotwords={hotwords}
                                         protectedSet={protectedSet}
-                                        protectedSet={protectedSet}
                                     />
                                 </div>
                             );
