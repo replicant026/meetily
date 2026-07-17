@@ -82,7 +82,24 @@
     "hotword_copy_success": "已复制：{value}",
     "speaker_rename_placeholder": "输入姓名（如：陈总）",
     "speaker_rename_save": "保存",
-    "speaker_rename_cancel": "取消"
+    "speaker_rename_cancel": "取消",
+    "stats": {
+      "title": "热词命中率",
+      "description": "展示每个已配置热词在转写中实际命中的次数。超过 30 天未命中的词条会自动清理。",
+      "empty": "暂无命中数据。开始一次录制会议后，被识别的热词会出现在此处。",
+      "loading": "正在加载热词统计...",
+      "refresh": "刷新",
+      "column_hotword": "热词",
+      "column_hits": "命中次数",
+      "column_last_hit": "最后命中",
+      "stale_hint": "已过期（30 天以上）",
+      "just_now": "刚刚",
+      "relative_seconds": "{count} 秒前",
+      "relative_minutes": "{count} 分钟前",
+      "relative_hours": "{count} 小时前",
+      "relative_days": "{count} 天前",
+      "relative_over_30_days": "30 天以上"
+    }
   },
   "summary": {
     "language": {

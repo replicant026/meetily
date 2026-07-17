@@ -9,6 +9,7 @@ import { Textarea } from './ui/textarea';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { ModelManager } from './WhisperModelManager';
+import { HotwordHitStatsPanel } from './HotwordHitStatsPanel';
 import { ParakeetModelManager } from './ParakeetModelManager';
 
 const MAX_HOTWORD_CHARS = 500;
@@ -277,6 +278,9 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                         )}
                     </div>
                     {requiresApiKey && (
+                    <div className="mt-4">
+                        <HotwordHitStatsPanel />
+                    </div>
                         <div>
                             <Label className="block text-sm font-medium text-gray-700 mb-1">
                                 API Key

@@ -111,6 +111,9 @@ impl RecordingSaver {
         }
 
         // NEW: Save incrementally to disk
+        // PR-A: record hotword hits against this segment (fire-and-forget).
+        // Errors are swallowed inside the helper so the streaming path never blocks.
+        crate::hotword_stats::record_segment(&segment.text);
         if let Some(folder) = &self.meeting_folder {
             if let Err(e) = self.write_transcripts_json(folder) {
                 warn!("Failed to write incremental transcript update: {}", e);
