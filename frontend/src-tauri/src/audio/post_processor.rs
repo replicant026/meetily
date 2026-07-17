@@ -424,6 +424,26 @@ fn read_protected_terms() -> Vec<String> {
         .unwrap_or_default()
 }
 
+// Wave 21 PR-F: parallel cache that holds the full hotword list (protected + bare)
+// so the LLM summary prompts can inject it as a glossary block. Distinct from
+// PROTECTED_TERMS which only stores the !-prefixed entries used for the
+// postprocessor restoration step.
+static HOTWORD_LIST_FOR_LLM: Lazy<std::sync::Mutex<Vec<String>>> =
+    Lazy::new(|| std::sync::Mutex::new(Vec::new()));
+
+pub fn set_hotwords_for_llm(terms: Vec<String>) {
+    if let Ok(mut guard) = HOTWORD_LIST_FOR_LLM.lock() {
+        *guard = terms;
+    }
+}
+
+pub fn read_hotwords_for_llm() -> Vec<String> {
+    HOTWORD_LIST_FOR_LLM
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -597,4 +617,17 @@ impl Default for PostProcessor {
         set_terms_for_test(vec![]);
     }
 
+
+
+    #[test]
+    fn hotwords_for_llm_set_read_roundtrip_empty() {
+        set_hotwords_for_llm(vec![]);
+        assert!(read_hotwords_for_llm().is_empty());
+    }
+
+    #[test]
+    fn hotwords_for_llm_set_read_roundtrip_multi() {
+        set_hotwords_for_llm(vec!["AGI".to_string(), "OpenAI".to_string(), "foo".to_string()]);
+        assert_eq!(read_hotwords_for_llm(), vec!["AGI", "OpenAI", "foo"]);
+    }
 }

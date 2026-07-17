@@ -19,6 +19,8 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
   - Catches regressions in the recommended Whisper model for Chinese meetings
     without burning hundreds of CI minutes per run.
 
+- PR-F (Wave 21): LLM summary prompts now inject the global hotword list as a glossary block, so company names / brand names / jargon survive the LLM summary path without rewriting.
+
 ### Changed
 - (none yet)
 
