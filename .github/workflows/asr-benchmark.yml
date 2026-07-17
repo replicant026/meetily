@@ -1,0 +1,68 @@
+# Wave 20 / PR-C: weekly + manual ASR eval on a tiny AISHELL-1 subset.
+#
+# Goal: detect regressions in the recommended Whisper model for Chinese
+# meetings without burning hundreds of CI minutes. The full eval stays a
+# local command (scripts/asr_benchmark/benchmark.py + docs/asr_benchmark_zh.md).
+name: ASR Benchmark (Whisper, Chinese smoke)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Whisper model basename'
+        required: true
+        type: choice
+        default: 'base'
+        options:
+          - tiny
+          - base
+          - small
+          - medium
+          - large-v3
+          - large-v3-turbo
+          - large-v3-turbo-q5_0
+      samples:
+        description: 'AISHELL-1 eval samples (max 50)'
+        required: true
+        type: string
+        default: '5'
+  schedule:
+    # Smoke regression check at 09:00 UTC every Sunday. Burn less than 5 CI min.
+    - cron: '0 9 * * 0'
+
+# Do not cancel an in-progress weekly run; each run should report its own result.
+concurrency:
+  group: asr-bench
+  cancel-in-progress: false
+
+jobs:
+  bench:
+    name: Run whisper.cpp + benchmark.py
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Run benchmark (model=${{ github.event.inputs.model || 'base' }}, samples=${{ github.event.inputs.samples || '5' }})
+        run: |
+          bash scripts/asr_benchmark/run_ci_eval.sh \
+            "${{ github.event.inputs.model || 'base' }}" \
+            "${{ github.event.inputs.samples || '5' }}"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: asr-benchmark-report
+          path: benchmark-report/
+          if-no-files-found: warn
+          retention-days: 30
