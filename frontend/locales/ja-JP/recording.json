@@ -54,6 +54,7 @@
   "orphan_checkpoint_recover": "復元",
   "orphan_checkpoint_discard": "破棄",
   "orphan_checkpoint_recovered": "録音を復元しました",
+  "orphan_checkpoint_recovering": "復元を開始しました。上部のバナーで進捗を確認できます",
   "orphan_checkpoint_recovered_failed": "復元に失敗しました",
   "orphan_checkpoint_discarded": "録音を破棄しました",
   "orphan_checkpoint_discarded_failed": "破棄に失敗しました"

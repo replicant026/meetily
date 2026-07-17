@@ -54,6 +54,7 @@
   "orphan_checkpoint_recover": "恢復",
   "orphan_checkpoint_discard": "捨棄",
   "orphan_checkpoint_recovered": "錄音已恢復",
+  "orphan_checkpoint_recovering": "已啟動恢復，進度請查看頂部提示",
   "orphan_checkpoint_recovered_failed": "恢復失敗",
   "orphan_checkpoint_discarded": "錄音已捨棄",
   "orphan_checkpoint_discarded_failed": "捨棄失敗"

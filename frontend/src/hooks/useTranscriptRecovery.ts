@@ -135,30 +135,22 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
         }
       }
 
-      // 4. Attempt audio recovery if folder path exists
+      // 4. Kick off audio recovery in the background (Wave 18 PR-56).
+      // merge_orphan_checkpoints_with_retry runs on a tokio task with up
+      // to 3 retries + persistent failure tracking. Outcome arrives via
+      // recovery-completed / recovery-failed events consumed by the
+      // global RecoveryFailureBanner; we never get a synchronous
+      // status, so callers down the chain fall through to the
+      // 'transcripts only' UI branch.
       let audioRecoveryStatus: AudioRecoveryStatus | null = null;
       if (folderPath) {
         try {
-          audioRecoveryStatus = await invoke<AudioRecoveryStatus>(
-            'recover_audio_from_checkpoints',
-            { meetingFolder: folderPath, sampleRate: 48000 }
-          );
+          await invoke('recover_orphan_meeting_cmd', {
+            meetingFolder: folderPath,
+          });
         } catch (error) {
-          console.error('Audio recovery failed:', error);
-          audioRecoveryStatus = {
-            status: 'failed',
-            chunk_count: 0,
-            estimated_duration_seconds: 0,
-            message: error instanceof Error ? error.message : 'Unknown error'
-          };
+          console.warn('Audio recovery could not start:', error);
         }
-      } else {
-        audioRecoveryStatus = {
-          status: 'none',
-          chunk_count: 0,
-          estimated_duration_seconds: 0,
-          message: 'No folder path available'
-        };
       }
 
       // 5. Convert StoredTranscripts to the format expected by storageService

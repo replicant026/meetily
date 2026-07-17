@@ -85,6 +85,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     customSpeakerNames,
     onSpeakerRename,
     hotwords,
+    protectedSet,
 }: {
     id: string;
     timestamp: number;
@@ -395,7 +396,6 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onSpeakerRename={onSpeakerRename}
                                         onTimestampClick={onTimestampClick}
                                         hotwords={hotwords}
-                                        protectedSet={protectedSet}
                                         protectedSet={protectedSet}
                                     />
                                 </div>

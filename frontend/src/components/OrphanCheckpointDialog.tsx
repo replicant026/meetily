@@ -35,17 +35,17 @@ export function OrphanCheckpointDialog({ orphans, onDismiss, onAction }: OrphanC
   const handleRecover = async (orphan: OrphanCheckpoint) => {
     setBusy(orphan.meeting_folder);
     try {
-      // Reuse the existing command; 48000 = 48kHz sample rate (project default).
-      const result = await invoke('recover_audio_from_checkpoints', {
+      // Wave 18 PR-56: fire-and-forget. merge_orphan_checkpoints_with_retry
+      // runs on a tokio task with up to 3 retries + persistent failure
+      // tracking. Outcome arrives via recovery-completed / recovery-failed
+      // events consumed by the global RecoveryFailureBanner; this dialog
+      // only kicks the work off and immediately reports "started" to the
+      // user.
+      await invoke('recover_orphan_meeting_cmd', {
         meetingFolder: orphan.meeting_folder,
-        sampleRate: 48000,
-      }) as { status: string; audio_file_path?: string; message: string };
-      if (result.status === 'success' || result.status === 'partial') {
-        toast.success(t('orphan_checkpoint_recovered'));
-        onAction?.(orphan.meeting_folder);
-      } else {
-        toast.warning(t('orphan_checkpoint_recovered_failed') + ': ' + result.message);
-      }
+      });
+      toast.info(t('orphan_checkpoint_recovering'));
+      onAction?.(orphan.meeting_folder);
     } catch (e) {
       toast.error(t('orphan_checkpoint_recovered_failed') + ': ' + String(e));
     } finally {

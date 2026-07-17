@@ -54,6 +54,7 @@
   "orphan_checkpoint_recover": "Recover",
   "orphan_checkpoint_discard": "Discard",
   "orphan_checkpoint_recovered": "Recording recovered",
+  "orphan_checkpoint_recovering": "Recovery started. Watch the banner for progress.",
   "orphan_checkpoint_recovered_failed": "Recovery failed",
   "orphan_checkpoint_discarded": "Recording discarded",
   "orphan_checkpoint_discarded_failed": "Discard failed"

@@ -296,11 +296,73 @@ pub async fn discard_orphan_checkpoint_cmd(meeting_folder: String) -> Result<(),
     discard_orphan_checkpoint(std::path::Path::new(&meeting_folder))
 }
 
+/// Wave 18 PR-56: kick off a recovery attempt. The actual FFmpeg work
+/// runs on a detached tokio task with up to 3 retries; this command returns
+/// immediately so the frontend UI never blocks. Progress + outcome arrive via
+/// Tauri events (`recovery-progress` / `recovery-completed` / `recovery-failed`)
+/// and the persistent `recovery-state.json` written by `recovery::record_failure`.
 #[tauri::command]
-pub async fn recover_orphan_meeting_cmd(meeting_folder: String) -> Result<String, String> {
-    audio::recovery::merge_orphan_checkpoints(std::path::Path::new(&meeting_folder))
-        .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| e.to_string())
+pub async fn recover_orphan_meeting_cmd<
+    R: tauri::Runtime,
+>(
+    app: tauri::AppHandle<R>,
+    meeting_folder: String,
+) -> Result<String, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let folder = std::path::PathBuf::from(&meeting_folder);
+    audio::recovery::spawn_recovery_retry(app, app_data_dir, folder);
+    Ok("recovery started".to_string())
+}
+
+/// Wave 18 PR-56: read the persisted failure list so the recovery banner can
+/// render across app restarts. Returns only non-discarded entries.
+#[tauri::command]
+pub async fn get_failed_recoveries_cmd<
+    R: tauri::Runtime,
+>(app: tauri::AppHandle<R>) -> Result<Vec<audio::recovery::RecoveryFailure>, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    Ok(audio::recovery::load_failures(&app_data_dir))
+}
+
+/// Wave 18 PR-56: re-run the recovery loop for a previously-failed meeting.
+/// Returns immediately; outcome arrives via Tauri events.
+#[tauri::command]
+pub async fn retry_recovery_cmd<
+    R: tauri::Runtime,
+>(
+    app: tauri::AppHandle<R>,
+    meeting_folder: String,
+) -> Result<(), String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let folder = std::path::PathBuf::from(&meeting_folder);
+    audio::recovery::spawn_recovery_retry(app, app_data_dir, folder);
+    Ok(())
+}
+
+/// Wave 18 PR-56: mark a failed meeting as discarded so the banner hides it.
+/// Returns true when a record was actually updated (false = already discarded
+/// or no record found).
+#[tauri::command]
+pub async fn discard_recovery_cmd<
+    R: tauri::Runtime,
+>(
+    app: tauri::AppHandle<R>,
+    meeting_folder: String,
+) -> Result<bool, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    Ok(audio::recovery::mark_discarded(&app_data_dir, std::path::Path::new(&meeting_folder)))
 }
 
 /// Resolve the local audio file path for a meeting so the frontend can
