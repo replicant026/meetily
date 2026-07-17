@@ -12,7 +12,12 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
 ## [Unreleased]
 
 ### Added
-- (none yet)
+- PR-C: Weekly + manual ASR benchmark CI.
+  - Adds .github/workflows/asr-benchmark.yml (manual dispatch + weekly schedule).
+  - Adds scripts/asr_benchmark/run_ci_eval.{sh,ps1} wrappers.
+  - Ships a hermetic sine-wave fixture set under scripts/asr_benchmark/fixtures/.
+  - Catches regressions in the recommended Whisper model for Chinese meetings
+    without burning hundreds of CI minutes per run.
 
 ### Changed
 - (none yet)
