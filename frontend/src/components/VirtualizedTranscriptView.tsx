@@ -85,6 +85,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     customSpeakerNames,
     onSpeakerRename,
     hotwords,
+    protectedSet,
 }: {
     id: string;
     timestamp: number;
