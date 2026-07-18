@@ -95,13 +95,21 @@ fn build_glossary_block() -> Option<String> {
 }
 
 fn build_user_prompt(text: &str) -> String {
-    let mut prompt = String::from(SYSTEM_PROMPT);
+    let terms = post_processor::read_hotwords_for_llm();
+    render_user_prompt(SYSTEM_PROMPT, &terms, text)
+}
+
+/// Pure helper for prompt construction. Extracted so the prompt
+/// format can be unit-tested without touching the global hotwords
+/// state.
+fn render_user_prompt(system_prompt: &str, glossary_terms: &[String], source: &str) -> String {
+    let mut prompt = String::from(system_prompt);
     prompt.push_str("\n\n");
-    if let Some(block) = build_glossary_block() {
-        prompt.push_str(&block);
+    if !glossary_terms.is_empty() {
+        prompt.push_str(&format!("<glossary>\n{}\n</glossary>", glossary_terms.join("\n")));
         prompt.push_str("\n\n");
     }
-    prompt.push_str(&format!("<source>\n{}\n</source>", text));
+    prompt.push_str(&format!("<source>\n{}\n</source>", source));
     prompt
 }
 
@@ -280,4 +288,123 @@ mod tests {
         assert!(block.contains("Meetily"));
         post_processor::set_hotwords_for_llm(vec![]);
     }
+    // ---- is_cjk boundary tests ----
+    #[test]
+    fn is_cjk_basic_cjk_inside_range() {
+        assert!(is_cjk('\u{4e2d}')); // U+4E00 CJK Unified Ideograph
+        assert!(is_cjk('\u{9fff}')); // U+9FFF end of basic range
+    }
+
+    #[test]
+    fn is_cjk_extension_a_inside_range() {
+        assert!(is_cjk('\u{3400}')); // U+3400 CJK Extension A start
+        assert!(is_cjk('\u{4dbf}')); // U+4DBF CJK Extension A end
+    }
+
+    #[test]
+    fn is_cjk_hiragana_katakana_outside_range() {
+        // Hiragana and Katakana are NOT in the CJK Unified Ideograph ranges.
+        assert!(!is_cjk('\u{3042}')); // HIRAGANA LETTER A
+        assert!(!is_cjk('\u{30a2}')); // KATAKANA LETTER A
+    }
+
+    #[test]
+    fn is_cjk_ascii_punctuation_outside_range() {
+        assert!(!is_cjk('a'));
+        assert!(!is_cjk(' '));
+        assert!(!is_cjk('\u{3002}')); // IDEOGRAPHIC FULL STOP
+    }
+
+    // ---- should_skip_for_length boundary tests ----
+    #[test]
+    fn threshold_cjk_exact_boundary_passes() {
+        // Exactly MIN_CJK_CHARS (8) should NOT skip.
+        let s = "\u{4e2d}\u{6587}\u{6d4b}\u{8bd5}\u{8bed}\u{53e5}\u{5185}\u{5bb9}";
+        assert_eq!(s.chars().count(), MIN_CJK_CHARS);
+        assert!(!should_skip_for_length(s));
+    }
+
+    #[test]
+    fn threshold_cjk_one_below_boundary_skips() {
+        let s = "\u{4e2d}\u{6587}\u{6d4b}\u{8bd5}\u{8bed}\u{53e5}\u{5185}"; // 7
+        assert!(should_skip_for_length(s));
+    }
+
+    #[test]
+    fn threshold_ascii_exact_boundary_passes() {
+        let s: String = "a".repeat(MIN_ASCII_CHARS);
+        assert!(!should_skip_for_length(&s));
+    }
+
+    #[test]
+    fn threshold_ascii_one_below_boundary_skips() {
+        let s: String = "a".repeat(MIN_ASCII_CHARS - 1);
+        assert!(should_skip_for_length(&s));
+    }
+
+    #[test]
+    fn threshold_mixed_cjk_dominates() {
+        // When CJK chars are present at all, CJK threshold applies.
+        let cjk = "\u{4e2d}\u{6587}\u{6d4b}\u{8bd5}\u{8bed}\u{53e5}\u{5185}\u{5bb9}\u{52a0}";
+        let ascii = "a".repeat(50);
+        assert!(!should_skip_for_length(&format!("{}{}", cjk, ascii)));
+    }
+
+    #[test]
+    fn threshold_only_punctuation_skips() {
+        // Pure punctuation: 0 CJK, 0 alphanumeric -> below both thresholds.
+        assert!(should_skip_for_length("......,,,!!!"));
+    }
+
+    // ---- build_glossary_block ordering ----
+    #[test]
+    fn glossary_block_preserves_term_order() {
+        post_processor::set_hotwords_for_llm(vec![
+            "Charlie".to_string(),
+            "Alpha".to_string(),
+            "Bravo".to_string(),
+        ]);
+        let block = build_glossary_block().unwrap();
+        let c = block.find("Charlie").unwrap();
+        let a = block.find("Alpha").unwrap();
+        let b = block.find("Bravo").unwrap();
+        assert!(c < a && a < b, "glossary block must preserve insertion order");
+        post_processor::set_hotwords_for_llm(vec![]);
+    }
+
+    // ---- render_user_prompt tests ----
+    #[test]
+    fn render_prompt_no_glossary() {
+        let p = render_user_prompt("SYS", &[], "hello");
+        assert!(p.starts_with("SYS\n\n"));
+        assert!(p.ends_with("<source>\nhello\n</source>"));
+        assert!(!p.contains("<glossary>"));
+    }
+
+    #[test]
+    fn render_prompt_with_glossary_includes_terms() {
+        let terms = vec!["Meetily".to_string(), "AGI".to_string()];
+        let p = render_user_prompt("SYS", &terms, "hi");
+        assert!(p.contains("<glossary>\nMeetily\nAGI\n</glossary>"));
+        assert!(p.contains("<source>\nhi\n</source>"));
+        let g = p.find("<glossary>").unwrap();
+        let s = p.find("<source>").unwrap();
+        assert!(g < s);
+    }
+
+    #[test]
+    fn render_prompt_empty_glossary_omits_block() {
+        // Same as no-glossary: empty slice must not produce a glossary block.
+        let p = render_user_prompt("SYS", &[], "x");
+        assert!(!p.contains("<glossary>"));
+    }
+
+    #[test]
+    fn render_prompt_preserves_term_lines() {
+        let terms = vec!["alpha".to_string(), "beta".to_string()];
+        let p = render_user_prompt("SYS", &terms, "x");
+        assert!(p.contains("alpha"));
+        assert!(p.contains("beta"));
+    }
+
 }

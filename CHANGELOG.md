@@ -32,6 +32,19 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
   A new toggle in Settings -> Transcript controls whether the rewrite
   runs (default on). Hotword glossary is forwarded so protected terms
   survive the rewrite.
+
+- PR-42-iv-a (Wave 24): Rust unit tests for llm_postprocess. Adds 14
+  new #[test] functions covering is_cjk boundary characters (Basic,
+  Extension A, Hiragana/Katakana exclusion), should_skip_for_length
+  exact-boundary cases for both CJK and ASCII thresholds, mixed-CJK
+  dominance, pure-punctuation skip, glossary block ordering, and the
+  extracted render_user_prompt helper (no-glossary, with-glossary,
+  empty-glossary, term-line preservation). Extracts render_user_prompt
+  as a pure helper so prompt construction is testable without the
+  global post_processor state. Adds rusqlite (bundled) as a
+  dev-dependency reserved for a follow-up fixture-based test pass.
+  No production behaviour change.
+
 - PR-A (Wave 22): Hotword hit-rate panel. A new `hotword_hit_stats` table records whole-word case-insensitive hits per hotword during ASR, and a new `HotwordHitStatsPanel` in Settings -> Transcriptionmodels shows hotword + hits + last_hit_at with a relative-time column and stale (>30 days) flag. Entries older than 30 days are cleared by the in-app 30-day rolling cleanup. Streaming recording path is wired; one-shot import / retranscription paths defer to PR-A2.
 
 ### Changed
