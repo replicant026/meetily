@@ -215,16 +215,19 @@ pub fn start_transcription_task<R: Runtime>(
 
                                         // PR-44a: realtime speaker hint. Failures are non-fatal
                                         // (transient_speaker simply stays None) so transcription never blocks.
-                                        let transient_speaker: Option<String> = if crate::diarization::embedding::push_window(
-                                            &crate::diarization::DiarizationState::default().buffer,
-                                            &chunk.data,
-                                            chunk.sample_rate,
-                                            chunk_timestamp,
-                                            chunk_timestamp + chunk_duration,
-                                        ) {
-                                            Some("Speaker ?".to_string())
-                                        } else {
-                                            None
+                                        let transient_speaker: Option<String> = {
+                                            let buf = crate::audio::recording_commands::current_diarization_buffer();
+                                            if crate::diarization::embedding::push_window(
+                                                buf.as_ref(),
+                                                &chunk.data,
+                                                chunk.sample_rate,
+                                                chunk_timestamp,
+                                                chunk_timestamp + chunk_duration,
+                                            ) {
+                                                Some("Speaker ?".to_string())
+                                            } else {
+                                                None
+                                            }
                                         };
 
                                         let update = TranscriptUpdate {

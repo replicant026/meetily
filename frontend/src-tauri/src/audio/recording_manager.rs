@@ -439,6 +439,12 @@ impl RecordingManager {
         self.recording_saver.add_transcript_segment(segment);
     }
 
+    /// PR-44a: shared diarization buffer accessor used by the transcription
+    /// worker to feed realtime embeddings into the active recording session.
+    pub fn diarization_buffer(&self) -> std::sync::Arc<crate::diarization::EmbeddingBuffer> {
+        self.recording_saver.diarization_buffer.clone()
+    }
+
     /// Add a transcript chunk to be saved later (legacy method)
     pub fn add_transcript_chunk(&self, text: String) {
         self.recording_saver.add_transcript_chunk(text);

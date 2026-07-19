@@ -265,7 +265,21 @@ pub async fn start_recording_with_meeting_name<R: Runtime>(
         *global_task = Some(task_handle);
     }
 
-    // CRITICAL: Listen for transcript-update events and save to recording manager
+    /// PR-44a: accessor used by the transcription worker to push realtime
+/// speaker embeddings into the active recording session's buffer. Falls
+/// back to an empty buffer so that pre-recording chunk handling stays
+/// non-fatal.
+pub fn current_diarization_buffer() -> std::sync::Arc<crate::diarization::EmbeddingBuffer> {
+    use std::sync::Arc;
+    if let Ok(manager_guard) = RECORDING_MANAGER.lock() {
+        if let Some(manager) = manager_guard.as_ref() {
+            return manager.diarization_buffer();
+        }
+    }
+    Arc::new(crate::diarization::EmbeddingBuffer::default())
+}
+
+// CRITICAL: Listen for transcript-update events and save to recording manager
     // This enables transcript history persistence for page reload sync
     // Store listener ID for cleanup during stop_recording to ensure microphone is released
     {
