@@ -56,5 +56,14 @@
     "delete": "Delete",
     "deleting": "Deleting...",
     "recovering": "Recovering..."
-  }
+  },
+  "postprocess_error_provider_not_configured": "No LLM provider configured",
+  "postprocess_error_unsupported_provider": "Unsupported LLM provider: {provider}",
+  "postprocess_error_custom_openai_config_missing": "Custom OpenAI config is missing endpoint or api_key",
+  "postprocess_error_api_key_missing": "{provider} API key is not configured",
+  "postprocess_error_upstream_http": "LLM service returned HTTP {status}",
+  "postprocess_error_network": "Cannot connect to LLM service",
+  "postprocess_error_upstream_empty": "LLM returned empty or malformed response",
+  "postprocess_error_cancelled": "Cancelled",
+  "postprocess_error_internal": "Internal error: {message}"
 }

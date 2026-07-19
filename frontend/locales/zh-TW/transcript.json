@@ -56,5 +56,14 @@
     "delete": "刪除",
     "deleting": "正在刪除...",
     "recovering": "正在復原..."
-  }
+  },
+  "postprocess_error_provider_not_configured": "未設定 LLM 提供方",
+  "postprocess_error_unsupported_provider": "不支援的 LLM 提供方：{provider}",
+  "postprocess_error_custom_openai_config_missing": "Custom OpenAI 缺少 endpoint 或 api_key 設定",
+  "postprocess_error_api_key_missing": "{provider} API Key 未設定",
+  "postprocess_error_upstream_http": "LLM 服務回傳 HTTP {status}",
+  "postprocess_error_network": "無法連線 LLM 服務",
+  "postprocess_error_upstream_empty": "LLM 回傳為空或格式異常",
+  "postprocess_error_cancelled": "已取消",
+  "postprocess_error_internal": "內部錯誤：{message}"
 }

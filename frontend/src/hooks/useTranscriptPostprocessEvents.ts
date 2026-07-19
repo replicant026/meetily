@@ -11,6 +11,7 @@
 // UI; there is no parallel display and no toggle in the row).
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 export interface PostprocessState {
@@ -25,9 +26,14 @@ interface PostprocessedPayload {
   latency_ms: number;
 }
 
+interface PostprocessErrorPayload {
+  code: string;
+  message: string;
+}
+
 interface PostprocessFailedPayload {
   segment_id: string;
-  error: string;
+  error: PostprocessErrorPayload;
 }
 
 export interface UseTranscriptPostprocessEventsResult {
@@ -45,6 +51,7 @@ export function useTranscriptPostprocessEvents(
   enabled: boolean = true,
 ): UseTranscriptPostprocessEventsResult {
   const [states, setStates] = useState<Map<string, PostprocessState>>(() => new Map());
+  const tPostprocess = useTranslations('transcript');
 
   useEffect(() => {
     if (!enabled) return;
@@ -77,6 +84,18 @@ export function useTranscriptPostprocessEvents(
           (event) => {
             const { segment_id, error } = event.payload;
             if (!segment_id) return;
+            // PR-42-iv-b: error is now {code, message}; use code as i18n key,
+            // fall back to code string itself if translation missing.
+            const code = error?.code ?? 'internal';
+            const message = error?.message ?? code;
+            const key = 'postprocess_error_' + code;
+            let errorMessage: string;
+            try {
+              errorMessage = tPostprocess(key, { provider: message, status: message, message });
+            } catch {
+              errorMessage = code;
+            }
+            console.warn('LLM postprocess failed:', code, message);
             setStates((prev) => {
               const next = new Map(prev);
               const prior = next.get(segment_id) || {};
@@ -84,7 +103,7 @@ export function useTranscriptPostprocessEvents(
                 ...prior,
                 correctedText: undefined,
                 failed: true,
-                errorMessage: error,
+                errorMessage,
               });
               return next;
             });

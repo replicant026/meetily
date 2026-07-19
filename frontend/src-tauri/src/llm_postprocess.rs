@@ -18,6 +18,50 @@ use sqlx::SqlitePool;
 use std::str::FromStr;
 use tauri::{AppHandle, Emitter, Manager};
 
+
+/// Stable error codes for `correct_segment`. Frontend uses `code` to look up
+/// localised text in `transcript.postprocess_error_<code>`; `message` is kept
+/// for developer logs and as the i18n fallback.
+#[derive(Debug, Clone, Serialize)]
+pub struct PostprocessError {
+    pub code: &'static str,
+    pub message: String,
+}
+
+/// Stable identifiers for postprocess errors. Treat as a wire contract:
+/// renaming a constant is a breaking change and must update CHANGELOG.
+pub mod error_code {
+    pub const PROVIDER_NOT_CONFIGURED: &str = "provider_not_configured";
+    pub const UNSUPPORTED_PROVIDER: &str = "unsupported_provider";
+    pub const CUSTOM_OPENAI_CONFIG_MISSING: &str = "custom_openai_config_missing";
+    pub const API_KEY_MISSING: &str = "api_key_missing";
+    pub const UPSTREAM_HTTP: &str = "upstream_http";
+    pub const NETWORK: &str = "network";
+    pub const UPSTREAM_EMPTY: &str = "upstream_empty";
+    pub const CANCELLED: &str = "cancelled";
+    pub const INTERNAL: &str = "internal";
+}
+
+/// Map the opaque `String` errors returned by `generate_summary` to a
+/// `PostprocessError` with a stable code. Heuristic on string prefixes;
+/// replaced with a typed enum in PR-42-iv-c when `generate_summary`
+/// returns `Result<String, LLMError>`.
+fn map_upstream_error(s: String) -> PostprocessError {
+    let lower = s.to_lowercase();
+    if lower.contains("cancel") {
+        PostprocessError { code: error_code::CANCELLED, message: s }
+    } else if s.starts_with("HTTP ") || s.starts_with("http ") {
+        PostprocessError { code: error_code::UPSTREAM_HTTP, message: s }
+    } else if s.starts_with("Failed to ")
+        || s.starts_with("reqwest")
+        || lower.contains("error sending request")
+        || lower.contains("connection")
+    {
+        PostprocessError { code: error_code::NETWORK, message: s }
+    } else {
+        PostprocessError { code: error_code::UPSTREAM_EMPTY, message: s }
+    }
+}
 /// Minimum CJK characters before a segment is worth LLM rewriting.
 /// Shorter fragments tend to lose information when rewritten.
 pub const MIN_CJK_CHARS: usize = 8;
@@ -42,7 +86,7 @@ struct PostprocessedSegment {
 #[derive(Serialize, Clone)]
 struct PostprocessFailedSegment {
     segment_id: String,
-    error: String,
+    error: PostprocessError,
 }
 
 static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
@@ -130,16 +174,16 @@ async fn load_provider_inputs(
 > {
     let setting = SettingsRepository::get_model_config(pool)
         .await
-        .map_err(|e| format!("Failed to load provider config: {}", e))?
-        .ok_or_else(|| "Provider not configured".to_string())?;
+        .map_err(|e| PostprocessError { code: error_code::PROVIDER_NOT_CONFIGURED, message: format!("Failed to load provider config: {}", e) })?
+        .ok_or_else(|| PostprocessError { code: error_code::PROVIDER_NOT_CONFIGURED, message: "LLM provider not configured".to_string() })?;
     let provider_str = setting.provider.clone();
     let provider = LLMProvider::from_str(&provider_str)
-        .map_err(|_| format!("Unsupported provider: {}", provider_str))?;
+        .map_err(|_| PostprocessError { code: error_code::UNSUPPORTED_PROVIDER, message: format!("Unsupported LLM provider: {}", provider_str) })?;
 
     if provider_str == "custom-openai" {
         let cfg: CustomOpenAIConfig = setting
             .get_custom_openai_config()
-            .ok_or_else(|| "Custom OpenAI config missing".to_string())?;
+            .ok_or_else(|| PostprocessError { code: error_code::CUSTOM_OPENAI_CONFIG_MISSING, message: "Custom OpenAI config missing endpoint or api_key".to_string() })?;
         Ok((
             provider,
             cfg.model,
@@ -153,7 +197,7 @@ async fn load_provider_inputs(
     } else {
         let key = SettingsRepository::get_api_key(pool, &provider_str)
             .await
-            .map_err(|e| format!("Failed to load api key: {}", e))?
+            .map_err(|e| PostprocessError { code: error_code::API_KEY_MISSING, message: format!("Failed to load api key for {}: {}", provider_str, e) })?
             .unwrap_or_default();
         Ok((
             provider,
@@ -168,11 +212,11 @@ async fn load_provider_inputs(
     }
 }
 
-pub async fn correct_segment(pool: &SqlitePool, text: &str) -> Result<String, String> {
+pub async fn correct_segment(pool: &SqlitePool, text: &str) -> Result<String, PostprocessError> {
     let (provider, model_name, api_key, ollama_endpoint, custom_openai_endpoint, max_tokens, temperature, top_p) =
         load_provider_inputs(pool).await?;
     let user_prompt = build_user_prompt(text);
-    generate_summary(
+    match generate_summary(
         http_client(),
         &provider,
         &model_name,
@@ -188,6 +232,10 @@ pub async fn correct_segment(pool: &SqlitePool, text: &str) -> Result<String, St
         None,
     )
     .await
+    {
+        Ok(text) => Ok(text),
+        Err(e) => Err(map_upstream_error(e)),
+    }
 }
 
 pub fn spawn_segment_postprocess(segment_id: String, text: String) {
@@ -407,4 +455,62 @@ mod tests {
         assert!(p.contains("beta"));
     }
 
+
+    // ---- map_upstream_error classification (PR-42-iv-b) ----
+
+    #[test]
+    fn error_provider_not_configured_carries_code() {
+        let e = PostprocessError {
+            code: error_code::PROVIDER_NOT_CONFIGURED,
+            message: "LLM provider not configured".to_string(),
+        };
+        assert_eq!(e.code, "provider_not_configured");
+        assert_eq!(e.message, "LLM provider not configured");
+    }
+
+    #[test]
+    fn error_unsupported_provider_includes_name() {
+        let e = PostprocessError {
+            code: error_code::UNSUPPORTED_PROVIDER,
+            message: "Unsupported LLM provider: nope".to_string(),
+        };
+        assert_eq!(e.code, "unsupported_provider");
+        assert!(e.message.contains("nope"));
+    }
+
+    #[test]
+    fn error_api_key_missing_includes_provider() {
+        let e = PostprocessError {
+            code: error_code::API_KEY_MISSING,
+            message: "OpenAI API key is not configured".to_string(),
+        };
+        assert_eq!(e.code, "api_key_missing");
+        assert!(e.message.contains("OpenAI"));
+    }
+
+    #[test]
+    fn error_upstream_http_classified_by_prefix() {
+        let e = map_upstream_error("HTTP 429 Too Many Requests".to_string());
+        assert_eq!(e.code, error_code::UPSTREAM_HTTP);
+        assert!(e.message.contains("429"));
+    }
+
+    #[test]
+    fn error_cancelled_classified_by_keyword() {
+        let e = map_upstream_error("Summary generation was cancelled by user".to_string());
+        assert_eq!(e.code, error_code::CANCELLED);
+    }
+
+    #[test]
+    fn error_network_classified_by_reqwest_prefix() {
+        let e = map_upstream_error("reqwest::Error: connection refused".to_string());
+        assert_eq!(e.code, error_code::NETWORK);
+    }
+
+    #[test]
+    fn error_upstream_empty_falls_through_unknown() {
+        let e = map_upstream_error("malformed JSON body".to_string());
+        assert_eq!(e.code, error_code::UPSTREAM_EMPTY);
+        assert_eq!(e.message, "malformed JSON body");
+    }
 }
