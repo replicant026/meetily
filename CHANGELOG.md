@@ -61,6 +61,22 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
   `postprocess_error_*` keys. Wire-format breaking: the frontend
   hook must update in the same PR.
 
+- PR-42-iv-c (Wave 24): Typed `LLMError` enum for
+  `summary::llm_client::generate_summary` and `send_request_with_retry`.
+  Replaces the string-prefix heuristic in `map_upstream_error` with a
+  typed match in `map_llm_error`. `PostprocessError.code` gains three
+  new values: `auth_failed`, `json_parse`, `upstream_rate_limited`.
+  The four summary callers in `processor.rs` and `try_provider` in
+  `failover.rs` adapt with a single `.map_err(|e| e.to_string())` at
+  the boundary so their public `Result<String, String>` signatures
+  remain unchanged. `is_transient_llm_error(&LLMError)` replaces the
+  `&str` overload at the only typed call site (failover chain logic);
+  the existing `is_transient_error(&str)` tests stay untouched. Eight
+  new unit tests in `llm_postprocess` cover all classification branches.
+  Six locales (en-US, en-GB, ja-JP, ko-KR, zh-CN, zh-TW) gain the
+  three new keys. Removes the unused `rusqlite` dev-dependency that
+  PR-42-iv-a left behind (it conflicted with `sqlx-sqlite` over
+  `libsqlite3-sys`); fixture-based test work defers to a follow-up.
 - PR-A (Wave 22): Hotword hit-rate panel. A new `hotword_hit_stats` table records whole-word case-insensitive hits per hotword during ASR, and a new `HotwordHitStatsPanel` in Settings -> Transcriptionmodels shows hotword + hits + last_hit_at with a relative-time column and stale (>30 days) flag. Entries older than 30 days are cleared by the in-app 30-day rolling cleanup. Streaming recording path is wired; one-shot import / retranscription paths defer to PR-A2.
 
 ### Changed

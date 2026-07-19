@@ -65,5 +65,8 @@
   "postprocess_error_network": "Cannot connect to LLM service",
   "postprocess_error_upstream_empty": "LLM returned empty or malformed response",
   "postprocess_error_cancelled": "Cancelled",
-  "postprocess_error_internal": "Internal error: {message}"
+  "postprocess_error_internal": "Internal error: {message}",
+  "postprocess_error_auth_failed": "LLM rejected the API key (401/403)",
+  "postprocess_error_json_parse": "LLM returned an invalid response body",
+  "postprocess_error_upstream_rate_limited": "LLM rate limit reached (429), retry later"
 }
