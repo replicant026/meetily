@@ -144,3 +144,43 @@ impl TranscriptsRepository {
         }
     }
 }
+
+impl TranscriptsRepository {
+    /// PR-44b: fetch the audio-aligned window times needed by the offline
+    /// diarization pass. Segments without audio timestamps are skipped
+    /// because they cannot be matched to any embedding window.
+    pub async fn fetch_segment_times(
+        pool: &SqlitePool,
+        meeting_id: &str,
+    ) -> Result<Vec<(String, f64, f64)>, SqlxError> {
+        let rows = sqlx::query_as::<_, (String, f64, f64)>(
+            "SELECT id, audio_start_time, audio_end_time FROM transcripts
+             WHERE meeting_id = ? AND audio_start_time IS NOT NULL AND audio_end_time IS NOT NULL",
+        )
+        .bind(meeting_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// PR-44b: apply stable speaker labels in a single transaction. The
+    /// caller decides which labels to apply (offline cluster output).
+    pub async fn update_segment_speakers(
+        pool: &SqlitePool,
+        mapping: &[(String, String)],
+    ) -> Result<(), SqlxError> {
+        if mapping.is_empty() {
+            return Ok(());
+        }
+        let mut tx = pool.begin().await?;
+        for (id, speaker) in mapping {
+            sqlx::query("UPDATE transcripts SET speaker = ? WHERE id = ?")
+                .bind(speaker)
+                .bind(id)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+}

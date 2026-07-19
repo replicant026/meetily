@@ -55,6 +55,7 @@ impl EmbeddingBuffer {
 
 #[cfg(test)]
 mod tests;
+mod tests_cluster;
 #[derive(Default)]
 pub struct DiarizationState {
     pub buffer: EmbeddingBuffer,

@@ -463,6 +463,37 @@ impl RecordingSaver {
             warn!("Failed to emit recording-saved event: {}", e);
         }
 
+        // PR-44b: kick off offline diarization once audio is on disk. The
+        // meeting_id and pool are pulled from app state, mirroring the
+        // pattern used by the import/retranscription flows. Failures stay
+        // non-fatal so the save itself still succeeds.
+        if let Some(meeting_id) = self.metadata.as_ref().and_then(|m| m.meeting_id.clone()) {
+            let pool_opt = app.try_state::<crate::state::AppState>();
+            if let Some(app_state) = pool_opt {
+                let pool = app_state.db_manager.pool();
+                let wav_path = self.meeting_folder.as_ref().map(|f| f.join("audio.wav"));
+                let windows = self.diarization_buffer.snapshot();
+                let app_clone = app.clone();
+                tokio::spawn(async move {
+                    let res = crate::diarization::offline::commit_speaker_labels(
+                        &pool,
+                        &meeting_id,
+                        wav_path.as_deref(),
+                        windows,
+                        2,
+                        6,
+                    ).await;
+                    if let Err(e) = res {
+                        log::warn!("diarization offline failed: {}", e);
+                    } else {
+                        let _ = app_clone.emit("transcripts-updated", serde_json::json!({
+                            "meeting_id": meeting_id,
+                        }));
+                    }
+                });
+            }
+        }
+
         // Clean up transcript segments
         if let Ok(mut segments) = self.transcript_segments.lock() {
             segments.clear();

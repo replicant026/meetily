@@ -12,6 +12,14 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
 ## [Unreleased]
 
 ### Added
+- PR-44b (Wave 27): Offline diarization re-clustering. Pure-Rust
+  NME-SC lite spectral clustering over windowed speaker embeddings
+  (1.5 s window, 0.75 s hop). After `RecordingSaver::finalize()` writes
+  `audio.wav`, a tokio task re-embeds the wav (or reuses the realtime
+  buffer) and writes stable `Speaker N` labels to `transcripts.speaker`
+  in a single transaction. A `transcripts-updated` Tauri event tells the
+  frontend to refetch. New deps: `hound`, `nalgebra`. New docs:
+  `docs/diarization_zh.md`. Failures degrade to `speaker = NULL`.
 - PR-44a (Wave 27): Realtime speaker-diarization hint. New
   `diarization` module ships `EmbeddingBuffer` plus a sherpa-onnx
   embedding helper scaffolded behind a deterministic stub. `TranscriptUpdate`
