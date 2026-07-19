@@ -204,6 +204,8 @@ infer = "0.15"
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 memory-stats = "1.0"
 strsim = "0.10.0"
+# PR-42-iv-a: in-memory SQLite fixture for llm_postprocess tests
+rusqlite = { version = "0.31", features = ["bundled"] }
 futures = "0.3.31"
 tracing-subscriber = "0.3.16"
 
