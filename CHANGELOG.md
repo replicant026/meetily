@@ -12,6 +12,19 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
 ## [Unreleased]
 
 ### Added
+- (none yet)
+
+### Changed
+- (none yet)
+
+### Fixed
+- (none yet)
+
+---
+
+## [v0.5.0] - 2026-07-19
+
+### Added
 - PR-C: Weekly + manual ASR benchmark CI.
   - Adds .github/workflows/asr-benchmark.yml (manual dispatch + weekly schedule).
   - Adds scripts/asr_benchmark/run_ci_eval.{sh,ps1} wrappers.
@@ -168,3 +181,5 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
 - 0.0.x = early prototype wave (pre-i18n)
 - 0.9.0 = i18n wave complete
 - 0.18.0+ = post-i18n stability + recognition improvement waves
+
+[v0.5.0]: https://github.com/LSY1105/meetily/releases/tag/v0.5.0
