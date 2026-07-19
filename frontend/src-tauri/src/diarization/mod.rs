@@ -1,7 +1,9 @@
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
+pub mod clustering;
 pub mod embedding;
+pub mod offline;
 
 pub const EMBEDDING_DIM: usize = 192;
 pub const MAX_BUFFER_WINDOWS: usize = 2000;
@@ -39,8 +41,20 @@ impl EmbeddingBuffer {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    pub fn snapshot(&self) -> Vec<WindowedEmbedding> {
+        self.inner
+            .lock()
+            .expect("embedding buffer lock")
+            .iter()
+            .cloned()
+            .collect()
+    }
 }
 
+
+#[cfg(test)]
+mod tests;
 #[derive(Default)]
 pub struct DiarizationState {
     pub buffer: EmbeddingBuffer,
