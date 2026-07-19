@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use super::recording_state::AudioChunk;
 use super::audio_processing::create_meeting_folder;
 use super::incremental_saver::IncrementalAudioSaver;
+use std::sync::Arc;
 
 /// Structured transcript segment for JSON export
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,6 +56,8 @@ pub struct RecordingSaver {
     transcript_segments: Arc<Mutex<Vec<TranscriptSegment>>>,
     chunk_receiver: Option<mpsc::UnboundedReceiver<AudioChunk>>,
     is_saving: Arc<Mutex<bool>>,
+    /// PR-44a: per-session embedding buffer released on stop_recording.
+    pub diarization_buffer: Arc<crate::diarization::EmbeddingBuffer>,
 }
 
 impl RecordingSaver {
@@ -67,6 +70,7 @@ impl RecordingSaver {
             transcript_segments: Arc::new(Mutex::new(Vec::new())),
             chunk_receiver: None,
             is_saving: Arc::new(Mutex::new(false)),
+            diarization_buffer: Arc::new(crate::diarization::EmbeddingBuffer::default()),
         }
     }
 

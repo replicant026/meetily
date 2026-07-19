@@ -36,6 +36,11 @@ pub struct TranscriptUpdate {
     pub audio_start_time: f64, // Seconds from recording start (e.g., 125.3)
     pub audio_end_time: f64,   // Seconds from recording start (e.g., 128.6)
     pub duration: f64,          // Segment duration in seconds (e.g., 3.3)
+    // PR-44a: realtime speaker hint derived from the VAD segment. Persisted
+    // on the segment only after offline re-clustering (PR-44b); until then
+    // the value is advisory and the frontend renders it with a badge.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "transientSpeaker")]
+    pub transient_speaker: Option<String>,
 }
 
 // NOTE: get_transcript_history and get_recording_meeting_name functions
@@ -208,7 +213,25 @@ pub fn start_transcription_task<R: Runtime>(
 
                                         // Emit transcript update with NEW recording-relative timestamps
 
+                                        // PR-44a: realtime speaker hint. Failures are non-fatal
+                                        // (transient_speaker simply stays None) so transcription never blocks.
+                                        let transient_speaker: Option<String> = {
+                                            let buf = crate::audio::recording_commands::current_diarization_buffer();
+                                            if crate::diarization::embedding::push_window(
+                                                buf.as_ref(),
+                                                &chunk.data,
+                                                chunk.sample_rate,
+                                                chunk_timestamp,
+                                                chunk_timestamp + chunk_duration,
+                                            ) {
+                                                Some("Speaker ?".to_string())
+                                            } else {
+                                                None
+                                            }
+                                        };
+
                                         let update = TranscriptUpdate {
+                                            transient_speaker,
                                             text: transcript,
                                             timestamp: format_current_timestamp(), // Wall-clock for reference
                                             source: "Audio".to_string(),
