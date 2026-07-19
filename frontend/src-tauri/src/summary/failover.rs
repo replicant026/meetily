@@ -1,4 +1,4 @@
-use super::llm_client::{generate_summary, LLMProvider};
+use super::llm_client::{generate_summary, LLMError, LLMProvider};
 use log::{info, warn};
 use reqwest::Client;
 use std::path::PathBuf;
@@ -36,6 +36,11 @@ pub(crate) fn is_transient_error(msg: &str) -> bool {
     }
     false
 }
+/// Typed counterpart of `is_transient_error` for `LLMError`. Used after
+/// `generate_summary` is upgraded to return the typed enum (PR-42-iv-c).
+fn is_transient_llm_error(e: &LLMError) -> bool {
+    matches!(e, LLMError::Network(_) | LLMError::ServerError { .. })
+}
 /// Try a single LLM call with the given chain entry.
 async fn try_provider(
     client: &Client,
@@ -43,7 +48,7 @@ async fn try_provider(
     system_prompt: &str,
     user_prompt: &str,
     cancellation_token: Option<&CancellationToken>,
-) -> Result<String, String> {
+) -> Result<String, LLMError> {
     generate_summary(
         client,
         &entry.provider,
@@ -78,7 +83,7 @@ pub async fn generate_with_failover(
         return Err("Provider chain is empty".to_string());
     }
 
-    let mut last_err: Option<String> = None;
+    let mut last_err: Option<LLMError> = None;
     for (i, entry) in chain.iter().enumerate() {
         if let Some(token) = cancellation_token {
             if token.is_cancelled() {
@@ -107,7 +112,7 @@ pub async fn generate_with_failover(
                 return Ok(text);
             }
             Err(e) => {
-                let transient = is_transient_error(&e);
+                let transient = is_transient_llm_error(&e);
                 let is_last = i + 1 == chain.len();
                 if transient && !is_last {
                     warn!(
@@ -117,7 +122,7 @@ pub async fn generate_with_failover(
                     );
                     last_err = Some(e);
                 } else {
-                    return Err(e);
+                    return Err(e.to_string());
                 }
             }
         }
@@ -126,7 +131,7 @@ pub async fn generate_with_failover(
     Err(format!(
         "All {} providers in chain failed: {}",
         chain.len(),
-        last_err.unwrap_or_else(|| "unknown error".to_string())
+        last_err.map(|e| e.to_string()).unwrap_or_else(|| "unknown error".to_string())
     ))
 }
 #[cfg(test)]

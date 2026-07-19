@@ -7,6 +7,42 @@ use tracing::{info, warn};
 
 const REQUEST_TIMEOUT_DURATION: Duration = Duration::from_secs(300);
 
+/// Typed error variants for generate_summary and send_request_with_retry.
+/// Used by llm_postprocess::map_llm_error for stable postprocess code
+/// classification (replaces the string-prefix heuristic).
+#[derive(Debug, Clone)]
+pub enum LLMError {
+    /// Cancellation token tripped before / during the call.
+    Cancelled,
+    /// 401 / 403 from upstream.
+    Auth,
+    /// 4xx other than 401/403 - terminal, do not retry.
+    ClientError { status: u16, body: String },
+    /// 5xx or 429 - retryable; surfaced only when retries are exhausted.
+    ServerError { status: u16, body: String },
+    /// reqwest connect / timeout / request error.
+    Network(String),
+    /// serde_json parse failure on upstream body.
+    JsonParse(String),
+    /// Catch-all for unexpected internal failures (header parse, missing config,
+    /// retry clone failure, etc.).
+    Other(String),
+}
+
+impl std::fmt::Display for LLMError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Cancelled => write!(f, "Summary generation was cancelled"),
+            Self::Auth => write!(f, "LLM rejected credentials (401/403)"),
+            Self::ClientError { status, body } => write!(f, "LLM API request failed ({}): {}", status, body),
+            Self::ServerError { status, body } => write!(f, "LLM returned {}: {}", status, body),
+            Self::Network(s) => write!(f, "LLM request error: {}", s),
+            Self::JsonParse(s) => write!(f, "Failed to parse LLM response: {}", s),
+            Self::Other(s) => write!(f, "{}", s),
+        }
+    }
+}
+
 // Generic structure for OpenAI-compatible API chat messages
 #[derive(Debug, Serialize)]
 pub struct ChatMessage {
@@ -149,24 +185,24 @@ pub(crate) async fn send_request_with_retry(
     request_builder: RequestBuilder,
     retry_policy: &RetryPolicy,
     cancellation_token: Option<&CancellationToken>,
-) -> Result<Response, String> {
-    let mut last_err: Option<String> = None;
+) -> Result<Response, LLMError> {
+    let mut last_err: Option<LLMError> = None;
 
     for attempt in 0..=retry_policy.max_retries {
         if let Some(token) = cancellation_token {
             if token.is_cancelled() {
-                return Err("Summary generation was cancelled".to_string());
+                return Err(LLMError::Cancelled);
             }
         }
 
         let req = request_builder
             .try_clone()
-            .ok_or_else(|| "Failed to clone request builder for retry".to_string())?;
+            .ok_or_else(|| LLMError::Other("Failed to clone request builder for retry".to_string()))?;
 
         let send_result = if let Some(token) = cancellation_token {
             tokio::select! {
                 r = req.send() => Some(r),
-                _ = token.cancelled() => return Err("Summary generation was cancelled".to_string()),
+                _ = token.cancelled() => return Err(LLMError::Cancelled),
             }
         } else {
             Some(req.send().await)
@@ -180,37 +216,30 @@ pub(crate) async fn send_request_with_retry(
                 }
                 if !is_retryable_status(status) {
                     let body = response.text().await.unwrap_or_default();
-                    return Err(sanitize_error(&format!(
-                        "LLM API request failed ({}): {}",
-                        status, body
-                    )));
+                    let sanitized = sanitize_error(&body);
+                    return Err(if status.as_u16() == 401 || status.as_u16() == 403 {
+                        LLMError::Auth
+                    } else {
+                        LLMError::ClientError { status: status.as_u16(), body: sanitized }
+                    });
                 }
                 let body = response.text().await.unwrap_or_default();
-                let msg = sanitize_error(&format!(
-                    "LLM returned {} (attempt {}/{}): {}",
-                    status,
-                    attempt + 1,
-                    retry_policy.max_retries + 1,
-                    body
-                ));
-                warn!("{}", msg);
-                last_err = Some(msg);
+                let sanitized = sanitize_error(&body);
+                let e = LLMError::ServerError { status: status.as_u16(), body: sanitized };
+                warn!("{} (attempt {}/{})", e, attempt + 1, retry_policy.max_retries + 1);
+                last_err = Some(e);
             }
             Some(Err(e)) => {
                 if e.is_timeout() || e.is_connect() || e.is_request() {
-                    let msg = sanitize_error(&format!(
-                        "LLM request error (attempt {}/{}): {}",
-                        attempt + 1,
-                        retry_policy.max_retries + 1,
-                        e
-                    ));
-                    warn!("{}", msg);
-                    last_err = Some(msg);
+                    let sanitized = sanitize_error(&e.to_string());
+                    let err = LLMError::Network(sanitized);
+                    warn!("{} (attempt {}/{})", err, attempt + 1, retry_policy.max_retries + 1);
+                    last_err = Some(err);
                 } else {
-                    return Err(sanitize_error(&format!("LLM request error: {}", e)));
+                    return Err(LLMError::Network(sanitize_error(&e.to_string())));
                 }
             }
-            None => return Err("Summary generation was cancelled".to_string()),
+            None => return Err(LLMError::Cancelled),
         }
 
         if attempt < retry_policy.max_retries {
@@ -219,11 +248,7 @@ pub(crate) async fn send_request_with_retry(
         }
     }
 
-    Err(sanitize_error(&format!(
-        "LLM call failed after {} retries: {}",
-        retry_policy.max_retries + 1,
-        last_err.unwrap_or_else(|| "unknown error".to_string())
-    )))
+    Err(last_err.unwrap_or_else(|| LLMError::Other("unknown error".to_string())))
 }
 /// Generates a summary using the specified LLM provider
 ///
@@ -258,18 +283,18 @@ pub async fn generate_summary(
     top_p: Option<f32>,
     app_data_dir: Option<&PathBuf>,
     cancellation_token: Option<&CancellationToken>,
-) -> Result<String, String> {
+) -> Result<String, LLMError> {
     // Check if cancelled before starting
     if let Some(token) = cancellation_token {
         if token.is_cancelled() {
-            return Err("Summary generation was cancelled".to_string());
+            return Err(LLMError::Cancelled);
         }
     }
 
     // Handle BuiltInAI provider separately (uses local sidecar, no HTTP API)
     if provider == &LLMProvider::BuiltInAI {
         let app_data_dir = app_data_dir
-            .ok_or_else(|| "app_data_dir is required for BuiltInAI provider".to_string())?;
+            .ok_or_else(|| LLMError::Other("app_data_dir is required for BuiltInAI provider".to_string()))?;
 
         return crate::summary::summary_engine::generate_with_builtin(
             app_data_dir,
@@ -279,7 +304,7 @@ pub async fn generate_summary(
             cancellation_token,
         )
         .await
-        .map_err(|e| e.to_string());
+        .map_err(|e| LLMError::Other(e.to_string()));
     }
     let (api_url, mut headers) = match provider {
         LLMProvider::OpenAI => (
@@ -312,7 +337,7 @@ pub async fn generate_summary(
         ),
         LLMProvider::CustomOpenAI => {
             let endpoint = custom_openai_endpoint
-                .ok_or_else(|| "custom_openai_endpoint is required for CustomOpenAI provider".to_string())?;
+                .ok_or_else(|| LLMError::Other("custom_openai_endpoint is required for CustomOpenAI provider".to_string()))?;
             (format!("{}/v1/chat/completions", endpoint), header::HeaderMap::new())
         }
         LLMProvider::BuiltInAI => {
@@ -327,14 +352,14 @@ pub async fn generate_summary(
             header::AUTHORIZATION,
             format!("Bearer {}", api_key)
                 .parse()
-                .map_err(|_| "Invalid authorization header".to_string())?,
+                .map_err(|_| LLMError::Other("Invalid authorization header".to_string()))?,
         );
     }
     headers.insert(
         header::CONTENT_TYPE,
         "application/json"
             .parse()
-            .map_err(|_| "Invalid content type".to_string())?,
+            .map_err(|_| LLMError::Other("Invalid content type".to_string()))?,
     );
     // Build request body based on provider
     let request_body = if provider != &LLMProvider::Claude {
@@ -391,7 +416,7 @@ pub async fn generate_summary(
         let chat_response = response
             .json::<ClaudeChatResponse>()
             .await
-            .map_err(|e| format!("Failed to parse LLM response: {}", e))?;
+            .map_err(|e| LLMError::JsonParse(sanitize_error(&e.to_string())))?;
 
         info!("馃悶 LLM Response received from Claude");
 
@@ -406,7 +431,7 @@ pub async fn generate_summary(
         let chat_response = response
             .json::<ChatResponse>()
             .await
-            .map_err(|e| format!("Failed to parse LLM response: {}", e))?;
+            .map_err(|e| LLMError::JsonParse(sanitize_error(&e.to_string())))?;
 
         info!("馃悶 LLM Response received from {}", provider_name(provider));
 
@@ -513,7 +538,7 @@ mod tests {
         let elapsed = start.elapsed();
         assert!(result.is_err(), "expected error after exhausting retries");
         let err = result.unwrap_err();
-        assert!(err.contains("LLM call failed after 3 retries"), "unexpected error: {}", err);
+        assert!(matches!(err, LLMError::Network(_)), "expected Network error, got: {}", err);
         assert!(elapsed >= Duration::from_millis(20), "should have backed off: {:?}", elapsed);
     }
 
@@ -533,7 +558,7 @@ mod tests {
         token.cancel();
         let result = handle.await.unwrap();
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("cancelled"));
+        assert!(matches!(result.unwrap_err(), LLMError::Cancelled));
     }
 
     #[tokio::test]
@@ -545,7 +570,7 @@ mod tests {
         };
         let result = send_request_with_retry(unreachable_builder(), &policy, None).await;
         assert!(result.is_err(), "should fail without retrying");
-        assert!(result.unwrap_err().contains("LLM call failed after 1 retries"));
+        assert!(matches!(result.unwrap_err(), LLMError::Network(_)));
     }
 
     #[tokio::test]
@@ -568,11 +593,12 @@ mod tests {
             .timeout(Duration::from_millis(50));
         let err = send_request_with_retry(req, &policy, None).await.unwrap_err();
         // The token value must be masked; "Bearer sk-supersecret..." must NOT appear verbatim.
+        let rendered = err.to_string();
         assert!(
-            !err.contains("sk-supersecret"),
+            !rendered.contains("sk-supersecret"),
             "api_key leaked in error: {}",
-            err
+            rendered
         );
-        assert!(err.contains("Bearer ***"), "expected masked token marker: {}", err);
+        assert!(rendered.contains("Bearer ***"), "expected masked token marker: {}", rendered);
     }
 }

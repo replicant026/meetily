@@ -65,5 +65,8 @@
   "postprocess_error_network": "無法連線 LLM 服務",
   "postprocess_error_upstream_empty": "LLM 回傳為空或格式異常",
   "postprocess_error_cancelled": "已取消",
-  "postprocess_error_internal": "內部錯誤：{message}"
+  "postprocess_error_internal": "內部錯誤：{message}",
+  "postprocess_error_auth_failed": "LLM 拒絕憑證（401/403），請檢查 API Key",
+  "postprocess_error_json_parse": "LLM 回傳內容無法解析",
+  "postprocess_error_upstream_rate_limited": "LLM 觸發限流（429），請稍後重試"
 }

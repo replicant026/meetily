@@ -1,4 +1,4 @@
-use crate::summary::llm_client::{generate_summary, LLMProvider};
+use crate::summary::llm_client::{generate_summary, LLMError, LLMProvider};
 use crate::summary::templates::Template;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -454,6 +454,7 @@ pub async fn generate_meeting_summary(
                     cancellation_token,
                 )
                 .await
+                .map_err(|e| e.to_string())
                 {
                     Ok(summary) => {
                         chunk_summaries.push(summary);
@@ -506,7 +507,8 @@ pub async fn generate_meeting_summary(
                     app_data_dir,
                     cancellation_token,
                 )
-                .await?
+                .await
+                .map_err(|e| e.to_string())?
             } else {
                 chunk_summaries.remove(0)
             };
@@ -554,7 +556,8 @@ pub async fn generate_meeting_summary(
             app_data_dir,
             cancellation_token,
         )
-        .await?;
+        .await
+        .map_err(|e| e.to_string())?;
 
         let english_markdown = clean_llm_markdown_output(&raw_markdown);
         info!("Summary pass completed ({} chars)", english_markdown.len());
@@ -657,7 +660,7 @@ async fn run_markdown_transform(
         cancellation_token,
     )
     .await
-    .map_err(|e| format!("{failure_label} failed: {e}"))?;
+    .map_err(|e: LLMError| format!("{failure_label} failed: {}", e))?;
 
     Ok(clean_llm_markdown_output(&raw))
 }

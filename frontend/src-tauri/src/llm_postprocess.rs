@@ -10,7 +10,7 @@
 
 use crate::audio::post_processor;
 use crate::database::repositories::setting::SettingsRepository;
-use crate::summary::llm_client::{generate_summary, LLMProvider};
+use crate::summary::llm_client::{generate_summary, LLMError, LLMProvider};
 use crate::summary::CustomOpenAIConfig;
 use once_cell::sync::OnceLock;
 use serde::Serialize;
@@ -40,27 +40,28 @@ pub mod error_code {
     pub const UPSTREAM_EMPTY: &str = "upstream_empty";
     pub const CANCELLED: &str = "cancelled";
     pub const INTERNAL: &str = "internal";
+    pub const AUTH_FAILED: &str = "auth_failed";
+    pub const JSON_PARSE: &str = "json_parse";
+    pub const UPSTREAM_RATE_LIMITED: &str = "upstream_rate_limited";
 }
 
-/// Map the opaque `String` errors returned by `generate_summary` to a
-/// `PostprocessError` with a stable code. Heuristic on string prefixes;
-/// replaced with a typed enum in PR-42-iv-c when `generate_summary`
-/// returns `Result<String, LLMError>`.
-fn map_upstream_error(s: String) -> PostprocessError {
-    let lower = s.to_lowercase();
-    if lower.contains("cancel") {
-        PostprocessError { code: error_code::CANCELLED, message: s }
-    } else if s.starts_with("HTTP ") || s.starts_with("http ") {
-        PostprocessError { code: error_code::UPSTREAM_HTTP, message: s }
-    } else if s.starts_with("Failed to ")
-        || s.starts_with("reqwest")
-        || lower.contains("error sending request")
-        || lower.contains("connection")
-    {
-        PostprocessError { code: error_code::NETWORK, message: s }
-    } else {
-        PostprocessError { code: error_code::UPSTREAM_EMPTY, message: s }
-    }
+/// Map a typed `LLMError` to a `PostprocessError` with a stable code.
+/// Replaces the string-prefix heuristic in `map_upstream_error`
+/// (PR-42-iv-b) with a typed match.
+fn map_llm_error(e: LLMError) -> PostprocessError {
+    use LLMError::*;
+    let message = e.to_string();
+    let code = match &e {
+        Cancelled => error_code::CANCELLED,
+        Auth => error_code::AUTH_FAILED,
+        ClientError { status: 429, .. } => error_code::UPSTREAM_RATE_LIMITED,
+        ClientError { .. } => error_code::UPSTREAM_HTTP,
+        ServerError { .. } => error_code::UPSTREAM_HTTP,
+        Network(_) => error_code::NETWORK,
+        JsonParse(_) => error_code::JSON_PARSE,
+        Other(_) => error_code::INTERNAL,
+    };
+    PostprocessError { code, message }
 }
 /// Minimum CJK characters before a segment is worth LLM rewriting.
 /// Shorter fragments tend to lose information when rewritten.
@@ -234,7 +235,7 @@ pub async fn correct_segment(pool: &SqlitePool, text: &str) -> Result<String, Po
     .await
     {
         Ok(text) => Ok(text),
-        Err(e) => Err(map_upstream_error(e)),
+        Err(e) => Err(map_llm_error(e)),
     }
 }
 
@@ -456,7 +457,7 @@ mod tests {
     }
 
 
-    // ---- map_upstream_error classification (PR-42-iv-b) ----
+    // ---- provider-side error construction (PR-42-iv-b, retained) ----
 
     #[test]
     fn error_provider_not_configured_carries_code() {
@@ -488,29 +489,64 @@ mod tests {
         assert!(e.message.contains("OpenAI"));
     }
 
+    // ---- map_llm_error classification (PR-42-iv-c) ----
+
     #[test]
-    fn error_upstream_http_classified_by_prefix() {
-        let e = map_upstream_error("HTTP 429 Too Many Requests".to_string());
+    fn error_auth_failed_carries_code() {
+        let e = map_llm_error(LLMError::Auth);
+        assert_eq!(e.code, error_code::AUTH_FAILED);
+        assert!(e.message.contains("401") || e.message.contains("403"));
+    }
+
+    #[test]
+    fn error_rate_limited_carries_code() {
+        let e = map_llm_error(LLMError::ClientError {
+            status: 429,
+            body: "rate limit exceeded".to_string(),
+        });
+        assert_eq!(e.code, error_code::UPSTREAM_RATE_LIMITED);
+    }
+
+    #[test]
+    fn error_client_error_carries_http_code() {
+        let e = map_llm_error(LLMError::ClientError {
+            status: 400,
+            body: "bad request".to_string(),
+        });
         assert_eq!(e.code, error_code::UPSTREAM_HTTP);
-        assert!(e.message.contains("429"));
     }
 
     #[test]
-    fn error_cancelled_classified_by_keyword() {
-        let e = map_upstream_error("Summary generation was cancelled by user".to_string());
-        assert_eq!(e.code, error_code::CANCELLED);
+    fn error_server_error_carries_status() {
+        let e = map_llm_error(LLMError::ServerError {
+            status: 503,
+            body: "service unavailable".to_string(),
+        });
+        assert_eq!(e.code, error_code::UPSTREAM_HTTP);
     }
 
     #[test]
-    fn error_network_classified_by_reqwest_prefix() {
-        let e = map_upstream_error("reqwest::Error: connection refused".to_string());
+    fn error_json_parse_carries_code() {
+        let e = map_llm_error(LLMError::JsonParse("unexpected token".to_string()));
+        assert_eq!(e.code, error_code::JSON_PARSE);
+        assert!(e.message.contains("parse"));
+    }
+
+    #[test]
+    fn error_network_carries_code() {
+        let e = map_llm_error(LLMError::Network("connection refused".to_string()));
         assert_eq!(e.code, error_code::NETWORK);
     }
 
     #[test]
-    fn error_upstream_empty_falls_through_unknown() {
-        let e = map_upstream_error("malformed JSON body".to_string());
-        assert_eq!(e.code, error_code::UPSTREAM_EMPTY);
-        assert_eq!(e.message, "malformed JSON body");
+    fn error_cancelled_carries_code() {
+        let e = map_llm_error(LLMError::Cancelled);
+        assert_eq!(e.code, error_code::CANCELLED);
+    }
+
+    #[test]
+    fn error_other_carries_internal_code() {
+        let e = map_llm_error(LLMError::Other("unexpected".to_string()));
+        assert_eq!(e.code, error_code::INTERNAL);
     }
 }
