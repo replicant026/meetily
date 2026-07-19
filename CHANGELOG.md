@@ -12,6 +12,13 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
 ## [Unreleased]
 
 ### Added
+- PR-44a (Wave 27): Realtime speaker-diarization hint. New
+  `diarization` module ships `EmbeddingBuffer` plus a sherpa-onnx
+  embedding helper scaffolded behind a deterministic stub. `TranscriptUpdate`
+  gains an optional `transientSpeaker` field; the value is advisory and
+  the frontend renders a `transient_tooltip` (PR-44c adds the UI). The
+  recording saver owns a per-session buffer that drains on stop. No DB
+  change; offline re-clustering lands in PR-44b.
 - PR-43 (Wave 26): Typed `LLMError` propagates to the public API of
   `summary::processor` and `summary::failover`. `generate_meeting_summary`,
   `run_markdown_transform`, `translate_markdown`,
