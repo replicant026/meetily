@@ -291,8 +291,7 @@
   },
   "notes": {
     "not_found": "找不到筆記"
-  }
-,
+  },
   "recovery": {
     "dialog_title": "中斷的會議轉錄",
     "dialog_description_one": "我們發現了一個中斷的會議。錄音在轉錄完成前停止了。",
@@ -314,5 +313,15 @@
     "confirm_delete": "確定要刪除這個中斷的會議嗎？此操作無法復原。",
     "alert_recover_failed": "復原會議失敗",
     "alert_delete_failed": "刪除會議失敗"
-  }
+  },
+  "diarization_enable": "啟用說話人識別",
+  "diarization_min_speakers": "最少說話人人數",
+  "diarization_max_speakers": "最多說話人人數",
+  "diarization_model_status": "說話人識別模型狀態",
+  "diarization_model_status_ready": "已就緒",
+  "diarization_model_status_loading": "載入中…",
+  "diarization_model_status_failed": "載入失敗；僅使用即時估算",
+  "diarization_model_status_disabled": "已停用",
+  "diarization_load_error": "載入說話人識別設定失敗。",
+  "diarization_loading": "正在載入說話人識別設定…"
 }

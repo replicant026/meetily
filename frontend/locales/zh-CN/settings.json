@@ -313,5 +313,15 @@
     "confirm_delete": "确定要删除这个中断的会议吗？此操作无法撤销。",
     "alert_recover_failed": "恢复会议失败",
     "alert_delete_failed": "删除会议失败"
-  }
+  },
+  "diarization_enable": "启用说话人识别",
+  "diarization_min_speakers": "最少说话人数",
+  "diarization_max_speakers": "最多说话人数",
+  "diarization_model_status": "说话人识别模型状态",
+  "diarization_model_status_ready": "已就绪",
+  "diarization_model_status_loading": "加载中…",
+  "diarization_model_status_failed": "加载失败；仅使用实时估算",
+  "diarization_model_status_disabled": "已禁用",
+  "diarization_load_error": "加载说话人识别设置失败。",
+  "diarization_loading": "正在加载说话人识别设置…"
 }

@@ -68,5 +68,6 @@
   "postprocess_error_internal": "内部错误：{message}",
   "postprocess_error_auth_failed": "LLM 拒绝凭证（401/403），请检查 API Key",
   "postprocess_error_json_parse": "LLM 返回内容无法解析",
-  "postprocess_error_upstream_rate_limited": "LLM 触发限流（429），请稍后重试"
+  "postprocess_error_upstream_rate_limited": "LLM 触发限流（429），请稍后重试",
+  "transient_tooltip": "临时估算，会话结束后会自动校准"
 }

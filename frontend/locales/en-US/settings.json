@@ -291,8 +291,7 @@
   },
   "notes": {
     "not_found": "Note not found"
-  }
-,
+  },
   "recovery": {
     "dialog_title": "Interrupted Meeting Transcripts",
     "dialog_description_one": "We found an interrupted meeting. The recording stopped before the transcript was completed.",
@@ -314,5 +313,15 @@
     "confirm_delete": "Are you sure you want to delete this interrupted meeting? This action cannot be undone.",
     "alert_recover_failed": "Failed to recover meeting",
     "alert_delete_failed": "Failed to delete meeting"
-  }
+  },
+  "diarization_enable": "Enable speaker diarization",
+  "diarization_min_speakers": "Minimum speakers",
+  "diarization_max_speakers": "Maximum speakers",
+  "diarization_model_status": "Speaker model status",
+  "diarization_model_status_ready": "Ready",
+  "diarization_model_status_loading": "Loading…",
+  "diarization_model_status_failed": "Failed; using realtime-only mode",
+  "diarization_model_status_disabled": "Disabled",
+  "diarization_load_error": "Failed to load diarization settings.",
+  "diarization_loading": "Loading diarization settings..."
 }
