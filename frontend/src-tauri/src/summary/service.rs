@@ -1,7 +1,7 @@
 use crate::database::repositories::{
     meeting::MeetingsRepository, setting::SettingsRepository, summary::SummaryProcessesRepository,
 };
-use crate::summary::llm_client::LLMProvider;
+use crate::summary::llm_client::{LLMError, LLMProvider};
 use crate::summary::language_detection::detect_summary_language;
 use crate::summary::metadata::read_detected_summary_language_from_metadata;
 use crate::summary::processor::{
@@ -584,13 +584,13 @@ impl SummaryService {
             }
             Err(e) => {
                 // Check if error is due to cancellation
-                if e.contains("cancelled") {
+                if matches!(e, LLMError::Cancelled) {
                     info!("Summary generation was cancelled for meeting_id: {}", meeting_id);
                     if let Err(db_err) = SummaryProcessesRepository::update_process_cancelled(&pool, &meeting_id).await {
                         error!("Failed to update DB status to cancelled for {}: {}", meeting_id, db_err);
                     }
                 } else {
-                    Self::update_process_failed(&pool, &meeting_id, &e).await;
+                    Self::update_process_failed(&pool, &meeting_id, &e.to_string()).await;
                 }
             }
         }
