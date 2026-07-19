@@ -45,6 +45,22 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
   dev-dependency reserved for a follow-up fixture-based test pass.
   No production behaviour change.
 
+- PR-42-iv-b (Wave 24): Semantic postprocess error codes. The
+  `transcript-postprocess-failed` payload's `error` field changes
+  from a flat `String` to `{code, message}` so the frontend can look
+  up localised text in `transcript.postprocess_error_<code>`. Rust
+  defines `PostprocessError { code, message }` plus 9 stable
+  constants in the `error_code` module; `correct_segment` and
+  `load_provider_inputs` now return `Result<_, PostprocessError>`.
+  `map_upstream_error` heuristically maps the opaque strings from
+  `generate_summary` to `UPSTREAM_HTTP` / `NETWORK` /
+  `UPSTREAM_EMPTY` / `CANCELLED`; replaced with a typed enum when
+  `generate_summary` returns `Result<String, LLMError>` (PR-42-iv-c).
+  Adds 7 unit tests covering all classification branches. 6 locales
+  (en-US, en-GB, ja-JP, ko-KR, zh-CN, zh-TW) gain matching
+  `postprocess_error_*` keys. Wire-format breaking: the frontend
+  hook must update in the same PR.
+
 - PR-A (Wave 22): Hotword hit-rate panel. A new `hotword_hit_stats` table records whole-word case-insensitive hits per hotword during ASR, and a new `HotwordHitStatsPanel` in Settings -> Transcriptionmodels shows hotword + hits + last_hit_at with a relative-time column and stale (>30 days) flag. Entries older than 30 days are cleared by the in-app 30-day rolling cleanup. Streaming recording path is wired; one-shot import / retranscription paths defer to PR-A2.
 
 ### Changed
