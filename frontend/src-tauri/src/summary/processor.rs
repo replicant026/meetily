@@ -59,8 +59,8 @@ fn english_normalization_system_prompt() -> &'static str {
 
 fn english_markdown_after_normalization_result(
     original_markdown: &str,
-    normalization_result: Result<String, String>,
-) -> Result<String, String> {
+    normalization_result: Result<String, LLMError>,
+) -> Result<String, LLMError> {
     match normalization_result {
         Ok(normalized) => Ok(normalized),
         Err(e) if e.contains("cancelled") => Err(e),
@@ -379,10 +379,10 @@ pub async fn generate_meeting_summary(
     summary_language: Option<&str>,
     detected_transcript_language: Option<&str>,
     cached_english: Option<&str>,
-) -> Result<(String, String, i64), String> {
+) -> Result<(String, String, i64), LLMError> {
     if let Some(token) = cancellation_token {
         if token.is_cancelled() {
-            return Err("Summary generation was cancelled".to_string());
+            return Err(LLMError::Cancelled);
         }
     }
     info!(
@@ -431,7 +431,7 @@ pub async fn generate_meeting_summary(
                 if let Some(token) = cancellation_token {
                     if token.is_cancelled() {
                         info!("Summary generation cancelled during chunk {}/{}", i + 1, num_chunks);
-                        return Err("Summary generation was cancelled".to_string());
+                        return Err(LLMError::Cancelled);
                     }
                 }
 
@@ -454,7 +454,6 @@ pub async fn generate_meeting_summary(
                     cancellation_token,
                 )
                 .await
-                .map_err(|e| e.to_string())
                 {
                     Ok(summary) => {
                         chunk_summaries.push(summary);
@@ -462,7 +461,7 @@ pub async fn generate_meeting_summary(
                     }
                     Err(e) => {
                         // Check if error is due to cancellation
-                        if e.contains("cancelled") {
+                        if matches!(e, LLMError::Cancelled) {
                             return Err(e);
                         }
                         error!("Failed processing chunk {}/{}: {}", i + 1, num_chunks, e);
@@ -471,10 +470,10 @@ pub async fn generate_meeting_summary(
             }
 
             if chunk_summaries.is_empty() {
-                return Err(
+                return Err(LLMError::Other(
                     "Multi-level summarization failed: No chunks were processed successfully."
                         .to_string(),
-                );
+                ));
             }
 
             successful_chunk_count = chunk_summaries.len() as i64;
@@ -507,8 +506,7 @@ pub async fn generate_meeting_summary(
                     app_data_dir,
                     cancellation_token,
                 )
-                .await
-                .map_err(|e| e.to_string())?
+                .await?
             } else {
                 chunk_summaries.remove(0)
             };
@@ -556,8 +554,7 @@ pub async fn generate_meeting_summary(
             app_data_dir,
             cancellation_token,
         )
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
         let english_markdown = clean_llm_markdown_output(&raw_markdown);
         info!("Summary pass completed ({} chars)", english_markdown.len());
@@ -637,10 +634,10 @@ async fn run_markdown_transform(
     top_p: Option<f32>,
     app_data_dir: Option<&PathBuf>,
     cancellation_token: Option<&CancellationToken>,
-) -> Result<String, String> {
+) -> Result<String, LLMError> {
     if let Some(token) = cancellation_token {
         if token.is_cancelled() {
-            return Err("Summary generation was cancelled".to_string());
+            return Err(LLMError::Cancelled);
         }
     }
 
@@ -660,7 +657,7 @@ async fn run_markdown_transform(
         cancellation_token,
     )
     .await
-    .map_err(|e: LLMError| format!("{failure_label} failed: {}", e))?;
+    .map_err(|e| LLMError::Other(format!("{failure_label} failed: {}", e)))?;
 
     Ok(clean_llm_markdown_output(&raw))
 }
@@ -680,7 +677,7 @@ async fn translate_markdown(
     top_p: Option<f32>,
     app_data_dir: Option<&PathBuf>,
     cancellation_token: Option<&CancellationToken>,
-) -> Result<String, String> {
+) -> Result<String, LLMError> {
     info!("Translation pass: target language = {}", target_language);
 
     let system_prompt = translation_system_prompt(target_language);
@@ -721,7 +718,7 @@ async fn normalize_markdown_to_english(
     top_p: Option<f32>,
     app_data_dir: Option<&PathBuf>,
     cancellation_token: Option<&CancellationToken>,
-) -> Result<String, String> {
+) -> Result<String, LLMError> {
     info!("English normalization pass: preserving Markdown structure");
 
     let user_prompt = format!(

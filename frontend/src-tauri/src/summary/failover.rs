@@ -78,7 +78,7 @@ pub async fn generate_with_failover(
     system_prompt: &str,
     user_prompt: &str,
     cancellation_token: Option<&CancellationToken>,
-) -> Result<String, String> {
+) -> Result<String, LLMError> {
     if chain.is_empty() {
         return Err("Provider chain is empty".to_string());
     }
@@ -122,17 +122,17 @@ pub async fn generate_with_failover(
                     );
                     last_err = Some(e);
                 } else {
-                    return Err(e.to_string());
+                    return Err(e);
                 }
             }
         }
     }
 
-    Err(format!(
+    Err(LLMError::Other(format!(
         "All {} providers in chain failed: {}",
         chain.len(),
         last_err.map(|e| e.to_string()).unwrap_or_else(|| "unknown error".to_string())
-    ))
+    )))
 }
 #[cfg(test)]
 mod tests {
@@ -174,7 +174,7 @@ mod tests {
             None,
         ).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("empty"));
+        assert!(matches!(result.unwrap_err(), LLMError::Other(ref s) if s.contains("empty")));
     }
 
     #[tokio::test]
@@ -196,7 +196,7 @@ mod tests {
             Some(&token),
         ).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("cancelled"));
+        assert!(matches!(result.unwrap_err(), LLMError::Cancelled));
     }
 
     #[test]

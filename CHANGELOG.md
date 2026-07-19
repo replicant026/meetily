@@ -12,7 +12,16 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
 ## [Unreleased]
 
 ### Added
-- (none yet)
+- PR-43 (Wave 26): Typed `LLMError` propagates to the public API of
+  `summary::processor` and `summary::failover`. `generate_meeting_summary`,
+  `run_markdown_transform`, `translate_markdown`,
+  `normalize_markdown_to_english`, and `generate_with_failover` now
+  return `Result<_, LLMError>` instead of `Result<_, String>`. The five
+  `.map_err(|e| e.to_string())` adaptations PR-42-iv-c left behind are
+  removed. The DB layer (`service.rs`) switches its cancellation check
+  from `e.contains("cancelled")` to `matches!(e, LLMError::Cancelled)`
+  and stringifies the typed error at the single persistence boundary.
+  No frontend change; no DB schema change; no new variant on `LLMError`.
 
 ### Changed
 - (none yet)
