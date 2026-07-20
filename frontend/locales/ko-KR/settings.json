@@ -313,5 +313,15 @@
     "confirm_delete": "이 중단된 회의를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "alert_recover_failed": "회의 복구 실패",
     "alert_delete_failed": "회의 삭제 실패"
-  }
+  },
+  "diarization_enable": "화자 인식 활성화",
+  "diarization_min_speakers": "최소 화자 수",
+  "diarization_max_speakers": "최대 화자 수",
+  "diarization_model_status": "화자 모델 상태",
+  "diarization_model_status_ready": "준비됨",
+  "diarization_model_status_loading": "불러오는 중…",
+  "diarization_model_status_failed": "실패; 실시간 추정만 사용",
+  "diarization_model_status_disabled": "비활성화",
+  "diarization_load_error": "화자 인식 설정을 불러오지 못했습니다.",
+  "diarization_loading": "화자 인식 설정 불러오는 중..."
 }

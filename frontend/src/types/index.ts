@@ -17,6 +17,15 @@ export interface Transcript {
   audio_end_time?: number;   // Seconds from recording start (e.g., 128.6)
 duration?: number;          // Segment duration in seconds (e.g., 3.3)
 /** PR-44a: realtime speaker hint; dropped once the offline label arrives. */
+export type DiarizationModelStatus = 'ready' | 'loading' | 'failed' | 'disabled';
+
+export interface DiarizationConfig {
+  enabled: boolean;
+  min_speakers: number;
+  max_speakers: number;
+  model_status: DiarizationModelStatus;
+}
+
 transient_speaker?: string | null;
   speaker?: string | null;
 }

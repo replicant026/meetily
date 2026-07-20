@@ -313,5 +313,15 @@
     "confirm_delete": "この中断された会議を削除してもよろしいですか？この操作は元に戻せません。",
     "alert_recover_failed": "会議の復元に失敗しました",
     "alert_delete_failed": "会議の削除に失敗しました"
-  }
+  },
+  "diarization_enable": "話者識別を有効にする",
+  "diarization_min_speakers": "最小話者数",
+  "diarization_max_speakers": "最大話者数",
+  "diarization_model_status": "話者モデル状態",
+  "diarization_model_status_ready": "準備完了",
+  "diarization_model_status_loading": "読み込み中…",
+  "diarization_model_status_failed": "失敗；リアルタイム推定のみ使用",
+  "diarization_model_status_disabled": "無効",
+  "diarization_load_error": "話者識別設定の読み込みに失敗しました。",
+  "diarization_loading": "話者識別設定を読み込み中…"
 }

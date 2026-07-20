@@ -677,6 +677,8 @@ pub fn run() {
             api::api_get_meeting,
             api::api_get_meeting_metadata,
             api::api_get_meeting_transcripts,
+            get_diarization_status,
+            set_diarization_config,
             api::api_save_meeting_title,
             api::api_save_transcript,
             api::open_meeting_folder,
@@ -826,4 +828,17 @@ pub fn run() {
                 _ => {}
             }
         });
+}
+
+#[tauri::command]
+fn get_diarization_status() -> crate::diarization::DiarizationStatus {
+    crate::diarization::status()
+}
+
+#[tauri::command]
+fn set_diarization_config(
+    config: crate::diarization::DiarizationStatus,
+) -> crate::diarization::DiarizationStatus {
+    crate::diarization::update_status(config);
+    crate::diarization::status()
 }

@@ -3,6 +3,7 @@ use std::sync::Mutex;
 
 pub mod clustering;
 pub mod embedding;
+use embedding::ensure_loaded;
 pub mod offline;
 
 pub const EMBEDDING_DIM: usize = 192;
@@ -59,4 +60,36 @@ mod tests_cluster;
 #[derive(Default)]
 pub struct DiarizationState {
     pub buffer: EmbeddingBuffer,
+}
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiarizationStatus {
+    pub enabled: bool,
+    pub min_speakers: usize,
+    pub max_speakers: usize,
+    pub model_status: String,
+}
+
+static STATUS: once_cell::sync::Lazy<std::sync::Mutex<DiarizationStatus>> =
+    once_cell::sync::Lazy::new(|| {
+        std::sync::Mutex::new(DiarizationStatus {
+            enabled: true,
+            min_speakers: 2,
+            max_speakers: 6,
+            model_status: if ensure_loaded().is_ok() { "ready".to_string() } else { "loading".to_string() },
+        })
+    });
+
+pub fn status() -> DiarizationStatus {
+    STATUS.lock().expect("diarization status lock").clone()
+}
+
+pub fn update_status(next: DiarizationStatus) {
+    let mut g = STATUS.lock().expect("diarization status lock");
+    g.enabled = next.enabled;
+    g.min_speakers = next.min_speakers.max(2);
+    g.max_speakers = next.max_speakers.max(g.min_speakers);
+    g.model_status = next.model_status;
 }

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { ModelManager } from './WhisperModelManager';
 import { HotwordHitStatsPanel } from './HotwordHitStatsPanel';
+import { useDiarizationConfig } from '@/hooks/useDiarizationConfig';
 import { ParakeetModelManager } from './ParakeetModelManager';
 
 const MAX_HOTWORD_CHARS = 500;
@@ -344,6 +345,8 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                     <>
                     <div className="mt-4">
                         <HotwordHitStatsPanel />
+                    <div className="mt-4">
+                        <DiarizationSettingsBlock />
                     </div>
                         <div>
                             <Label className="block text-sm font-medium text-gray-700 mb-1">
@@ -404,3 +407,64 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
 
 
 
+
+/** PR-44c: speaker-diarization settings block. */
+function DiarizationSettingsBlock() {
+    const t = useTranslations();
+    const { config, save, error } = useDiarizationConfig();
+    if (error) {
+        return (
+            <div className="rounded border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
+                {t('diarization.load_error', { default: 'Failed to load diarization settings.' })}
+            </div>
+        );
+    }
+    if (!config) {
+        return <div className="text-sm text-gray-500">{t('diarization.loading', { default: 'Loading diarization settings...' })}</div>;
+    }
+    return (
+        <div className="rounded border border-gray-200 p-3 space-y-3" data-testid="diarization-block">
+            <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-gray-700">
+                    {t('diarization.enable', { default: 'Enable speaker diarization' })}
+                </Label>
+                <input
+                    type="checkbox"
+                    checked={config.enabled}
+                    onChange={(e) => save({ enabled: e.target.checked })}
+                    aria-label={t('diarization.enable', { default: 'Enable speaker diarization' })}
+                />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <Label className="block text-xs text-gray-600">
+                        {t('diarization.min_speakers', { default: 'Minimum speakers' })}
+                    </Label>
+                    <Input
+                        type="number"
+                        min={2}
+                        max={config.max_speakers}
+                        value={config.min_speakers}
+                        onChange={(e) => save({ min_speakers: Number(e.target.value) })}
+                    />
+                </div>
+                <div>
+                    <Label className="block text-xs text-gray-600">
+                        {t('diarization.max_speakers', { default: 'Maximum speakers' })}
+                    </Label>
+                    <Input
+                        type="number"
+                        min={config.min_speakers}
+                        max={10}
+                        value={config.max_speakers}
+                        onChange={(e) => save({ max_speakers: Number(e.target.value) })}
+                    />
+                </div>
+            </div>
+            <div className="text-xs text-gray-500">
+                {t('diarization.model_status', { default: 'Speaker model status' })}:{' '}
+                {t(`diarization.model_status.${config.model_status}`, { default: config.model_status })}
+            </div>
+        </div>
+    );
+}

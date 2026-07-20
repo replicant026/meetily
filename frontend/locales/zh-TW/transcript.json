@@ -68,5 +68,6 @@
   "postprocess_error_internal": "內部錯誤：{message}",
   "postprocess_error_auth_failed": "LLM 拒絕憑證（401/403），請檢查 API Key",
   "postprocess_error_json_parse": "LLM 回傳內容無法解析",
-  "postprocess_error_upstream_rate_limited": "LLM 觸發限流（429），請稍後重試"
+  "postprocess_error_upstream_rate_limited": "LLM 觸發限流（429），請稍後重試",
+  "transient_tooltip": "臨時估算，錄影結束後會自動校正"
 }

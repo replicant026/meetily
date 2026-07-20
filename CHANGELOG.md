@@ -12,6 +12,17 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
 ## [Unreleased]
 
 ### Added
+- PR-44c (Wave 27): Speaker-diarization settings + UI/i18n. New
+  `useDiarizationConfig` hook + `DiarizationSettingsBlock` panel
+  (enable toggle, min/max speakers, model status). Frontend type adds
+  `DiarizationConfig` + `transient_speaker`. `VirtualizedTranscriptView`
+  renders a dashed `transient_tooltip` chip when only a realtime hint
+  is available; the solid chip + rename UI takes over once the offline
+  pass lands. Two new Tauri commands (`get_diarization_status`,
+  `set_diarization_config`) back the settings page; status is in-memory
+  with sane defaults (min=2, max=6, model_status=loading until the
+  sherpa-onnx model is detected). All 6 locales ship 11 new keys
+  (`diarization.*` + `transcript.transient_tooltip`).
 - PR-44b (Wave 27): Offline diarization re-clustering. Pure-Rust
   NME-SC lite spectral clustering over windowed speaker embeddings
   (1.5 s window, 0.75 s hop). After `RecordingSaver::finalize()` writes

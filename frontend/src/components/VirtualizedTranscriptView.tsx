@@ -45,6 +45,7 @@ export interface VirtualizedTranscriptViewProps {
     onTimestampClick?: (sec: number) => void;
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
+    transientSpeaker?: string | null;
 }
 
 // Threshold for enabling virtualization (below this, use simple rendering)
@@ -99,6 +100,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     showConfidence: boolean;
     onTimestampClick?: (sec: number) => void;
     speaker?: string | null;
+    transientSpeaker?: string | null;
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
     hotwords: HotwordRule[];
@@ -173,6 +175,14 @@ const TranscriptSegment = memo(function TranscriptSegment({
                     >
                         {customName ?? speaker}
                     </button>
+                )}
+                {!speaker && transientSpeaker && !isRenaming && (
+                    <span
+                        className="text-xs font-medium text-gray-600 border border-dashed border-gray-400 px-2 py-0.5 rounded mt-1 flex-shrink-0 cursor-help"
+                        title={t('transient_tooltip', { default: 'Realtime hint; will be re-clustered when the recording stops.' })}
+                    >
+                        {transientSpeaker}
+                    </span>
                 )}
                 {speaker && isRenaming && (
                     <span className="flex items-center gap-1 mt-1 flex-shrink-0">
@@ -406,6 +416,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         isStreaming={isStreaming}
                                         showConfidence={showConfidence}
                                         speaker={segment.speaker}
+                                        transientSpeaker={segment.transient_speaker ?? undefined}
                                         customSpeakerNames={customSpeakerNames}
                                         onSpeakerRename={onSpeakerRename}
                                         onTimestampClick={onTimestampClick}
@@ -470,6 +481,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         isStreaming={isStreaming}
                                         showConfidence={showConfidence}
                                         speaker={segment.speaker}
+                                        transientSpeaker={segment.transient_speaker ?? undefined}
                                         customSpeakerNames={customSpeakerNames}
                                         onSpeakerRename={onSpeakerRename}
                                         onTimestampClick={onTimestampClick}
