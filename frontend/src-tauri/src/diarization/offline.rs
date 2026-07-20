@@ -21,6 +21,14 @@ pub async fn commit_speaker_labels(
     min_speakers: usize,
     max_speakers: usize,
 ) -> Result<usize> {
+    let status = super::status();
+    if !status.enabled {
+        log::info!("diarization offline: disabled in settings; skipping");
+        return Ok(0);
+    }
+    let min_speakers = status.min_speakers.max(2);
+    let max_speakers = status.max_speakers.max(min_speakers);
+    let _ = (min_speakers, max_speakers);
     if ensure_loaded().is_err() {
         log::warn!("diarization offline: model unavailable; skipping");
         return Ok(0);

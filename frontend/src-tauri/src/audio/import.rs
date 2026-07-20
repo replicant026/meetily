@@ -672,6 +672,29 @@ async fn run_import<R: Runtime>(
 
     emit_progress(&app, "complete", 100, "Import complete");
 
+    // PR-44d: kick off offline diarization using the imported wav. The
+    // pool/state were already acquired above; clone them into the spawn.
+    let pool = app_state.db_manager.pool().clone();
+    let meeting_for_diar = meeting_id.clone();
+    let wav_for_diar = meeting_folder.join("audio.wav");
+    tokio::spawn(async move {
+        let res = crate::diarization::offline::commit_speaker_labels(
+            &pool,
+            &meeting_for_diar,
+            Some(wav_for_diar.as_path()),
+            Vec::new(),
+            0,
+            0,
+        ).await;
+        if let Err(e) = res {
+            log::warn!("diarization offline (import) failed: {}", e);
+        } else {
+            let _ = app.emit("transcripts-updated", serde_json::json!({
+                "meeting_id": meeting_for_diar,
+            }));
+        }
+    });
+
     Ok(ImportResult {
         meeting_id,
         title,
