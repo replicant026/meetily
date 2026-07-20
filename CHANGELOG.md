@@ -12,6 +12,14 @@ lands cleanly into `devtest`. PR-N and short hashes link back to GitHub.
 ## [Unreleased]
 
 ### Added
+- PR-44d (Wave 27): Speaker diarization for import / retranscribe
+  paths. Both flows now spawn the offline re-clustering pass after their
+  segment rows are persisted, reusing `diarization::offline::commit_speaker_labels`
+  from PR-44b with an empty realtime buffer (forces the wav re-embed
+  path). The `diarization::status().enabled` flag short-circuits the
+  pass when the user disables diarization in settings; min/max speakers
+  come from the same settings source. New unit test asserts the
+  enabled=false short-circuit returns 0 without touching the DB.
 - PR-44c (Wave 27): Speaker-diarization settings + UI/i18n. New
   `useDiarizationConfig` hook + `DiarizationSettingsBlock` panel
   (enable toggle, min/max speakers, model status). Frontend type adds

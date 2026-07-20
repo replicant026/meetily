@@ -495,6 +495,34 @@ async fn run_retranscription<R: Runtime>(
 
     emit_progress(&app, &meeting_id, "complete", 100, "Retranscription complete");
 
+    // PR-44d: kick off offline diarization with the meeting's existing
+    // audio file (already written during the original recording). The new
+    // segments are already persisted by this point so the offline pass can
+    // update them safely.
+    let meeting_for_diar = meeting_id.clone();
+    let audio_for_diar = audio_filename.clone();
+    if let Some(state) = app.try_state::<crate::state::AppState>() {
+        let pool = state.db_manager.pool().clone();
+        tokio::spawn(async move {
+            let res = crate::diarization::offline::commit_speaker_labels(
+                &pool,
+                &meeting_for_diar,
+                Some(std::path::Path::new(&audio_for_diar)),
+                Vec::new(),
+                0,
+                0,
+            ).await;
+            if let Err(e) = res {
+                log::warn!("diarization offline (retranscribe) failed: {}", e);
+            } else {
+                let _ = app.emit("transcripts-updated", serde_json::json!({
+                    "meeting_id": meeting_for_diar,
+                }));
+            }
+            });
+        }
+    }
+
     Ok(RetranscriptionResult {
         meeting_id,
         segments_count: segments.len(),
