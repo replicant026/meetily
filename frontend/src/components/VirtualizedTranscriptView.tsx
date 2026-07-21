@@ -85,6 +85,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     showConfidence,
     onTimestampClick,
     speaker,
+    transientSpeaker,
     customSpeakerNames,
     onSpeakerRename,
     hotwords,
