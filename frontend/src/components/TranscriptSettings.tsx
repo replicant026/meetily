@@ -345,6 +345,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                     <>
                     <div className="mt-4">
                         <HotwordHitStatsPanel />
+                    </div>
                     <div className="mt-4">
                         <DiarizationSettingsBlock />
                     </div>
