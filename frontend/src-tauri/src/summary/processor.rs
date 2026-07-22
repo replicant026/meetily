@@ -63,7 +63,7 @@ fn english_markdown_after_normalization_result(
 ) -> Result<String, LLMError> {
     match normalization_result {
         Ok(normalized) => Ok(normalized),
-        Err(e) if e.contains("cancelled") => Err(e),
+        Err(e @ LLMError::Cancelled) => Err(e),
         Err(e) => {
             error!(
                 "English normalization pass failed; returning pass-1 markdown without hard fail: {}",
@@ -200,7 +200,7 @@ You are an expert meeting summarizer. Generate a final meeting report by filling
 
 <template>
 {clean_template_markdown}
-"
+"#
     );
     if let Some(glossary) = build_glossary_block() {
         prompt.push_str(&glossary);
@@ -535,7 +535,7 @@ pub async fn generate_meeting_summary(
         if let Some(token) = cancellation_token {
             if token.is_cancelled() {
                 info!("Summary generation cancelled before final summary");
-                return Err("Summary generation was cancelled".to_string());
+                return Err(LLMError::Cancelled);
             }
         }
 
@@ -582,7 +582,7 @@ pub async fn generate_meeting_summary(
             .await
             {
                 Ok(translated) => translated,
-                Err(e) => return Err(format!("Translation to {} failed: {}", name, e)),
+                Err(e) => return Err(LLMError::Other(format!("Translation to {} failed: {}", name, e))),
             }
         }
         FinalLanguageAction::NormalizeEnglish => {

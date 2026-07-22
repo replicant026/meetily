@@ -321,7 +321,7 @@ impl PostProcessor {
     /// Empty mapping means no protected terms are configured (the chain runs
     /// unmodified). Greedy longest-match from left to right so overlapping
     /// terms never double-replace the same span.
-    fn protect_terms(text: &str) -> (String, Vec<(String, String)>) {
+    pub(crate) fn protect_terms(text: &str) -> (String, Vec<(String, String)>) {
         let terms = read_protected_terms();
         if terms.is_empty() {
             return (text.to_string(), Vec::new());
@@ -365,7 +365,7 @@ impl PostProcessor {
 
     /// Replace sentinels from `mapping` back to their original protected terms.
     /// No-op when mapping is empty.
-    fn restore_protected_terms(text: &str, mapping: &[(String, String)]) -> String {
+    pub(crate) fn restore_protected_terms(text: &str, mapping: &[(String, String)]) -> String {
         if mapping.is_empty() {
             return text.to_string();
         }
@@ -537,6 +537,11 @@ impl Default for PostProcessor {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[cfg(test)]
+mod protected_terms_tests {
+    use super::*;
 
     // ---- Wave 18 PR-55: protected-terms restoration ----
 

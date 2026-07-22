@@ -12,7 +12,7 @@ use crate::audio::post_processor;
 use crate::database::repositories::setting::SettingsRepository;
 use crate::summary::llm_client::{generate_summary, LLMError, LLMProvider};
 use crate::summary::CustomOpenAIConfig;
-use once_cell::sync::OnceLock;
+use std::sync::OnceLock;
 use serde::Serialize;
 use sqlx::SqlitePool;
 use std::str::FromStr;
@@ -175,16 +175,16 @@ async fn load_provider_inputs(
 > {
     let setting = SettingsRepository::get_model_config(pool)
         .await
-        .map_err(|e| PostprocessError { code: error_code::PROVIDER_NOT_CONFIGURED, message: format!("Failed to load provider config: {}", e) })?
-        .ok_or_else(|| PostprocessError { code: error_code::PROVIDER_NOT_CONFIGURED, message: "LLM provider not configured".to_string() })?;
+        .map_err(|e| format!("Failed to load provider config: {}", e))?
+        .ok_or_else(|| "LLM provider not configured".to_string())?;
     let provider_str = setting.provider.clone();
     let provider = LLMProvider::from_str(&provider_str)
-        .map_err(|_| PostprocessError { code: error_code::UNSUPPORTED_PROVIDER, message: format!("Unsupported LLM provider: {}", provider_str) })?;
+        .map_err(|_| format!("Unsupported LLM provider: {}", provider_str))?;
 
     if provider_str == "custom-openai" {
         let cfg: CustomOpenAIConfig = setting
             .get_custom_openai_config()
-            .ok_or_else(|| PostprocessError { code: error_code::CUSTOM_OPENAI_CONFIG_MISSING, message: "Custom OpenAI config missing endpoint or api_key".to_string() })?;
+            .ok_or_else(|| "Custom OpenAI config missing endpoint or api_key".to_string())?;
         Ok((
             provider,
             cfg.model,
@@ -198,7 +198,7 @@ async fn load_provider_inputs(
     } else {
         let key = SettingsRepository::get_api_key(pool, &provider_str)
             .await
-            .map_err(|e| PostprocessError { code: error_code::API_KEY_MISSING, message: format!("Failed to load api key for {}: {}", provider_str, e) })?
+            .map_err(|e| format!("Failed to load api key for {}: {}", provider_str, e))?
             .unwrap_or_default();
         Ok((
             provider,
@@ -215,7 +215,10 @@ async fn load_provider_inputs(
 
 pub async fn correct_segment(pool: &SqlitePool, text: &str) -> Result<String, PostprocessError> {
     let (provider, model_name, api_key, ollama_endpoint, custom_openai_endpoint, max_tokens, temperature, top_p) =
-        load_provider_inputs(pool).await?;
+        load_provider_inputs(pool).await.map_err(|message| PostprocessError {
+            code: error_code::PROVIDER_NOT_CONFIGURED,
+            message,
+        })?;
     let user_prompt = build_user_prompt(text);
     match generate_summary(
         http_client(),

@@ -183,6 +183,7 @@ async fn run_retranscription<R: Runtime>(
 
     // Determine which provider to use (default to whisper)
     let use_parakeet = provider.as_deref() == Some("parakeet");
+    let initial_prompt = None;
 
     info!(
         "Starting retranscription for meeting {} with language {:?}, model {:?}, provider {:?}",
@@ -521,7 +522,6 @@ async fn run_retranscription<R: Runtime>(
             }
             });
         }
-    }
 
     Ok(RetranscriptionResult {
         meeting_id,

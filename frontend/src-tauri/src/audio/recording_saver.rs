@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as AsyncMutex;
 use anyhow::Result;
 use log::{info, warn, error};
-use tauri::{AppHandle, Runtime, Emitter};
+use tauri::{AppHandle, Runtime, Emitter, Manager};
 use tokio::sync::mpsc;
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
@@ -10,7 +10,6 @@ use std::path::PathBuf;
 use super::recording_state::AudioChunk;
 use super::audio_processing::create_meeting_folder;
 use super::incremental_saver::IncrementalAudioSaver;
-use std::sync::Arc;
 
 /// Structured transcript segment for JSON export
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -470,7 +469,7 @@ impl RecordingSaver {
         if let Some(meeting_id) = self.metadata.as_ref().and_then(|m| m.meeting_id.clone()) {
             let pool_opt = app.try_state::<crate::state::AppState>();
             if let Some(app_state) = pool_opt {
-                let pool = app_state.db_manager.pool();
+                let pool = app_state.db_manager.pool().clone();
                 let wav_path = self.meeting_folder.as_ref().map(|f| f.join("audio.wav"));
                 let windows = self.diarization_buffer.snapshot();
                 let app_clone = app.clone();

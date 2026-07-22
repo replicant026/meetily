@@ -77,6 +77,9 @@ experiments/
 target/
 
 frontend/src-tauri/binaries/
+
+# Local whisper-rs-sys patch (Windows bindgen workaround)
+.cargo-patches/
 # Python
 __pycache__/
 *.pyc

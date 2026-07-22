@@ -16,3 +16,9 @@ anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.32.0", features = ["full"] }
+
+# Local patch: whisper-rs-sys build.rs runs bindgen that breaks on Windows
+# (anonymous unions in whisper_full_params become opaque structs).
+# The bundled pre-generated bindings work fine.
+[patch.crates-io]
+whisper-rs-sys = { path = ".cargo-patches/whisper-rs-sys" }

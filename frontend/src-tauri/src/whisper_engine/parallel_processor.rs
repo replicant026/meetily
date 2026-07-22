@@ -7,6 +7,7 @@ use serde::{Serialize, Deserialize};
 
 use super::whisper_engine::WhisperEngine;
 use super::system_monitor::SystemMonitor;
+use super::fallback::{EngineKind, FallbackEngine};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioChunk {
