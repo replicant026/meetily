@@ -77,13 +77,14 @@ pub struct TranscriptionStatus {
 
 /// Start recording with default devices
 pub async fn start_recording<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    start_recording_with_meeting_name(app, None).await
+    start_recording_with_meeting_name(app, None, false).await
 }
 
 /// Start recording with default devices and optional meeting name
 pub async fn start_recording_with_meeting_name<R: Runtime>(
     app: AppHandle<R>,
     meeting_name: Option<String>,
+    defer_transcription: bool,
 ) -> Result<(), String> {
     info!(
         "Starting recording with default devices, meeting: {:?}",
@@ -265,14 +266,18 @@ pub async fn start_recording_with_meeting_name<R: Runtime>(
     reset_speech_detected_flag(); // Reset for new recording session
 
     // Start optimized parallel transcription task and store handle
-    let task_handle = transcription::start_transcription_task(
-        app.clone(),
-        transcription_receiver,
-        initial_prompt,
-    );
-    {
-        let mut global_task = TRANSCRIPTION_TASK.lock().unwrap();
-        *global_task = Some(task_handle);
+    if !defer_transcription {
+        let task_handle = transcription::start_transcription_task(
+            app.clone(),
+            transcription_receiver,
+            initial_prompt,
+        );
+        {
+            let mut global_task = TRANSCRIPTION_TASK.lock().unwrap();
+            *global_task = Some(task_handle);
+        }
+    } else {
+        info!("Transcription deferred — will start after recording stops");
     }
 
 
@@ -330,7 +335,7 @@ pub async fn start_recording_with_devices<R: Runtime>(
     mic_device_name: Option<String>,
     system_device_name: Option<String>,
 ) -> Result<(), String> {
-    start_recording_with_devices_and_meeting(app, mic_device_name, system_device_name, None).await
+    start_recording_with_devices_and_meeting(app, mic_device_name, system_device_name, None, false).await
 }
 
 /// Start recording with specific devices and optional meeting name
@@ -339,6 +344,7 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
     mic_device_name: Option<String>,
     system_device_name: Option<String>,
     meeting_name: Option<String>,
+    defer_transcription: bool,
 ) -> Result<(), String> {
     info!(
         "Starting recording with specific devices: mic={:?}, system={:?}, meeting={:?}",
@@ -445,17 +451,21 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
     reset_speech_detected_flag(); // Reset for new recording session
 
     // Start optimized parallel transcription task and store handle
-    let task_handle = transcription::start_transcription_task(
-        app.clone(),
-        transcription_receiver,
-        initial_prompt,
-    );
-    {
-        let mut global_task = TRANSCRIPTION_TASK.lock().unwrap();
-        *global_task = Some(task_handle);
+    if !defer_transcription {
+        let task_handle = transcription::start_transcription_task(
+            app.clone(),
+            transcription_receiver,
+            initial_prompt,
+        );
+        {
+            let mut global_task = TRANSCRIPTION_TASK.lock().unwrap();
+            *global_task = Some(task_handle);
+        }
+    } else {
+        info!("Transcription deferred — will start after recording stops");
     }
 
-    // CRITICAL: Listen for transcript-update events and save to recording manager
+// CRITICAL: Listen for transcript-update events and save to recording manager
     // This enables transcript history persistence for page reload sync
     // Store listener ID for cleanup during stop_recording to ensure microphone is released
     {

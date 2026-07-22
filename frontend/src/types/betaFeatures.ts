@@ -22,10 +22,16 @@ export interface BetaFeatures {
    * @since v0.3.0
    */
   importAndRetranscribe: boolean;
+  /**
+   * Defer transcription until recording stops instead of real-time during recording.
+   * @since v0.5.0
+   */
+  deferTranscription: boolean;
 }
 
 export const DEFAULT_BETA_FEATURES: BetaFeatures = {
   importAndRetranscribe: true, // Default: enabled
+  deferTranscription: false, // Default: disabled (real-time is default)
 };
 
 
@@ -34,6 +40,7 @@ export const DEFAULT_BETA_FEATURES: BetaFeatures = {
  */
 export const BETA_FEATURE_NAMES: Record<keyof BetaFeatures, string> = {
   importAndRetranscribe: 'Import Audio & Retranscribe',
+  deferTranscription: 'Defer Transcription',
 };
 
 /**
@@ -41,6 +48,7 @@ export const BETA_FEATURE_NAMES: Record<keyof BetaFeatures, string> = {
  */
 export const BETA_FEATURE_DESCRIPTIONS: Record<keyof BetaFeatures, string> = {
   importAndRetranscribe: 'Import audio files to transcribe or retranscribe existing meetings with different language settings.',
+  deferTranscription: 'Record audio without live transcription. Transcription starts only after you stop the recording. Useful for lower CPU usage during long meetings.',
 };
 
 /**
