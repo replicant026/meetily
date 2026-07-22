@@ -3,7 +3,7 @@
 // directories left behind by crashed recording sessions. The frontend listens for
 // the `orphan-checkpoints-detected` event and prompts the user to recover or discard.
 
-use log::{info, warn};
+use log::warn;
 use serde::Serialize;
 use std::path::Path;
 

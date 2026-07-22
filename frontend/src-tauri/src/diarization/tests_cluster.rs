@@ -1,4 +1,3 @@
-use super::clustering::*;
 
 fn vec_repeating(v: &[f32], n: usize) -> Vec<f32> {
     let mut out = Vec::with_capacity(v.len() * n);

@@ -1,5 +1,3 @@
-use super::status;
-use super::offline::commit_speaker_labels;
 
 #[tokio::test]
 async fn disabled_short_circuit_returns_zero() {

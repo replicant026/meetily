@@ -3,7 +3,6 @@ use anyhow::{Result, anyhow};
 use log::{info, warn, error};
 use super::encode::encode_single_audio;
 use super::recording_state::AudioChunk;
-use serde::{Serialize, Deserialize};
 
 use super::ffmpeg::find_ffmpeg_path;
 

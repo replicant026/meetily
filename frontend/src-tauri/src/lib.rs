@@ -30,8 +30,6 @@ macro_rules! perf_trace {
 }
 
 // Make these macros available to other modules
-pub(crate) use perf_debug;
-pub(crate) use perf_trace;
 
 // Re-export async logging macros for external use (removed due to macro conflicts)
 
@@ -779,6 +777,7 @@ pub fn run() {
             transcription_preferences::get_protected_terms,
             hotword_stats::get_hotword_hit_stats,
             onboarding::save_onboarding_status_cmd,
+            onboarding::get_onboarding_status,
             onboarding::reset_onboarding_status_cmd,
             onboarding::complete_onboarding,
             // System settings commands

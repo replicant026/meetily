@@ -1,7 +1,6 @@
 use super::llm_client::{generate_summary, LLMError, LLMProvider};
 use log::{info, warn};
 use reqwest::Client;
-use std::path::PathBuf;
 use tokio_util::sync::CancellationToken;
 
 /// Configuration for a single provider in the failover chain.

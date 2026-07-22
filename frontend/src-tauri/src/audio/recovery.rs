@@ -292,7 +292,7 @@ pub async fn merge_orphan_checkpoints_with_retry<R: Runtime>(
     let folder_str = meeting_folder.to_string_lossy().to_string();
     let max = MAX_RETRY_ATTEMPTS;
     let mut last_error: Option<anyhow::Error> = None;
-    let mut last_stderr = String::new();
+    let last_stderr = String::new();
 
     for attempt in 1..=max {
         let _ = app.emit(

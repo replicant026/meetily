@@ -18,8 +18,8 @@ pub async fn commit_speaker_labels(
     meeting_id: &str,
     audio_wav: Option<&Path>,
     realtime_windows: Vec<WindowedEmbedding>,
-    min_speakers: usize,
-    max_speakers: usize,
+    _min_speakers: usize,
+    _max_speakers: usize,
 ) -> Result<usize> {
     let status = super::status();
     if !status.enabled {
