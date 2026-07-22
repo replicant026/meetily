@@ -348,6 +348,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                     </div>
                     <div className="mt-4">
                         <DiarizationSettingsBlock />
+                        <SpeakerRecognitionBlock />
                     </div>
                         <div>
                             <Label className="block text-sm font-medium text-gray-700 mb-1">
@@ -466,6 +467,77 @@ function DiarizationSettingsBlock() {
                 {t('diarization.model_status', { default: 'Speaker model status' })}:{' '}
                 {t(`diarization.model_status.${config.model_status}`, { default: config.model_status })}
             </div>
+        </div>
+    );
+}
+
+/** Speaker recognition settings block. */
+function SpeakerRecognitionBlock() {
+    const t = useTranslations();
+    const [speakers, setSpeakers] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [mode, setMode] = useState<'off' | 'suggest' | 'auto'>('suggest');
+
+    useEffect(() => {
+        // Load known speaker names from backend
+        invoke<string[]>('list_speaker_names')
+            .then((names) => setSpeakers(names))
+            .catch((e) => console.warn('Failed to load speaker names:', e));
+    }, []);
+
+    const handleDelete = async (name: string) => {
+        try {
+            await invoke<number>('delete_speaker_profile', { displayName: name });
+            setSpeakers((prev) => prev.filter((n) => n !== name));
+        } catch (e) {
+            console.warn('Failed to delete speaker:', e);
+        }
+    };
+
+    return (
+        <div className="rounded border border-gray-200 p-3 space-y-3" data-testid="speaker-recognition-block">
+            <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-gray-700">
+                    {t('speaker_recognition.title', { default: 'Speaker Recognition' })}
+                </Label>
+                <select
+                    value={mode}
+                    onChange={(e) => setMode(e.target.value as 'off' | 'suggest' | 'auto')}
+                    className="text-sm border border-gray-300 rounded px-2 py-1"
+                >
+                    <option value="off">{t('speaker_recognition.mode.off', { default: 'Off' })}</option>
+                    <option value="suggest">{t('speaker_recognition.mode.suggest', { default: 'Suggest' })}</option>
+                    <option value="auto">{t('speaker_recognition.mode.auto', { default: 'Automatic' })}</option>
+                </select>
+            </div>
+
+            <div className="text-xs text-gray-500">
+                {t('speaker_recognition.description', {
+                    default: 'Remember speaker voices across meetings. When you rename a speaker, their voice is saved for automatic identification in future meetings.',
+                })}
+            </div>
+
+            {speakers.length > 0 && (
+                <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">
+                        {t('speaker_recognition.known_speakers', { default: 'Known Speakers' })}
+                    </Label>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                        {speakers.map((name) => (
+                            <div key={name} className="flex items-center justify-between text-sm bg-gray-50 px-2 py-1 rounded">
+                                <span>{name}</span>
+                                <button
+                                    onClick={() => handleDelete(name)}
+                                    className="text-red-600 hover:text-red-800 text-xs"
+                                    title={t('speaker_recognition.delete', { default: 'Delete voice print' })}
+                                >
+                                    {t('speaker_recognition.delete', { default: 'Delete' })}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

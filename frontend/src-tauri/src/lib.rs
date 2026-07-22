@@ -475,6 +475,11 @@ pub fn run() {
                 }
             });
 
+            // Initialize speaker diarization models (async download + load)
+            tauri::async_runtime::spawn(async {
+                diarization::initialize().await;
+            });
+
             // Initialize ModelManager for summary engine (async, non-blocking)
             let app_handle_for_model_manager = _app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -678,6 +683,13 @@ pub fn run() {
             api::api_get_meeting_transcripts,
             get_diarization_status,
             set_diarization_config,
+            // Speaker profile commands
+            list_speaker_profiles,
+            delete_speaker_profile,
+            rename_speaker_profile,
+            enroll_speaker,
+            match_speaker,
+            list_speaker_names,
             api::api_save_meeting_title,
             api::api_save_transcript,
             api::open_meeting_folder,
@@ -841,4 +853,81 @@ fn set_diarization_config(
 ) -> crate::diarization::DiarizationStatus {
     crate::diarization::update_status(config);
     crate::diarization::status()
+}
+
+// ── Speaker profile commands ──────────────────────────────────────────────
+
+#[tauri::command]
+async fn list_speaker_profiles(
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<Vec<crate::database::repositories::speaker::SpeakerProfile>, String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::list_profiles(pool)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_speaker_profile(
+    state: tauri::State<'_, crate::state::AppState>,
+    display_name: String,
+) -> Result<u64, String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::delete_by_name(pool, &display_name)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn rename_speaker_profile(
+    state: tauri::State<'_, crate::state::AppState>,
+    old_name: String,
+    new_name: String,
+) -> Result<u64, String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::rename(pool, &old_name, &new_name)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn enroll_speaker(
+    state: tauri::State<'_, crate::state::AppState>,
+    display_name: String,
+    embedding: Vec<f32>,
+) -> Result<String, String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::upsert_profile(
+        pool,
+        &display_name,
+        &embedding,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn match_speaker(
+    state: tauri::State<'_, crate::state::AppState>,
+    embedding: Vec<f32>,
+    threshold: f32,
+) -> Result<Option<(String, f32)>, String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::find_match(
+        pool,
+        &embedding,
+        threshold,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn list_speaker_names(
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<Vec<String>, String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::get_all_names(pool)
+        .await
+        .map_err(|e| e.to_string())
 }

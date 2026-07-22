@@ -3,7 +3,6 @@ use std::sync::Mutex;
 
 pub mod clustering;
 pub mod embedding;
-use embedding::ensure_loaded;
 pub mod offline;
 
 pub const EMBEDDING_DIM: usize = 192;
@@ -14,6 +13,14 @@ pub struct WindowedEmbedding {
     pub audio_start: f64,
     pub audio_end: f64,
     pub vec: Vec<f32>,
+}
+
+/// A single speaker-labeled segment returned by the diarization pipeline.
+#[derive(Debug, Clone)]
+pub struct DiarizationSegment {
+    pub start: f64,
+    pub end: f64,
+    pub speaker: usize,
 }
 
 #[derive(Default)]
@@ -79,7 +86,7 @@ static STATUS: once_cell::sync::Lazy<std::sync::Mutex<DiarizationStatus>> =
             enabled: true,
             min_speakers: 2,
             max_speakers: 6,
-            model_status: if ensure_loaded().is_ok() { "ready".to_string() } else { "loading".to_string() },
+            model_status: if embedding::ensure_loaded().is_ok() { "ready".to_string() } else { "loading".to_string() },
         })
     });
 
@@ -93,4 +100,36 @@ pub fn update_status(next: DiarizationStatus) {
     g.min_speakers = next.min_speakers.max(2);
     g.max_speakers = next.max_speakers.max(g.min_speakers);
     g.model_status = next.model_status;
+}
+
+/// Initialize the diarization models (async download + load).
+/// Should be called early in app startup. Failures are non-fatal.
+pub async fn initialize() {
+    match embedding::ensure_models_available().await {
+        Ok(()) => {
+            match embedding::init_extractor() {
+                Ok(true) => {
+                    log::info!("diarization: models loaded successfully");
+                    update_status(DiarizationStatus {
+                        enabled: true,
+                        model_status: "ready".to_string(),
+                        ..status()
+                    });
+                }
+                Ok(false) => {
+                    log::warn!("diarization: models not yet available (will retry on use)");
+                }
+                Err(e) => {
+                    log::warn!("diarization: extractor init failed: {}", e);
+                    update_status(DiarizationStatus {
+                        model_status: "failed".to_string(),
+                        ..status()
+                    });
+                }
+            }
+        }
+        Err(e) => {
+            log::warn!("diarization: model download failed: {} (degrades gracefully)", e);
+        }
+    }
 }

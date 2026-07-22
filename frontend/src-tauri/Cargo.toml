@@ -132,6 +132,7 @@ realfft = "3.4.0"
 regex = "1.11.0"
 hound = "3.5"
 nalgebra = "0.32"
+sherpa-onnx = "1.13.4"
 ndarray = "0.16"
 bytes = { version = "1.9.0", features = ["serde"] }
 
