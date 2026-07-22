@@ -1,0 +1,14 @@
+{
+    "nav": {"home":"Início","meetings":"Reuniões","import_audio":"Importar Áudio","notes":"Notas da Reunião","settings":"Configurações"},
+    "meeting_list": {
+        "search_placeholder": "Buscar conteúdo da reunião...",
+        "searching": "Buscando...",
+        "edit_title_dialog_title": "Editar Título da Reunião",
+        "edit_title_input_placeholder": "Digite o título da reunião",
+        "edit_title_label": "Título da Reunião",
+        "save": "Salvar",
+        "cancel": "Cancelar"
+    },
+    "status": {"recording_in_progress":"Gravação em andamento...","start_recording":"Iniciar Gravação","import_audio":"Importar Áudio"},
+    "brand": "Meetily"
+}

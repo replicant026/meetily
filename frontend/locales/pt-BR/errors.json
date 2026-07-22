@@ -1,0 +1,12 @@
+{
+    "permission_microphone_denied": "Permissão de microfone negada. Por favor, conceda acesso nas Configurações do Sistema.",
+    "permission_screen_denied": "Permissão de gravação de tela negada. O áudio do sistema não pode ser capturado.",
+    "model_load_failed": "Erro ao carregar modelo. Por favor, tente baixar novamente.",
+    "recording_failed": "Falha ao iniciar gravação. Verifique a seleção do dispositivo.",
+    "transcription_failed": "Falha na transcrição. Por favor, tente novamente.",
+    "network_offline": " Rede indisponível. Trabalhando em modo offline.",
+    "update_available": " Uma atualização está disponível.",
+    "update_failed": "Falha na atualização. Por favor, tente novamente mais tarde.",
+    "recovery_failed": "Falha ao recuperar reunião. Por favor, tente novamente.",
+    "unknown_error": "Erro desconhecido ocorreu"
+}

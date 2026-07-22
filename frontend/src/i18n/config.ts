@@ -1,6 +1,6 @@
 // Supported locales for the Meetily desktop app.
 // Add new locales here when extending language support.
-export const LOCALES = ["en-US", "en-GB", "zh-CN", "zh-TW", "ja-JP", "ko-KR"] as const;
+export const LOCALES = ["en-US", "pt-BR", "en-GB", "zh-CN", "zh-TW", "ja-JP", "ko-KR"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = "en-US";
@@ -14,6 +14,7 @@ export function resolveLocaleFromOs(osLocale: string | null | undefined): Locale
   if (lower.startsWith("zh")) return "zh-CN";
   if (lower === "en-gb") return "en-GB";
   if (lower.startsWith("en")) return "en-US";
+  if (lower.startsWith("pt")) return "pt-BR";
   if (lower.startsWith("ja")) return "ja-JP";
   if (lower.startsWith("ko")) return "ko-KR";
   return DEFAULT_LOCALE;

@@ -1,0 +1,60 @@
+{
+    "title": "Resumo",
+    "panel": {
+        "title": "Resumo da Reunião",
+        "generating": "Gerando Resumo com IA...",
+        "sections": {"key_points":"Pontos Principais","action_items":"Itens de Ação","decisions":"Decisões","main_topics":"Tópicos Principais","full_summary":"Resumo Completo"},
+        "auto_language_subtitle": "Usa o idioma predominante da transcrição",
+        "saved_locally_subtitle": "Salvo neste dispositivo para reuniões sem pasta",
+        "summary_language_tooltip": "Idioma do resumo: {label}",
+        "summary_language_tooltip_fallback": "Idioma do resumo: {label} (salvo neste dispositivo)",
+        "set_summary_language": "Definir idioma do resumo"
+    },
+    "actions": {
+        "generate": "Gerar Resumo",
+        "regenerate": "Gerar Novamente",
+        "edit": "Editar Resumo",
+        "copy": "Copiar Resumo",
+        "retranscription_complete": "Retranscrição concluída! {count} segmentos criados.",
+        "retranscription_cancelled": "Retranscrição cancelada"
+    },
+    "status": {
+        "idle": "Nenhum resumo ainda",
+        "generating": "Gerando resumo...",
+        "ready": "Resumo pronto",
+        "failed": "Falha ao gerar resumo",
+        "finalizing": "Finalizando transcrição...",
+        "stopping": "Parando gravação...",
+        "waiting_for_transcription": "Aguardando transcrição...",
+        "processing_chunks": "Processando {count} segmentos restantes...",
+        "flushing": "Liberando buffer de transcrição...",
+        "saving": "Salvando transcrição...",
+        "saved_locally": "Idioma do resumo salvo neste dispositivo",
+        "failed_to_save_lang": "Falha ao salvar idioma do resumo",
+        "failed_to_load_lang": "Não foi possível carregar o idioma do resumo salvo",
+        "load_failed_description": "Usando Automático até que os metadados da reunião possam ser lidos.",
+        "saved_locally_description": "Esta reunião não tem pasta de gravação, então a preferência não pode ser escrita nos metadados da reunião."
+    },
+    "empty": "Gere um resumo para ver pontos principais e itens de ação aqui.",
+    "language": {"label":"Idioma do Resumo","auto_translate":"Traduzir automaticamente para inglês","auto_label":"Automático"},
+    "meeting": {"custom_prompt_placeholder":"Adicione contexto para o resumo de IA. Por exemplo, pessoas envolvidas, visão geral da reunião, objetivo, etc..."},
+    "errors": {
+        "no_model_selected": "Nenhum modelo de IA integrado selecionado",
+        "no_model_selected_description": "Selecione um modelo nas configurações",
+        "model_not_found": "Modelo não encontrado",
+        "model_not_found_description": "Não foi possível encontrar informações para o modelo: {model}",
+        "model_download_in_progress": "Download do modelo em andamento",
+        "model_not_downloaded": "Modelo não baixado",
+        "model_file_corrupted": "Arquivo de modelo corrompido",
+        "model_file_corrupted_description": "O arquivo {model} está corrompido. Exclua e baixe novamente.",
+        "model_error": "Erro no modelo",
+        "model_not_available": "Modelo não disponível",
+        "model_not_available_description": "O modelo selecionado não está pronto para uso",
+        "check_model_status_failed": "Falha ao verificar status do modelo",
+        "ollama_no_models": "Nenhum modelo Ollama encontrado. Baixe gemma2:2b nas Configurações de Modelos.",
+        "ollama_not_installed": "Ollama não está instalado",
+        "ollama_not_installed_description": "Baixe e instale o Ollama para usar modelos locais.",
+        "ollama_install_action": "Baixar",
+        "ollama_check_failed": "Falha ao verificar modelos Ollama. Verifique se o Ollama está em execução e baixe um modelo."
+    }
+}

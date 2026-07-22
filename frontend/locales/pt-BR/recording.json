@@ -1,0 +1,53 @@
+{
+    "title": "Gravando Reunião",
+    "controls": {
+        "start": "Iniciar Gravação",
+        "stop": "Parar Gravação",
+        "pause": "Pausar",
+        "resume": "Continuar",
+        "processing": "Processando gravação...",
+        "start_tooltip": "Iniciar gravação",
+        "stop_tooltip": "Parar gravação"
+    },
+    "status": {
+        "idle": "Pronto para gravar",
+        "recording": "Gravação em andamento",
+        "paused": "Gravação pausada",
+        "saving": "Salvando gravação...",
+        "saved": "Gravação salva",
+        "pausing": "Pausando...",
+        "resuming": "Continuando...",
+        "stopping": "Parando...",
+        "validating": "Validando reconhecimento de fala...",
+        "pause_tooltip": "Pausar gravação",
+        "resume_tooltip": "Continuar gravação"
+    },
+    "device": {"microphone":"Microfone","system_audio":"Áudio do Sistema","select_device":"Selecione um dispositivo","no_device":"Nenhum dispositivo detectado"},
+    "duration": {"minutes":"{minutes} min","seconds":"{seconds} seg"},
+    "errors": {
+        "init_failed": "Falha ao inicializar a gravação. Verifique o console para detalhes.",
+        "pause_failed": "Falha ao pausar a gravação. Verifique o console para detalhes.",
+        "resume_failed": "Falha ao continuar a gravação. Verifique o console para detalhes.",
+        "close_alert": "Fechar alerta",
+        "device_mic_title": "Microfone Não Disponível",
+        "device_mic_message": "Não foi possível acessar seu microfone. Por favor, verifique que:\n• Seu microfone está conectado\n• O app tem permissões de microfone\n• Nenhum outro app está usando o microfone",
+        "device_speaker_title": "Áudio do Sistema Não Disponível",
+        "device_speaker_message": "Não foi possível capturar o áudio do sistema. Por favor, verifique que:\n• Um dispositivo de áudio virtual (como o BlackHole) está instalado\n• O app tem permissões de gravação de tela (macOS)\n• O áudio do sistema está configurado corretamente",
+        "device_permission_title": "Permissão Necessária",
+        "device_permission_message": "Permissões de gravação são necessárias. Por favor:\n• Conceda acesso ao microfone nas Configurações do Sistema\n• Conceda acesso à gravação de tela para o áudio do sistema (macOS)\n• Reinicie o app após conceder as permissões",
+        "device_generic_title": "Gravação Falhou",
+        "device_generic_message": "Não foi possível iniciar a gravação. Por favor, verifique as configurações do dispositivo de áudio e tente novamente."
+    },
+    "orphan_checkpoints_title": "Gravação Inacabada Detectada",
+    "orphan_checkpoints_description": "Meetily encontrou áudio restante de uma sessão anterior que não foi concluída. Recupere-o para manter a gravação, ou descarte-o para liberar espaço no disco.",
+    "orphan_checkpoints_dismiss": "Dispensar tudo",
+    "orphan_checkpoint_chunks": "{count, plural, one {# chunk} other {# chunks}}",
+    "orphan_checkpoint_duration": "~{duration}",
+    "orphan_checkpoint_recover": "Recuperar",
+    "orphan_checkpoint_discard": "Descartar",
+    "orphan_checkpoint_recovered": "Gravação recuperada",
+    "orphan_checkpoint_recovering": "Recuperação iniciada. Observe o banner para o progresso.",
+    "orphan_checkpoint_recovered_failed": "Falha na recuperação",
+    "orphan_checkpoint_discarded": "Gravação descartada",
+    "orphan_checkpoint_discarded_failed": "Falha ao descartar"
+}

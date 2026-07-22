@@ -42,6 +42,13 @@ import summaryKoKr from "../../locales/ko-KR/summary.json";
 import settingsKoKr from "../../locales/ko-KR/settings.json";
 import errorsKoKr from "../../locales/ko-KR/errors.json";
 import sidebarKoKr from "../../locales/ko-KR/sidebar.json";
+import commonPtBR from "../../locales/pt-BR/common.json";
+import recordingPtBR from "../../locales/pt-BR/recording.json";
+import transcriptPtBR from "../../locales/pt-BR/transcript.json";
+import summaryPtBR from "../../locales/pt-BR/summary.json";
+import settingsPtBR from "../../locales/pt-BR/settings.json";
+import errorsPtBR from "../../locales/pt-BR/errors.json";
+import sidebarPtBR from "../../locales/pt-BR/sidebar.json";
 
 /**
  * Read the user stored UI language via the get_ui_language Tauri command
@@ -52,6 +59,7 @@ export async function getStoredLocale(): Promise<Locale> {
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     const stored = await invoke<string | null>("get_ui_language");
+
     if (stored && isSupportedLocale(stored)) return stored;
     return DEFAULT_LOCALE;
   } catch (e) {
@@ -120,6 +128,15 @@ const MESSAGES: Record<Locale, Messages> = {
     settings: settingsJaJp,
     errors: errorsJaJp,
     sidebar: sidebarJaJp,
+  },
+  "pt-BR": {
+    common: commonPtBR,
+    recording: recordingPtBR,
+    transcript: transcriptPtBR,
+    summary: summaryPtBR,
+    settings: settingsPtBR,
+    errors: errorsPtBR,
+    sidebar: sidebarPtBR,
   },
   "ko-KR": {
     common: commonKoKr,
