@@ -284,26 +284,16 @@ pub async fn start_import<R: Runtime>(
     // Guard will automatically clear flag on drop
     // No need for manual: IMPORT_IN_PROGRESS.store(false, Ordering::SeqCst);
 
-    match &result {
-        Ok(res) => {
-            let _ = app.emit(
-                "import-complete",
-                serde_json::json!({
-                    "meeting_id": res.meeting_id,
-                    "title": res.title,
-                    "segments_count": res.segments_count,
-                    "duration_seconds": res.duration_seconds
-                }),
-            );
-        }
-        Err(e) => {
-            let _ = app.emit(
-                "import-error",
-                ImportError {
-                    error: e.to_string(),
-                },
-            );
-        }
+    // NOTE: import-complete is NOT emitted here.  It is emitted by the
+    // diarization spawn in run_import after speaker labeling finishes, so
+    // the UI progress bar stays visible through the full pipeline.
+    if let Err(e) = &result {
+        let _ = app.emit(
+            "import-error",
+            ImportError {
+                error: e.to_string(),
+            },
+        );
     }
 
     result
@@ -421,6 +411,22 @@ async fn run_import<R: Runtime>(
         "Converted to 16kHz mono format: {} samples",
         audio_samples.len()
     );
+
+    // Save decoded 16kHz mono WAV for diarization (sherpa-onnx expects audio.wav).
+    // Non-fatal: if write fails, diarization silently skips.
+    {
+        let wav_path = meeting_folder.join("audio.wav");
+        let wav = f32_samples_to_wav(&audio_samples, 16000);
+        if let Err(e) = std::fs::write(&wav_path, &wav) {
+            warn!("Failed to write audio.wav for diarization: {}", e);
+        } else {
+            let num_samples = audio_samples.len();
+            info!(
+                "Wrote audio.wav ({} bytes, {} samples, PCM s16le) for diarization",
+                wav.len(), num_samples
+            );
+        }
+    }
 
     emit_progress(&app, "vad", 25, "Detecting speech segments...");
 
@@ -670,29 +676,49 @@ async fn run_import<R: Runtime>(
         warn!("Failed to write metadata.json: {}", e);
     }
 
-    emit_progress(&app, "complete", 100, "Import complete");
-
-    // PR-44d: kick off offline diarization using the imported wav. The
+    // Kick off offline diarization using the imported wav, keeping the
+    // import-progress bar alive through the end of diarization.  The
     // pool/state were already acquired above; clone them into the spawn.
     let pool = app_state.db_manager.pool().clone();
     let meeting_for_diar = meeting_id.clone();
+    let title_for_diar = title.clone();
+    let segments_for_diar = segments.len();
+    let duration_for_diar = duration_seconds;
     let wav_for_diar = meeting_folder.join("audio.wav");
+    let app_for_diar = app.clone();
     tokio::spawn(async move {
-        let res = crate::diarization::offline::commit_speaker_labels(
+        let res = crate::diarization::offline::commit_speaker_labels_with_progress(
             &pool,
             &meeting_for_diar,
             Some(wav_for_diar.as_path()),
             Vec::new(),
             0,
             0,
+            |pct, msg| {
+                emit_progress(&app_for_diar, "diarization", pct, msg);
+            },
         ).await;
         if let Err(e) = res {
             log::warn!("diarization offline (import) failed: {}", e);
         } else {
-            let _ = app.emit("transcripts-updated", serde_json::json!({
+            let _ = app_for_diar.emit("transcripts-updated", serde_json::json!({
                 "meeting_id": meeting_for_diar,
             }));
         }
+        // Notify frontend that speaker recognition may have updated labels
+        let _ = app_for_diar.emit("speakers-recognized", serde_json::json!({
+            "meeting_id": meeting_for_diar,
+        }));
+        // Signal import truly complete (diarization done).
+        let _ = app_for_diar.emit(
+            "import-complete",
+            serde_json::json!({
+                "meeting_id": meeting_for_diar,
+                "title": title_for_diar,
+                "segments_count": segments_for_diar,
+                "duration_seconds": duration_for_diar,
+            }),
+        );
     });
 
     Ok(ImportResult {
@@ -701,6 +727,39 @@ async fn run_import<R: Runtime>(
         segments_count: segments.len(),
         duration_seconds,
     })
+}
+
+/// Convert f32 samples (−1.0..1.0) to a valid PCM s16le WAV byte vector.
+/// NaN/Inf treated as 0.0. Header bits_per_sample=16, data_size = samples.len()*2.
+pub(crate) fn f32_samples_to_wav(samples: &[f32], sample_rate: u32) -> Vec<u8> {
+    let num_channels: u16 = 1;
+    let bits_per_sample: u16 = 16;
+    let byte_rate = sample_rate * num_channels as u32 * bits_per_sample as u32 / 8;
+    let block_align = num_channels * bits_per_sample / 8;
+    let data_size = (samples.len() * 2) as u32;
+    let mut wav = Vec::with_capacity(44 + data_size as usize);
+    // RIFF header
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&(36 + data_size).to_le_bytes());
+    wav.extend_from_slice(b"WAVE");
+    // fmt chunk
+    wav.extend_from_slice(b"fmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes());
+    wav.extend_from_slice(&1u16.to_le_bytes()); // PCM
+    wav.extend_from_slice(&num_channels.to_le_bytes());
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&byte_rate.to_le_bytes());
+    wav.extend_from_slice(&block_align.to_le_bytes());
+    wav.extend_from_slice(&bits_per_sample.to_le_bytes());
+    // data chunk
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data_size.to_le_bytes());
+    for &s in samples {
+        let safe = if s.is_finite() { s } else { 0.0 };
+        let pcm = (safe.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16;
+        wav.extend_from_slice(&pcm.to_le_bytes());
+    }
+    wav
 }
 
 /// Emit progress event
@@ -1281,6 +1340,54 @@ mod tests {
         assert_eq!(parsed["audio_file"], "audio.mp4");
         assert_eq!(parsed["status"], "completed");
         assert_eq!(parsed["source"], "import");
+    }
+
+    #[test]
+    fn test_f32_samples_to_wav_pcm_s16le() {
+        let samples = vec![1.0f32, -1.0f32];
+        let wav = f32_samples_to_wav(&samples, 16000);
+
+        // Header: 44 bytes. Data: 2 samples * 2 bytes = 4 bytes. Total: 48.
+        assert_eq!(wav.len(), 44 + samples.len() * 2);
+
+        // RIFF/WAVE
+        assert_eq!(&wav[0..4], b"RIFF");
+        assert_eq!(&wav[8..12], b"WAVE");
+
+        // fmt chunk: PCM (1), 1 channel, 16000 Hz, 16-bit
+        assert_eq!(&wav[12..16], b"fmt ");
+        assert_eq!(&wav[20..22], 1u16.to_le_bytes()); // PCM
+        assert_eq!(&wav[22..24], 1u16.to_le_bytes()); // mono
+        assert_eq!(&wav[24..28], 16000u32.to_le_bytes()); // sample rate
+        assert_eq!(&wav[34..36], 16u16.to_le_bytes()); // bits per sample
+
+        // data chunk size = 4
+        assert_eq!(&wav[40..44], 4u32.to_le_bytes());
+
+        // PCM samples: 1.0 → i16::MAX (32767), -1.0 → -32767
+        let s0 = i16::from_le_bytes([wav[44], wav[45]]);
+        let s1 = i16::from_le_bytes([wav[46], wav[47]]);
+        assert_eq!(s0, i16::MAX);
+        assert_eq!(s1, -i16::MAX);
+    }
+
+    #[test]
+    fn test_f32_samples_to_wav_nan_inf_treated_as_zero() {
+        let samples = vec![f32::NAN, f32::INFINITY, f32::NEG_INFINITY];
+        let wav = f32_samples_to_wav(&samples, 16000);
+
+        // All three should map to 0 i16
+        for i in 0..3 {
+            let pcm = i16::from_le_bytes([wav[44 + i * 2], wav[44 + i * 2 + 1]]);
+            assert_eq!(pcm, 0, "sample {} (NaN/Inf) should be 0", i);
+        }
+    }
+
+    #[test]
+    fn test_f32_samples_to_wav_zero_samples() {
+        let wav = f32_samples_to_wav(&[], 16000);
+        assert_eq!(wav.len(), 44); // header only
+        assert_eq!(&wav[40..44], 0u32.to_le_bytes()); // data_size = 0
     }
 
     /// Integration test that decodes a real audio file and runs VAD.

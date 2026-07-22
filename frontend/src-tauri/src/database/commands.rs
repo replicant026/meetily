@@ -366,19 +366,20 @@ pub async fn discard_recovery_cmd<
 }
 
 /// Resolve the local audio file path for a meeting so the frontend can
-/// offer click-to-jump audio playback (Wave 14 PR-44d).
+/// offer click-to-jump audio playback.
 ///
-/// Looks up the meeting's `folder_path`, then probes the folder for a
-/// browser-decodable audio file. Current supported filename: `audio.wav`.
+/// Probes the meeting's `folder_path` for the original recording file,
+/// preferring the format captured at recording time (`audio.mp4`, then
+/// `audio.mp3`, `audio.m4a`). Falls back to `audio.wav` only for legacy
+/// recordings or diarization-only outputs where no original exists.
 ///
-/// Returns `Ok(Some(absolute_path))` when a decodable file exists,
-/// `Ok(None)` when the meeting has no `folder_path` or no decodable audio,
+/// Returns `Ok(Some(absolute_path))` when a file exists,
+/// `Ok(None)` when the meeting has no `folder_path` or no audio file,
 /// and `Err` only on unexpected filesystem / database failures.
 ///
-/// NOTE: meetily records in AAC-in-MP4 (`encode.rs`), which the browser
-/// cannot decode via Web Audio API. Until PR-44e adds a parallel WAV
-/// export, only legacy WAV recordings will resolve. mp4-only meetings
-/// return `None` so the frontend stays silent instead of erroring.
+/// NOTE: `meeting.folder_path` is already an absolute path set by the
+/// app; `canonicalize()` is intentionally skipped to avoid the `\\?\`
+/// UNC prefix on Windows which breaks Tauri's asset protocol scope.
 #[tauri::command]
 pub async fn get_meeting_audio_path(
     app: AppHandle,
@@ -410,17 +411,17 @@ pub async fn get_meeting_audio_path(
     };
 
     let folder_path = PathBuf::from(&folder);
-    let candidate = folder_path.join("audio.wav");
-    if candidate.is_file() {
-        let abs = candidate
-            .canonicalize()
-            .unwrap_or(candidate)
-            .to_string_lossy()
-            .to_string();
-        info!("Resolved audio path for {}: {}", meeting_id, abs);
-        return Ok(Some(abs));
+
+    // Prefer original recording format; WAV is legacy/diarization fallback only.
+    for name in &["audio.mp4", "audio.mp3", "audio.m4a", "audio.wav"] {
+        let candidate = folder_path.join(name);
+        if candidate.is_file() {
+            let path_str = candidate.to_string_lossy().to_string();
+            info!("Resolved audio path for {}: {}", meeting_id, path_str);
+            return Ok(Some(path_str));
+        }
     }
 
-    info!("No browser-decodable audio for meeting {}", meeting_id);
+    info!("No audio file for meeting {}", meeting_id);
     Ok(None)
 }

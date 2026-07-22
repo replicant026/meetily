@@ -9,7 +9,7 @@ use serde::Serialize;
 pub struct SpeakerProfile {
     pub id: String,
     pub display_name: String,
-    pub embedding: Vec<f32>,
+    pub embedding: Option<Vec<f32>>,
     pub slot: i32,
     pub created_at: String,
     pub last_seen_at: Option<String>,
@@ -36,7 +36,11 @@ impl SpeakerRepository {
         display_name: &str,
         embedding: &[f32],
     ) -> Result<String, sqlx::Error> {
-        let embedding_bytes = embedding_to_bytes(embedding);
+        let embedding_bytes = if embedding.is_empty() {
+            None
+        } else {
+            Some(embedding_to_bytes(embedding))
+        };
         let now = chrono::Utc::now().to_rfc3339();
 
         // Check existing slots for this name
@@ -142,8 +146,8 @@ impl SpeakerRepository {
 
         for (_name, slots) in &by_name {
             // Use the latest slot (highest slot number)
-            if let Some(latest) = slots.iter().max_by_key(|s| s.slot) {
-                let sim = cosine_similarity(embedding, &latest.embedding);
+            if let Some(latest) = slots.iter().filter(|s| s.embedding.is_some()).max_by_key(|s| s.slot) {
+                let sim = cosine_similarity(embedding, latest.embedding.as_ref().unwrap());
                 if sim > best_sim {
                     best_sim = sim;
                     best_name = Some(latest.display_name.clone());
@@ -181,7 +185,7 @@ impl SpeakerRepository {
         }
 
         let profiles_vec: Vec<(&str, &Vec<f32>)> = by_name.iter()
-            .map(|(name, p)| (name.as_str(), &p.embedding))
+            .filter_map(|(name, p)| p.embedding.as_ref().map(|e| (name.as_str(), e)))
             .collect();
 
         let mut matches = Vec::new();
@@ -228,7 +232,7 @@ impl SpeakerRepository {
 struct RawProfile {
     id: String,
     display_name: String,
-    embedding: Vec<u8>,
+    embedding: Option<Vec<u8>>,
     slot: i32,
     created_at: String,
     last_seen_at: Option<String>,
@@ -242,8 +246,7 @@ impl TryInto<SpeakerProfile> for RawProfile {
         Ok(SpeakerProfile {
             id: self.id,
             display_name: self.display_name,
-            embedding: bytes_to_embedding(&self.embedding)
-                .ok_or_else(|| anyhow::anyhow!("invalid embedding bytes"))?,
+            embedding: self.embedding.as_deref().and_then(bytes_to_embedding),
             slot: self.slot,
             created_at: self.created_at,
             last_seen_at: self.last_seen_at,

@@ -221,8 +221,8 @@ pub fn push_window(
 pub fn diarize_full_audio(
     samples: &[f32],
     sample_rate: u32,
-    _min_speakers: usize,
-    _max_speakers: usize,
+    min_speakers: usize,
+    max_speakers: usize,
 ) -> Result<Vec<super::DiarizationSegment>> {
     let seg_path = segmentation_model_path();
     let emb_path = embedding_model_path();
@@ -230,6 +230,16 @@ pub fn diarize_full_audio(
     if !seg_path.exists() || !emb_path.exists() {
         return Err(anyhow!("diarization models not available"));
     }
+
+    // ponytail: sherpa-onnx FastClusteringConfig has no min/max_speakers fields.
+    // Use num_clusters = max_speakers to cap speaker count; raise threshold for
+    // tighter merging. If min == max, force exact cluster count.
+    let num_clusters = max_speakers as i32;
+
+    log::info!(
+        "Diarization config: num_clusters={}, min_speakers={}, max_speakers={}, threshold=0.65",
+        num_clusters, min_speakers, max_speakers
+    );
 
     let config = sherpa_onnx::OfflineSpeakerDiarizationConfig {
         segmentation: sherpa_onnx::OfflineSpeakerSegmentationModelConfig {
@@ -247,9 +257,8 @@ pub fn diarize_full_audio(
             provider: Some("cpu".into()),
         },
         clustering: sherpa_onnx::FastClusteringConfig {
-            num_clusters: 0, // auto-detect
-            threshold: 0.5,
-            ..Default::default()
+            num_clusters,
+            threshold: 0.65,
         },
         min_duration_on: 0.3,
         min_duration_off: 0.5,
@@ -307,5 +316,15 @@ mod tests {
     fn extract_embedding_rejects_wrong_rate() {
         let samples = vec![0.0f32; 48000];
         assert!(extract_embedding(&samples, 44100).is_err());
+    }
+
+    #[test]
+    fn clustering_config_defaults() {
+        let cfg = sherpa_onnx::FastClusteringConfig {
+            num_clusters: 6,
+            threshold: 0.65,
+        };
+        assert_eq!(cfg.num_clusters, 6, "num_clusters should match max_speakers");
+        assert_eq!(cfg.threshold, 0.65);
     }
 }

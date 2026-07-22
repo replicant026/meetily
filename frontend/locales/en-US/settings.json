@@ -1,6 +1,6 @@
 {
     "title": "Settings",
-    "tabs": {"general":"General","recording":"Recording","transcript":"Transcript","summary":"Summary","models":"Models","about":"About","beta":"Beta"},
+    "tabs": {"general":"General","recording":"Recording","transcript":"Transcript","speakers":"Speakers","summary":"Summary","models":"Models","about":"About","beta":"Beta"},
     "shell": {"back":"Back"},
     "model": {"download":"Download Model","downloading":"Downloading...","downloaded":"Downloaded","delete":"Delete Model","select":"Select Model"},
     "preference": {

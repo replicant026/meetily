@@ -9,6 +9,7 @@ import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useSpeakerNames } from '@/hooks/useSpeakerNames';
 import { TranscriptExportFormat } from '@/lib/transcript-export';
 import { Play, Pause, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface TranscriptPanelProps {
   transcripts: Transcript[];
@@ -19,6 +20,7 @@ interface TranscriptPanelProps {
   onOpenMeetingFolder: () => Promise<void>;
   isRecording: boolean;
   disableAutoScroll?: boolean;
+  width?: number;
 
   // Optional pagination props (when using virtualization)
   usePagination?: boolean;
@@ -66,6 +68,7 @@ export function TranscriptPanel({
   meetingFolderPath,
   onRefetchTranscripts,
   audioPath,
+  width,
 }: TranscriptPanelProps) {
   const tSummary = useTranslations('summary');
   const tView = useTranslations('transcript.view');
@@ -95,7 +98,7 @@ export function TranscriptPanel({
   const hasAudio = !!audioPath;
 
   return (
-    <div className="hidden md:flex md:w-1/4 lg:w-1/3 min-w-0 border-r border-gray-200 bg-white flex-col relative shrink-0">
+    <div className={`hidden md:flex min-w-0 border-r border-gray-200 bg-white flex-col relative shrink-0${width != null ? '' : ' md:w-1/4 lg:w-1/3'}`} style={width != null ? { width: `${width}%` } : undefined}>
       <div className="p-4 border-b border-gray-200">
         <TranscriptButtonGroup
           transcriptCount={usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0)}
@@ -160,6 +163,9 @@ export function TranscriptPanel({
           onLoadMore={onLoadMore}
           customSpeakerNames={speakerNames.allNames}
           onSpeakerRename={speakerNames.setName}
+          onEnrollSpeaker={(speakerId) => {
+            toast.success(`Enrolling voice for ${speakerId}...`);
+          }}
         />
       </div>
 

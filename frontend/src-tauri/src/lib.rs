@@ -690,6 +690,7 @@ pub fn run() {
             enroll_speaker,
             match_speaker,
             list_speaker_names,
+            rename_speaker_in_meeting,
             api::api_save_meeting_title,
             api::api_save_transcript,
             api::open_meeting_folder,
@@ -805,6 +806,8 @@ pub fn run() {
             audio::import::start_import_audio_command,
             audio::import::cancel_import_command,
             audio::import::is_import_in_progress_command,
+            // Post-save diarization command
+            audio::recording_commands::run_meeting_diarization,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -930,4 +933,26 @@ async fn list_speaker_names(
     crate::database::repositories::speaker::SpeakerRepository::get_all_names(pool)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn rename_speaker_in_meeting(
+    state: tauri::State<'_, crate::state::AppState>,
+    meeting_id: String,
+    old_speaker: String,
+    new_name: String,
+) -> Result<u64, String> {
+    let pool = state.db_manager.pool();
+    // 1. Update transcript speaker field in this meeting
+    let rows = crate::database::repositories::transcript::TranscriptsRepository::rename_speaker_in_meeting(
+        pool, &meeting_id, &old_speaker, &new_name,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+    // 2. Enroll speaker profile (name-only, embedding populated later by diarization)
+    let _ = crate::database::repositories::speaker::SpeakerRepository::upsert_profile(
+        pool, &new_name, &[],
+    )
+    .await;
+    Ok(rows)
 }

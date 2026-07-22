@@ -1,6 +1,6 @@
 {
     "title": "設定",
-    "tabs": {"general":"一般","recording":"錄音","transcript":"轉寫","summary":"摘要","models":"模型","about":"關於","beta":"Beta"},
+    "tabs": {"general":"一般","recording":"錄音","transcript":"轉寫","speakers":"說話人","summary":"摘要","models":"模型","about":"關於","beta":"Beta"},
     "shell": {"back":"返回"},
     "model": {"download":"下載模型","downloading":"下載中...","downloaded":"已下載","delete":"刪除模型","select":"選擇模型"},
     "preference": {

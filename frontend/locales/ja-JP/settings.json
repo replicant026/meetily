@@ -1,6 +1,6 @@
 {
     "title": "設定",
-    "tabs": {"general":"一般","recording":"録音","transcript":"文字起こし","summary":"要約","models":"モデル","about":"Meetily について","beta":"ベータ"},
+    "tabs": {"general":"一般","recording":"録音","transcript":"文字起こし","speakers":"話者","summary":"要約","models":"モデル","about":"Meetily について","beta":"ベータ"},
     "shell": {"back":"戻る"},
     "model": {"download":"モデルをダウンロード","downloading":"ダウンロード中...","downloaded":"ダウンロード済み","delete":"モデルを削除","select":"モデルを選択"},
     "preference": {

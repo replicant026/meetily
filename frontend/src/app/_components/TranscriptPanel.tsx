@@ -11,6 +11,7 @@ import { ModalType } from '@/hooks/useModalState';
 import { useIsLinux } from '@/hooks/usePlatform';
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 
 /**
  * TranscriptPanel Component
@@ -48,6 +49,8 @@ export function TranscriptPanel({
       endTime: t.audio_end_time,
       text: t.text,
       confidence: t.confidence,
+      speaker: t.speaker,
+      transient_speaker: t.transient_speaker,
     })),
     [transcripts]
   );
@@ -116,6 +119,9 @@ export function TranscriptPanel({
               isStopping={isStopping}
               enableStreaming={isRecording}
               showConfidence={true}
+              onEnrollSpeaker={(speakerId) => {
+                toast.success(`Enrolling voice for ${speakerId}...`);
+              }}
             />
           </div>
         </div>

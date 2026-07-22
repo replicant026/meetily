@@ -1243,3 +1243,66 @@ pub async fn attempt_device_reconnect(
         }
     }
 }
+
+/// Run offline speaker diarization for a saved meeting.
+///
+/// Called from the frontend *after* the meeting is persisted to the database
+/// (i.e. after `storageService.saveMeeting()` returns a `meeting_id`).
+/// This bridges the gap: `RecordingSaver::stop_and_save` skips diarization
+/// because metadata.meeting_id is None at that point.
+#[tauri::command]
+pub async fn run_meeting_diarization(
+    app: AppHandle<impl Runtime>,
+    meeting_id: String,
+    meeting_folder: String,
+) -> Result<(), String> {
+    if meeting_id.is_empty() {
+        return Err("meeting_id is required".to_string());
+    }
+    if meeting_folder.is_empty() {
+        return Err("meeting_folder is required".to_string());
+    }
+
+    let pool = app
+        .try_state::<crate::state::AppState>()
+        .ok_or("AppState not available")?
+        .db_manager
+        .pool()
+        .clone();
+
+    let wav_path = std::path::PathBuf::from(&meeting_folder).join("audio.wav");
+    if !wav_path.exists() {
+        warn!("diarization: audio.wav not found at {}; skipping", wav_path.display());
+        return Ok(());
+    }
+
+    let meeting_id_clone = meeting_id.clone();
+    let app_clone = app.clone();
+
+    tokio::spawn(async move {
+        match crate::diarization::offline::commit_speaker_labels(
+            &pool,
+            &meeting_id_clone,
+            Some(wav_path.as_path()),
+            Vec::new(),
+            0,
+            0,
+        )
+        .await
+        {
+            Ok(count) => {
+                info!("diarization: committed {} speaker labels for meeting {}", count, meeting_id_clone);
+                if let Err(e) = app_clone.emit("transcripts-updated", serde_json::json!({
+                    "meeting_id": meeting_id_clone,
+                })) {
+                    warn!("diarization: failed to emit transcripts-updated: {}", e);
+                }
+            }
+            Err(e) => {
+                warn!("diarization: offline failed for meeting {}: {}", meeting_id_clone, e);
+            }
+        }
+    });
+
+    Ok(())
+}

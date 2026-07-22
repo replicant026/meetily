@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useReducer, startTransition, useEffect, useState, memo } from "react";
+import { useCallback, useRef, useReducer, startTransition, useEffect, useState, useMemo, memo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { useTranscriptStreaming } from "@/hooks/useTranscriptStreaming";
@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X } from "lucide-react";
 import { TranscriptSegmentData } from "@/types";
 import { useTranslations } from "next-intl";
+import { getSpeakerColor, buildSpeakerColorMap } from "@/lib/speaker-colors";
 
 export interface VirtualizedTranscriptViewProps {
     /** Transcript segments to display */
@@ -45,6 +46,7 @@ export interface VirtualizedTranscriptViewProps {
     onTimestampClick?: (sec: number) => void;
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
+    onEnrollSpeaker?: (speakerId: string) => void;
     transientSpeaker?: string | null;
 }
 
@@ -88,6 +90,8 @@ const TranscriptSegment = memo(function TranscriptSegment({
     transientSpeaker,
     customSpeakerNames,
     onSpeakerRename,
+    speakerColorMap,
+    onEnrollSpeaker,
     hotwords,
     protectedSet,
     postprocessFailed,
@@ -104,6 +108,8 @@ const TranscriptSegment = memo(function TranscriptSegment({
     transientSpeaker?: string | null;
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
+    speakerColorMap?: Map<string, import("@/lib/speaker-colors").SpeakerColor>;
+    onEnrollSpeaker?: (speakerId: string) => void;
     hotwords: HotwordRule[];
     protectedSet?: Set<string>;
     postprocessFailed?: boolean;
@@ -120,6 +126,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     const displayText = cleanStopWords(text) || (text.trim() === '' ? '[Silence]' : text);
     const hotwordNodes = wrapHotwords(displayText, hotwords, handleHotwordCopy, protectedSet).nodes;
     const customName = speaker ? customSpeakerNames?.[speaker] : undefined;
+    const speakerColor = speaker ? (speakerColorMap?.get(speaker) ?? getSpeakerColor(speaker)) : null;
     const [isRenaming, setIsRenaming] = useState(false);
     const [draftName, setDraftName] = useState('');
     const openRename = (e: React.MouseEvent) => {
@@ -129,7 +136,11 @@ const TranscriptSegment = memo(function TranscriptSegment({
         setIsRenaming(true);
     };
     const commitRename = () => {
-        if (speaker) onSpeakerRename?.(speaker, draftName);
+        const trimmed = draftName.trim();
+        if (speaker && trimmed) {
+            onSpeakerRename?.(speaker, trimmed);
+            toast.success(`${speaker} is now "${trimmed}"`);
+        }
         setIsRenaming(false);
     };
     const cancelRename = () => setIsRenaming(false);
@@ -167,15 +178,27 @@ const TranscriptSegment = memo(function TranscriptSegment({
                     </TooltipContent>
                 </Tooltip>
                 {speaker && !isRenaming && (
-                    <button
-                        type="button"
-                        onClick={openRename}
-                        disabled={!onSpeakerRename}
-                        className="text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:cursor-default px-2 py-0.5 rounded mt-1 flex-shrink-0"
-                        title={onSpeakerRename ? t('speaker_rename_placeholder') : undefined}
-                    >
-                        {customName ?? speaker}
-                    </button>
+                    <span className="inline-flex items-center gap-0.5 mt-1 flex-shrink-0 group/speaker">
+                        <button
+                            type="button"
+                            onClick={openRename}
+                            disabled={!onSpeakerRename}
+                            className={`text-xs font-medium px-2 py-0.5 rounded ${speakerColor?.bg ?? 'bg-blue-50'} ${speakerColor?.text ?? 'text-blue-700'} hover:opacity-80 disabled:cursor-default`}
+                            title={onSpeakerRename ? t('speaker_rename_placeholder') : undefined}
+                        >
+                            {customName ?? speaker}
+                        </button>
+                        {onEnrollSpeaker && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onEnrollSpeaker(speaker); }}
+                                className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-green-600 rounded"
+                                title="Save voice profile"
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            </button>
+                        )}
+                    </span>
                 )}
                 {!speaker && transientSpeaker && !isRenaming && (
                     <span
@@ -234,9 +257,12 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     onLoadMore,
     customSpeakerNames,
     onSpeakerRename,
+    onEnrollSpeaker,
 }) => {
     // Wave 18 PR-52: shared hotword rules so every TranscriptSegment uses the same list.
     const { rules: hotwords, protectedSet } = useHotwords();
+    // Build stable speaker→color map from segment order (prevents color reset on rename)
+    const speakerColorMap = useMemo(() => buildSpeakerColorMap(segments), [segments]);
     // Create scroll ref first - shared between virtualizer and auto-scroll hook
     const scrollRef = useRef<HTMLDivElement>(null);
     // Ref for infinite scroll trigger element
@@ -420,6 +446,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         transientSpeaker={segment.transient_speaker ?? undefined}
                                         customSpeakerNames={customSpeakerNames}
                                         onSpeakerRename={onSpeakerRename}
+                                        speakerColorMap={speakerColorMap}
+                                        onEnrollSpeaker={onEnrollSpeaker}
                                         onTimestampClick={onTimestampClick}
                                         hotwords={hotwords}
                                         protectedSet={protectedSet}
@@ -485,6 +513,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         transientSpeaker={segment.transient_speaker ?? undefined}
                                         customSpeakerNames={customSpeakerNames}
                                         onSpeakerRename={onSpeakerRename}
+                                        speakerColorMap={speakerColorMap}
+                                        onEnrollSpeaker={onEnrollSpeaker}
                                         onTimestampClick={onTimestampClick}
                                         hotwords={hotwords}
                                     />

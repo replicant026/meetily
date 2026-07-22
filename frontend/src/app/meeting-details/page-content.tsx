@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Summary, SummaryResponse } from '@/types';
 import { useSidebar } from '@/components/Sidebar/SidebarProvider';
@@ -59,6 +59,36 @@ export default function PageContent({
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [isRecording] = useState(false);
   const [summaryResponse] = useState<SummaryResponse | null>(null);
+
+  // Resizable divider state
+  const [transcriptWidth, setTranscriptWidth] = useState(33);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setTranscriptWidth(Math.min(60, Math.max(20, pct)));
+    };
+
+    const onUp = () => {
+      isDragging.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
 
   // Ref to store the modal open function from SummaryGeneratorButtonGroup
   const openModelSettingsRef = useRef<(() => void) | null>(null);
@@ -176,8 +206,9 @@ export default function PageContent({
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="flex flex-col h-screen bg-gray-50"
     >
-      <div className="flex flex-1 overflow-hidden">
+      <div ref={containerRef} className="flex flex-1 overflow-hidden">
         <TranscriptPanel
+          width={transcriptWidth}
           transcripts={meetingData.transcripts}
           customPrompt={customPrompt}
           onPromptChange={setCustomPrompt}
@@ -200,6 +231,11 @@ export default function PageContent({
           onRefetchTranscripts={onRefetchTranscripts}
           // Audio jump props (Wave 14 PR-44d): null disables the player gracefully
           audioPath={audioPath}
+        />
+        {/* Resizable divider */}
+        <div
+          onMouseDown={handleDividerMouseDown}
+          className="w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 transition-colors shrink-0 hidden md:block"
         />
         <SummaryPanel
           meeting={meeting}

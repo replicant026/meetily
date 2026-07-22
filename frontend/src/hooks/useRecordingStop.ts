@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { toast } from 'sonner';
 import { useTranscripts } from '@/contexts/TranscriptContext';
@@ -294,6 +295,18 @@ export function useRecordingStop(
           console.log('✅ Successfully saved COMPLETE meeting with ID:', meetingId);
           console.log('   Transcripts:', freshTranscripts.length);
           console.log('   folder_path:', folderPath);
+
+          // Trigger offline diarization now that meeting_id exists in DB.
+          // This is fire-and-forget: diarization runs async in Rust and
+          // emits transcripts-updated when done.
+          if (folderPath) {
+            invoke('run_meeting_diarization', {
+              meetingId,
+              meetingFolder: folderPath,
+            }).catch((err: unknown) =>
+              console.warn('Failed to trigger post-save diarization:', err)
+            );
+          }
 
           // Mark meeting as saved in IndexedDB (for recovery system)
           await markMeetingAsSaved();

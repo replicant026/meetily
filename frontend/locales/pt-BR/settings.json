@@ -1,6 +1,6 @@
 ﻿{
     "title": "Configurações",
-    "tabs": {"general":"Geral","recording":"Gravação","transcript":"Transcrição","summary":"Resumo","models":"Modelos","about":"Sobre","beta":"Beta"},
+    "tabs": {"general":"Geral","recording":"Gravação","transcript":"Transcrição","speakers":"Falantes","summary":"Resumo","models":"Modelos","about":"Sobre","beta":"Beta"},
     "shell": {"back":"Voltar"},
     "model": {"download":"Baixar Modelo","downloading":"Baixando...","downloaded":"Baixado","delete":"Excluir Modelo","select":"Selecionar Modelo"},
     "preference": {

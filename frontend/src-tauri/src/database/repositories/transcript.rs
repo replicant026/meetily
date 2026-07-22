@@ -183,4 +183,23 @@ impl TranscriptsRepository {
         tx.commit().await?;
         Ok(())
     }
+
+    /// Rename a speaker across all transcripts in a meeting.
+    /// Updates `speaker` field from `old_speaker` to `new_name` for all matching segments.
+    pub async fn rename_speaker_in_meeting(
+        pool: &SqlitePool,
+        meeting_id: &str,
+        old_speaker: &str,
+        new_name: &str,
+    ) -> Result<u64, SqlxError> {
+        let result = sqlx::query(
+            "UPDATE transcripts SET speaker = ? WHERE meeting_id = ? AND speaker = ?",
+        )
+        .bind(new_name)
+        .bind(meeting_id)
+        .bind(old_speaker)
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
 }

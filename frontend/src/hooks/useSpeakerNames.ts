@@ -61,11 +61,12 @@ export function useSpeakerNames(meetingId: string | null | undefined) {
       return;
     }
 
-    // Save to backend — this enrolls the speaker profile globally
-    invoke<string>('enroll_speaker', {
-      displayName: trimmedName,
-      embedding: [], // Empty embedding for now; will be populated by diarization
-    }).catch((e) => console.warn('Failed to enroll speaker:', e));
+    // Persist rename: update transcript speaker field + enroll speaker profile
+    invoke<number>('rename_speaker_in_meeting', {
+      meetingId,
+      oldSpeaker: speakerId,
+      newName: trimmedName,
+    }).catch((e) => console.warn('Failed to rename speaker in meeting:', e));
 
     setAllNames((current) => ({
       ...current,

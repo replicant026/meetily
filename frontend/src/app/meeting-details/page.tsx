@@ -9,6 +9,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { LoaderIcon } from "lucide-react";
 import { useConfig } from "@/contexts/ConfigContext";
 import { usePaginatedTranscripts } from "@/hooks/usePaginatedTranscripts";
+import { listen } from "@tauri-apps/api/event";
+import { toast } from "sonner";
 
 interface MeetingDetailsResponse {
   id: string;
@@ -180,6 +182,70 @@ function MeetingDetailsContent() {
       }
     };
   }, [meetingId, stopSummaryPolling]);
+
+  // Listen for transcripts-updated event from background diarization.
+  // When run_meeting_diarization finishes, Rust emits this event so the UI
+  // refreshes speaker labels without polling.
+  useEffect(() => {
+    if (!meetingId || meetingId === 'intro-call') return;
+
+    let disposed = false;
+    let unlistenFn: (() => void) | undefined;
+
+    (async () => {
+      try {
+        const unlisten = await listen<{ meeting_id: string }>('transcripts-updated', (event) => {
+          if (!disposed && event.payload.meeting_id === meetingId) {
+            console.log('transcripts-updated for current meeting, refetching...');
+            refetch();
+          }
+        });
+        if (disposed) {
+          unlisten();
+        } else {
+          unlistenFn = unlisten;
+        }
+      } catch (err) {
+        console.error('Failed to set up transcripts-updated listener:', err);
+      }
+    })();
+
+    return () => {
+      disposed = true;
+      if (unlistenFn) unlistenFn();
+    };
+  }, [meetingId, refetch]);
+
+  // Listen for speaker recognition events
+  useEffect(() => {
+    if (!meetingId || meetingId === 'intro-call') return;
+
+    let disposed = false;
+    let unlistenFn: (() => void) | undefined;
+
+    (async () => {
+      try {
+        const unlisten = await listen<{ meeting_id: string }>('speakers-recognized', (event) => {
+          if (!disposed && event.payload.meeting_id === meetingId) {
+            toast.success('Speakers matched from your saved profiles');
+            refetch();
+          }
+        });
+        if (disposed) {
+          unlisten();
+        } else {
+          unlistenFn = unlisten;
+        }
+      } catch (err) {
+        console.error('Failed to set up speakers-recognized listener:', err);
+      }
+    })();
+
+    return () => {
+      disposed = true;
+      if (unlistenFn) unlistenFn();
+    };
+  }, [meetingId, refetch]);
 
   useEffect(() => {
     console.log('MeetingDetails useEffect triggered - meetingId:', meetingId);

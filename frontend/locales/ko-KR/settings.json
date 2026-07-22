@@ -1,6 +1,6 @@
 {
     "title": "설정",
-    "tabs": {"general":"일반","recording":"녹음","transcript":"전사","summary":"요약","models":"모델","about":"정보","beta":"베타"},
+    "tabs": {"general":"일반","recording":"녹음","transcript":"전사","speakers":"화자","summary":"요약","models":"모델","about":"정보","beta":"베타"},
     "shell": {"back":"뒤로"},
     "model": {"download":"모델 다운로드","downloading":"다운로드 중...","downloaded":"다운로드됨","delete":"모델 삭제","select":"모델 선택"},
     "preference": {
