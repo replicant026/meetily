@@ -4,6 +4,57 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 // Removed unused import
 
+// ── Voice snippet commands ─────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateVoiceReferenceRequest {
+    pub speaker_id: String,
+    pub meeting_id: String,
+    pub segment_ids: Vec<String>,
+    pub channel: Option<String>,
+}
+
+#[tauri::command]
+async fn create_speaker_voice_reference(
+    state: tauri::State<'_, crate::state::AppState>,
+    request: CreateVoiceReferenceRequest,
+) -> Result<String, String> {
+    let pool = state.db_manager.pool();
+    crate::diarization::voice_references::create_voice_reference_from_segments(
+        pool,
+        &request.speaker_id,
+        &request.meeting_id,
+        &request.segment_ids,
+        request.channel,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_speaker_voice_reference_audio_path(
+    state: tauri::State<'_, crate::state::AppState>,
+    reference_id: String,
+) -> Result<Option<String>, String> {
+    let pool = state.db_manager.pool();
+    crate::diarization::voice_references::get_voice_reference_audio_path(pool, &reference_id)
+        .await
+        .map(|opt| opt.map(|p| p.to_string_lossy().into_owned()))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_speaker_voice_reference(
+    state: tauri::State<'_, crate::state::AppState>,
+    reference_id: String,
+) -> Result<(), String> {
+    let pool = state.db_manager.pool();
+    crate::diarization::voice_references::delete_voice_reference(pool, &reference_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 // Performance optimization: Conditional logging macros for hot paths
 #[cfg(debug_assertions)]
 macro_rules! perf_debug {
@@ -818,6 +869,10 @@ pub fn run() {
             database::commands::save_meeting_note,
             database::commands::get_meeting_action_states,
             database::commands::set_meeting_action_completed,
+            // Voice snippet commands
+            create_speaker_voice_reference,
+            get_speaker_voice_reference_audio_path,
+            delete_speaker_voice_reference,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

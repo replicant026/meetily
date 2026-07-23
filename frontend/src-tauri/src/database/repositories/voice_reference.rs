@@ -155,6 +155,18 @@ impl VoiceReferenceRepository {
         Ok(())
     }
 
+    /// Delete a voice reference by id within an existing transaction.
+    pub async fn delete_with_tx(
+        conn: &mut sqlx::SqliteConnection,
+        id: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM speaker_voice_references WHERE id = ?")
+            .bind(id)
+            .execute(&mut *conn)
+            .await?;
+        Ok(())
+    }
+
     /// Create a speaker match suggestion.
     pub async fn create_suggestion(
         pool: &SqlitePool,

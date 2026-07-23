@@ -101,19 +101,27 @@ pub fn select_reference_window(segments: &[(i64, i64)]) -> Option<ReferenceWindo
 /// Build exactly `num_peaks` waveform peaks from f32 samples.
 /// Each peak is the max absolute amplitude per bucket, stored as u8 (0–255).
 pub fn build_waveform_peaks(samples: &[f32], num_peaks: usize) -> Vec<u8> {
-    if samples.is_empty() || num_peaks == 0 {
+    if num_peaks == 0 {
+        return Vec::new();
+    }
+    if samples.is_empty() {
         return vec![0u8; num_peaks];
     }
 
-    let bucket_size = (samples.len() + num_peaks - 1) / num_peaks; // ceiling
-    samples
-        .chunks(bucket_size)
-        .take(num_peaks)
-        .map(|chunk| {
-            let peak = chunk.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
-            (peak * 255.0).round().clamp(0.0, 255.0) as u8
-        })
-        .collect()
+    let mut peaks = Vec::with_capacity(num_peaks);
+    let bucket_size = (samples.len() as f64 / num_peaks as f64).ceil() as usize;
+    
+    for i in 0..num_peaks {
+        let start = i * bucket_size;
+        let end = (start + bucket_size).min(samples.len());
+        if start >= samples.len() {
+            peaks.push(0);
+        } else {
+            let peak = samples[start..end].iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+            peaks.push((peak * 255.0).round().clamp(0.0, 255.0) as u8);
+        }
+    }
+    peaks
 }
 
 /// Validate and resolve a relative path under the managed references dir.
@@ -390,8 +398,10 @@ pub async fn get_voice_reference_audio_path(
 pub async fn delete_voice_reference(pool: &SqlitePool, reference_id: &str) -> Result<()> {
     let relative_path = fetch_relative_path(pool, reference_id).await?;
 
-    // DB row first
-    VoiceReferenceRepository::delete(pool, reference_id).await?;
+    // DB row first (in transaction)
+    let mut tx = pool.begin().await?;
+    VoiceReferenceRepository::delete_with_tx(&mut *tx, reference_id).await?;
+    tx.commit().await?;
 
     // Then file (only if under managed dir)
     if let Some(rp) = relative_path {
@@ -408,3 +418,7 @@ pub async fn delete_voice_reference(pool: &SqlitePool, reference_id: &str) -> Re
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "voice_references_test.rs"]
+mod voice_references_test;
