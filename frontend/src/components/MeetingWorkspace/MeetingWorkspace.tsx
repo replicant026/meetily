@@ -2,6 +2,7 @@
 
 import type { AudioController, WorkspaceParticipant } from './types';
 import { MeetingHeader } from './MeetingHeader';
+import { MeetingTimeline } from './MeetingTimeline';
 import { MeetingTabs } from './MeetingTabs';
 import { ParticipantsSidebar } from './ParticipantsSidebar';
 
@@ -9,6 +10,7 @@ export interface MeetingWorkspaceProps {
   meeting: { id: string; title: string; created_at: string };
   audio: AudioController;
   participants: WorkspaceParticipant[];
+  peaks?: Float32Array | null;
   /** Passed through to MeetingTabs as transcriptContent */
   transcriptContent?: React.ReactNode;
   /** Passed through to MeetingTabs as summaryContent */
@@ -21,6 +23,7 @@ export function MeetingWorkspace({
   meeting,
   audio,
   participants,
+  peaks = null,
   transcriptContent,
   summaryContent,
   notesContent,
@@ -29,6 +32,7 @@ export function MeetingWorkspace({
   return (
     <main className="min-h-screen bg-[#fbfaf7] text-stone-900">
       <MeetingHeader meeting={meeting} audio={audio} />
+      <MeetingTimeline audio={audio} peaks={peaks} />
       <div className="grid min-h-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section
           aria-label="Meeting content"
