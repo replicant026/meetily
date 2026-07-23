@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Summary, SummaryResponse } from '@/types';
 import { useSidebar } from '@/components/Sidebar/SidebarProvider';
@@ -8,6 +8,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { TranscriptPanel } from '@/components/MeetingDetails/TranscriptPanel';
 import { SummaryPanel } from '@/components/MeetingDetails/SummaryPanel';
+import { MeetingWorkspace } from '@/components/MeetingWorkspace/MeetingWorkspace';
+import type { AudioController } from '@/components/MeetingWorkspace/types';
 import { ModelConfig } from '@/components/ModelSettingsModal';
 
 // Custom hooks
@@ -59,36 +61,6 @@ export default function PageContent({
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [isRecording] = useState(false);
   const [summaryResponse] = useState<SummaryResponse | null>(null);
-
-  // Resizable divider state
-  const [transcriptWidth, setTranscriptWidth] = useState(33);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-
-    const onMove = (ev: MouseEvent) => {
-      if (!isDragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
-      setTranscriptWidth(Math.min(60, Math.max(20, pct)));
-    };
-
-    const onUp = () => {
-      isDragging.current = false;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, []);
 
   // Ref to store the modal open function from SummaryGeneratorButtonGroup
   const openModelSettingsRef = useRef<(() => void) | null>(null);
@@ -199,6 +171,81 @@ export default function PageContent({
     };
   }, [shouldAutoGenerate, meeting.id]); // Re-run if meeting changes
 
+  // Build audio controller for the workspace header
+  const audioController: AudioController = {
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    toggle: () => {},
+    seek: () => {},
+  };
+
+  const transcriptPanel = (
+    <TranscriptPanel
+      width={undefined}
+      transcripts={meetingData.transcripts}
+      customPrompt={customPrompt}
+      onPromptChange={setCustomPrompt}
+      onCopyTranscript={copyOperations.handleCopyTranscript}
+      onExportTranscript={copyOperations.handleExportTranscript}
+      onOpenMeetingFolder={meetingOperations.handleOpenMeetingFolder}
+      isRecording={isRecording}
+      disableAutoScroll={true}
+      // Pagination props for efficient loading
+      usePagination={true}
+      segments={segments}
+      hasMore={hasMore}
+      isLoadingMore={isLoadingMore}
+      totalCount={totalCount}
+      loadedCount={loadedCount}
+      onLoadMore={onLoadMore}
+      // Retranscription props
+      meetingId={meeting.id}
+      meetingFolderPath={meeting.folder_path}
+      onRefetchTranscripts={onRefetchTranscripts}
+      // Audio jump props (Wave 14 PR-44d): null disables the player gracefully
+      audioPath={audioPath}
+    />
+  );
+
+  const summaryPanel = (
+    <SummaryPanel
+      meeting={meeting}
+      meetingTitle={meetingData.meetingTitle}
+      onTitleChange={meetingData.handleTitleChange}
+      isEditingTitle={meetingData.isEditingTitle}
+      onStartEditTitle={() => meetingData.setIsEditingTitle(true)}
+      onFinishEditTitle={() => meetingData.setIsEditingTitle(false)}
+      isTitleDirty={meetingData.isTitleDirty}
+      summaryRef={meetingData.blockNoteSummaryRef}
+      isSaving={meetingData.isSaving}
+      onSaveAll={meetingData.saveAllChanges}
+      onCopySummary={copyOperations.handleCopySummary}
+      onOpenFolder={meetingOperations.handleOpenMeetingFolder}
+      aiSummary={meetingData.aiSummary}
+      summaryStatus={summaryGeneration.summaryStatus}
+      transcripts={meetingData.transcripts}
+      modelConfig={modelConfig}
+      setModelConfig={setModelConfig}
+      onSaveModelConfig={handleSaveModelConfig}
+      onGenerateSummary={summaryGeneration.handleGenerateSummary}
+      onStopGeneration={summaryGeneration.handleStopGeneration}
+      customPrompt={customPrompt}
+      summaryResponse={summaryResponse}
+      onSaveSummary={meetingData.handleSaveSummary}
+      onSummaryChange={meetingData.handleSummaryChange}
+      onDirtyChange={meetingData.setIsSummaryDirty}
+      summaryError={summaryGeneration.summaryError}
+      onRegenerateSummary={summaryGeneration.handleRegenerateSummary}
+      getSummaryStatusMessage={summaryGeneration.getSummaryStatusMessage}
+      availableTemplates={templates.availableTemplates}
+      selectedTemplate={templates.selectedTemplate}
+      onTemplateSelect={templates.handleTemplateSelection}
+      isModelConfigLoading={false}
+      onOpenModelSettings={handleRegisterModalOpen}
+    />
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -206,73 +253,13 @@ export default function PageContent({
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="flex flex-col h-screen bg-gray-50"
     >
-      <div ref={containerRef} className="flex flex-1 overflow-hidden">
-        <TranscriptPanel
-          width={transcriptWidth}
-          transcripts={meetingData.transcripts}
-          customPrompt={customPrompt}
-          onPromptChange={setCustomPrompt}
-          onCopyTranscript={copyOperations.handleCopyTranscript}
-          onExportTranscript={copyOperations.handleExportTranscript}
-          onOpenMeetingFolder={meetingOperations.handleOpenMeetingFolder}
-          isRecording={isRecording}
-          disableAutoScroll={true}
-          // Pagination props for efficient loading
-          usePagination={true}
-          segments={segments}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          totalCount={totalCount}
-          loadedCount={loadedCount}
-          onLoadMore={onLoadMore}
-          // Retranscription props
-          meetingId={meeting.id}
-          meetingFolderPath={meeting.folder_path}
-          onRefetchTranscripts={onRefetchTranscripts}
-          // Audio jump props (Wave 14 PR-44d): null disables the player gracefully
-          audioPath={audioPath}
-        />
-        {/* Resizable divider */}
-        <div
-          onMouseDown={handleDividerMouseDown}
-          className="w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 transition-colors shrink-0 hidden md:block"
-        />
-        <SummaryPanel
-          meeting={meeting}
-          meetingTitle={meetingData.meetingTitle}
-          onTitleChange={meetingData.handleTitleChange}
-          isEditingTitle={meetingData.isEditingTitle}
-          onStartEditTitle={() => meetingData.setIsEditingTitle(true)}
-          onFinishEditTitle={() => meetingData.setIsEditingTitle(false)}
-          isTitleDirty={meetingData.isTitleDirty}
-          summaryRef={meetingData.blockNoteSummaryRef}
-          isSaving={meetingData.isSaving}
-          onSaveAll={meetingData.saveAllChanges}
-          onCopySummary={copyOperations.handleCopySummary}
-          onOpenFolder={meetingOperations.handleOpenMeetingFolder}
-          aiSummary={meetingData.aiSummary}
-          summaryStatus={summaryGeneration.summaryStatus}
-          transcripts={meetingData.transcripts}
-          modelConfig={modelConfig}
-          setModelConfig={setModelConfig}
-          onSaveModelConfig={handleSaveModelConfig}
-          onGenerateSummary={summaryGeneration.handleGenerateSummary}
-          onStopGeneration={summaryGeneration.handleStopGeneration}
-          customPrompt={customPrompt}
-          summaryResponse={summaryResponse}
-          onSaveSummary={meetingData.handleSaveSummary}
-          onSummaryChange={meetingData.handleSummaryChange}
-          onDirtyChange={meetingData.setIsSummaryDirty}
-          summaryError={summaryGeneration.summaryError}
-          onRegenerateSummary={summaryGeneration.handleRegenerateSummary}
-          getSummaryStatusMessage={summaryGeneration.getSummaryStatusMessage}
-          availableTemplates={templates.availableTemplates}
-          selectedTemplate={templates.selectedTemplate}
-          onTemplateSelect={templates.handleTemplateSelection}
-          isModelConfigLoading={false}
-          onOpenModelSettings={handleRegisterModalOpen}
-        />
-      </div>
+      <MeetingWorkspace
+        meeting={{ id: meeting.id, title: meeting.title, created_at: meeting.created_at }}
+        audio={audioController}
+        participants={[]}
+        transcriptContent={transcriptPanel}
+        summaryContent={summaryPanel}
+      />
     </motion.div>
   );
 }
