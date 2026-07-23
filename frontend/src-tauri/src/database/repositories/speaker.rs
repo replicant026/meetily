@@ -266,6 +266,42 @@ impl SpeakerRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    /// Update a person's email.
+    pub async fn update_email(
+        pool: &SqlitePool,
+        id: &str,
+        email: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let now = chrono::Utc::now().to_rfc3339();
+        let result = sqlx::query(
+            "UPDATE speaker_people SET email = ?, updated_at = ? WHERE id = ?",
+        )
+        .bind(email)
+        .bind(&now)
+        .bind(id)
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Update a person's color.
+    pub async fn update_color(
+        pool: &SqlitePool,
+        id: &str,
+        color: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let now = chrono::Utc::now().to_rfc3339();
+        let result = sqlx::query(
+            "UPDATE speaker_people SET color = ?, updated_at = ? WHERE id = ?",
+        )
+        .bind(color)
+        .bind(&now)
+        .bind(id)
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
     /// Merge source person into target: move all references, then delete source.
     /// Runs in a single transaction.
     pub async fn merge_people(

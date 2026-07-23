@@ -741,6 +741,8 @@ pub fn run() {
             get_diarization_status,
             set_diarization_config,
             // Speaker profile commands
+            update_speaker_person_email,
+            update_speaker_person_color,
             list_speaker_profiles,
             delete_speaker_profile,
             rename_speaker_profile,
@@ -1054,6 +1056,32 @@ async fn assign_meeting_speaker(
 }
 
 // ── Speaker profile commands ──────────────────────────────────────────────
+
+#[tauri::command]
+async fn update_speaker_person_email(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+    email: String,
+) -> Result<(), String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::update_email(pool, &id, &email)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn update_speaker_person_color(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+    color: String,
+) -> Result<(), String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::update_color(pool, &id, &color)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 #[tauri::command]
 async fn list_speaker_profiles(

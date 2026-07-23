@@ -9,6 +9,8 @@ import {
   renamePerson,
   deletePerson,
   mergePeople,
+  updatePersonEmail,
+  updatePersonColor,
 } from '@/lib/speaker-api';
 import { VoiceReferenceCard } from './VoiceReferenceCard';
 import { AppDialog } from '@/components/ui/app-dialog';
@@ -95,9 +97,9 @@ export function SpeakerDetailPanel({ person, allPeople, onUpdated }: SpeakerDeta
   };
 
   const handleSaveEmail = async () => {
+    const email = draftEmail.trim();
     try {
-      // Email update goes through createPerson or a dedicated command — using rename as proxy
-      // For now, just close the editor. Backend email update is via person metadata.
+      await updatePersonEmail(person.id, email);
       toast.success(t('email_saved'));
       setEditingEmail(false);
       onUpdated?.();
@@ -220,9 +222,15 @@ export function SpeakerDetailPanel({ person, allPeople, onUpdated }: SpeakerDeta
             <button
               key={c}
               type="button"
-              onClick={() => {
-                // Color update - will be saved via API
-                toast.success(t('renamed')); // placeholder
+              onClick={async () => {
+                if (c === person.color) return;
+                try {
+                  await updatePersonColor(person.id, c);
+                  toast.success(t('color_updated'));
+                  onUpdated?.();
+                } catch {
+                  toast.error(t('color_update_error'));
+                }
               }}
               className={`w-6 h-6 rounded-full border-2 transition-colors ${
                 person.color === c ? 'border-foreground scale-110' : 'border-transparent hover:border-muted-foreground/50'

@@ -21,6 +21,14 @@ export async function deletePerson(id: string): Promise<void> {
   return invoke('delete_speaker_person', { id });
 }
 
+export async function updatePersonEmail(id: string, email: string): Promise<void> {
+  return invoke('update_speaker_person_email', { id, email });
+}
+
+export async function updatePersonColor(id: string, color: string): Promise<void> {
+  return invoke('update_speaker_person_color', { id, color });
+}
+
 export async function mergePeople(sourceId: string, targetId: string): Promise<void> {
   return invoke('merge_speaker_people', { sourceId, targetId });
 }
@@ -55,4 +63,8 @@ export async function getRecognitionPreferences(): Promise<{ recognitionMode: Re
 
 export async function setRecognitionPreferences(prefs: { recognitionMode: RecognitionMode; lockAudioChannels: boolean; minimumReferenceQuality: number }): Promise<void> {
   return invoke('set_speaker_recognition_preferences', { prefs });
+}
+
+export async function assignMeetingSpeaker(meetingId: string, speakerId: string, segmentIds: string[]): Promise<void> {
+  return invoke('assign_meeting_speaker', { meetingId, speakerId, segmentIds });
 }

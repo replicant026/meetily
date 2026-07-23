@@ -12,6 +12,21 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `${diffDay}d`;
+  const diffMo = Math.floor(diffDay / 30);
+  return `${diffMo}mo`;
+}
+
 export function SpeakerDirectory() {
   const t = useTranslations('speakers');
   const [people, setPeople] = useState<SpeakerPerson[]>([]);
@@ -148,7 +163,7 @@ export function SpeakerDirectory() {
                       {person.display_name.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <div className="flex-1 min-w-0">
+                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{person.display_name}</p>
                     <p className="text-xs text-muted-foreground">
                       {person.playable_reference_count === 0
@@ -156,6 +171,12 @@ export function SpeakerDirectory() {
                         : `${person.reference_count} ref${person.reference_count !== 1 ? 's' : ''}`}
                       {' · '}
                       {person.meeting_count} mtg{person.meeting_count !== 1 ? 's' : ''}
+                      {person.last_seen_at && (
+                        <> · {t('directory.last_seen_ago', { time: formatRelativeTime(person.last_seen_at) })}</>
+                      )}
+                      {!person.last_seen_at && (
+                        <> · {t('directory.never_seen')}</>
+                      )}
                     </p>
                   </div>
                 </button>

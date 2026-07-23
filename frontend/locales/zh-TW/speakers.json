@@ -9,7 +9,9 @@
     "create": "Add Person",
     "create_placeholder": "Name",
     "created": "Person created",
-    "create_failed": "Failed to create person"
+    "create_failed": "Failed to create person",
+    "last_seen_ago": "{time} ago",
+    "never_seen": "Never seen"
   },
   "detail": {
     "no_selection": "Select a person to view details",
@@ -22,6 +24,8 @@
     "email_saved": "Email saved",
     "email_save_failed": "Failed to save email",
     "color_label": "Color",
+    "color_updated": "Color updated",
+    "color_update_error": "Failed to update color",
     "merge_title": "Merge into another person",
     "merge_description": "All voice references from {source} will be moved to {target}. This cannot be undone.",
     "merge_button": "Merge",
@@ -63,6 +67,8 @@
     "no_audio": "No playable clip",
     "delete_title": "Remove reference",
     "delete_description": "Remove this voice reference? This cannot be undone.",
+    "delete_cancel": "Cancel",
+    "delete_confirm": "Delete",
     "deleted": "Reference removed",
     "delete_failed": "Failed to remove reference",
     "from_meeting": "From meeting"
@@ -80,7 +86,10 @@
     "choose_other": "Choose another person",
     "confidence": "Confidence: {score}%",
     "from_meeting": "Meeting {id}",
-    "source_label": "Detected as \"{label}\""
+    "source_label": "Detected as \"{label}\"",
+    "assign_success": "Speaker reassigned",
+    "assign_failed": "Failed to reassign speaker",
+    "play_segment": "Play segment"
   },
   "recognition": {
     "title": "Speaker Recognition",
