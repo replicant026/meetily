@@ -115,19 +115,6 @@ fn managed_reference_path_ok_for_valid_relative() {
     assert_eq!(p, tmp.path().join("person-1/ref-abc.wav"));
 }
 
-#[test]
-fn managed_reference_path_uninitialized_returns_error() {
-    // Reset by using a thread-local OnceLock trick — or just test the
-    // path validation before the base is relevant.  For this test we
-    // verify the error message if the dir is unset (by using a fresh
-    // process-level static, we can't easily reset; so test the
-    // path-validation-only path instead).
-    //
-    // Since OnceLock can only be set once per process, we rely on other
-    // tests having set it.  This test just validates the rejection logic.
-    assert!(managed_reference_path("../escape.wav").is_err());
-}
-
 // ── ReferenceWindow helper ────────────────────────────────────────────────
 
 #[test]

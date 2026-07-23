@@ -200,6 +200,8 @@ fn write_wav(path: &Path, samples: &[f32], sample_rate: u32) -> Result<()> {
         file.write_all(&s.to_le_bytes())?;
     }
 
+    file.sync_data()?;
+
     Ok(())
 }
 
@@ -229,20 +231,24 @@ async fn fetch_segment_times(
     pool: &SqlitePool,
     segment_ids: &[String],
 ) -> Result<Vec<(String, i64, i64)>> {
-    let mut times = Vec::new();
-    for id in segment_ids {
-        let row: Option<(String, f64, f64)> = sqlx::query_as(
-            "SELECT id, audio_start_time, audio_end_time FROM transcripts \
-             WHERE id = ? AND audio_start_time IS NOT NULL AND audio_end_time IS NOT NULL",
-        )
-        .bind(id)
-        .fetch_optional(pool)
-        .await?;
-        if let Some((id, start, end)) = row {
-            times.push((id, (start * 1000.0) as i64, (end * 1000.0) as i64));
-        }
+    if segment_ids.is_empty() {
+        return Ok(Vec::new());
     }
-    Ok(times)
+
+    let placeholders = segment_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!(
+        "SELECT id, audio_start_time, audio_end_time FROM transcripts \
+         WHERE id IN ({}) AND audio_start_time IS NOT NULL AND audio_end_time IS NOT NULL",
+        placeholders
+    );
+
+    let mut query = sqlx::query_as::<_, (String, f64, f64)>(&sql);
+    for id in segment_ids {
+        query = query.bind(id);
+    }
+
+    let rows = query.fetch_all(pool).await?;
+    Ok(rows.into_iter().map(|(id, start, end)| (id, (start * 1000.0) as i64, (end * 1000.0) as i64)).collect())
 }
 
 /// Fetch the folder path for a meeting.
