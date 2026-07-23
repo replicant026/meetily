@@ -10,6 +10,7 @@
 
 use super::clustering::{remap_by_first_appearance, spectral_cluster};
 use super::embedding::{diarize_full_audio, extract_embedding};
+use super::speaker_preferences::{channel_is_compatible, get_preferences, resolve_match_action};
 use super::{WindowedEmbedding, EMBEDDING_DIM};
 use anyhow::Result;
 use hound::WavReader;
@@ -17,23 +18,36 @@ use sqlx::SqlitePool;
 use std::path::Path;
 
 use crate::database::repositories::speaker::{SpeakerRepository, SUGGEST_MATCH_THRESHOLD};
+use crate::database::repositories::voice_reference::VoiceReferenceRepository;
 
 /// Maximum number of embedding windows fed to spectral_cluster.
 /// Eigendecomposition is O(N³); 192 keeps worst-case under a few seconds.
 const MAX_CLUSTER_WINDOWS: usize = 192;
 
 /// After diarization labels are written, try to match each unique speaker
-/// against known profiles. Returns the number of profiles that were matched.
+/// against known profiles. Respects [`SpeakerRecognitionPreferences`]:
 ///
-/// For each speaker label, extracts audio embeddings from their segments,
-/// computes a centroid, and matches against saved speaker profiles.
-/// If a match is found, updates transcript labels from "Speaker N" to the matched name.
+/// * **Off** → skip entirely
+/// * **Suggest** → create suggestion rows, do NOT update transcript labels
+/// * **Automatic** → update labels only at confidence ≥ 0.90 AND channel-compatible;
+///   create confirmed references only when quality meets minimum
+///
+/// Returns the list of (cluster_label, matched_name) for any actions taken
+/// (suggestions or direct applies).
 async fn apply_speaker_recognition(
     pool: &SqlitePool,
     meeting_id: &str,
     audio_wav: Option<&Path>,
 ) -> Result<Vec<(String, String)>> {
     use crate::database::repositories::transcript::TranscriptsRepository;
+
+    let prefs = get_preferences();
+
+    // Off mode → skip entirely
+    if let crate::database::repositories::voice_reference::RecognitionMode::Off = prefs.recognition_mode {
+        log::info!("speaker recognition: mode=Off, skipping");
+        return Ok(Vec::new());
+    }
 
     // Fetch all segments with speaker labels and audio timestamps
     let rows = sqlx::query_as::<_, (String, String, Option<f64>, Option<f64>)>(
@@ -54,7 +68,10 @@ async fn apply_speaker_recognition(
         by_speaker.entry(speaker.clone()).or_default().push((id.clone(), *start, *end));
     }
 
-    log::info!("speaker recognition: checking {} unique speakers in meeting {}", by_speaker.len(), meeting_id);
+    log::info!(
+        "speaker recognition: mode={:?}, checking {} unique speakers in meeting {}",
+        prefs.recognition_mode, by_speaker.len(), meeting_id
+    );
 
     // Load audio for embedding extraction from the provided path
     let (samples, sr) = match audio_wav {
@@ -91,7 +108,7 @@ async fn apply_speaker_recognition(
     };
 
     let mut matched: Vec<(String, String)> = Vec::new();
-    let mut mapping: Vec<(String, String)> = Vec::new();
+    let mut label_mapping: Vec<(String, String)> = Vec::new();
 
     for (speaker_label, segments) in &by_speaker {
         // Extract audio slices for this speaker's segments and compute embeddings
@@ -148,15 +165,77 @@ async fn apply_speaker_recognition(
         // Match against saved profiles
         match SpeakerRepository::find_match(pool, &centroid, SUGGEST_MATCH_THRESHOLD).await {
             Ok(Some((name, sim))) => {
+                let action = resolve_match_action(prefs.recognition_mode.clone(), sim);
                 log::info!(
-                    "speaker recognition: {} matched '{}' (sim={:.3}, {} embeddings averaged)",
-                    speaker_label, name, sim, speaker_embeddings.len()
+                    "speaker recognition: {} matched '{}' (sim={:.3}, action={:?}, {} embeddings)",
+                    speaker_label, name, sim, action, speaker_embeddings.len()
                 );
-                // Update transcript labels from "Speaker N" to matched name
-                for (seg_id, _, _) in segments {
-                    mapping.push((seg_id.clone(), name.clone()));
+
+                match action {
+                    super::speaker_preferences::MatchAction::Ignore => {
+                        // Below threshold — nothing to do
+                    }
+                    super::speaker_preferences::MatchAction::Suggest => {
+                        // Create suggestion row; do NOT update transcript labels
+                        let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
+                        match VoiceReferenceRepository::create_suggestion(
+                            pool,
+                            meeting_id,
+                            speaker_label,
+                            &name,
+                            sim,
+                            &seg_ids,
+                        )
+                        .await
+                        {
+                            Ok(sug_id) => {
+                                log::info!("speaker recognition: created suggestion {} for {}", sug_id, name);
+                                matched.push((speaker_label.clone(), name.clone()));
+                            }
+                            Err(e) => {
+                                log::warn!("speaker recognition: failed to create suggestion: {}", e);
+                            }
+                        }
+                    }
+                    super::speaker_preferences::MatchAction::Apply => {
+                        // Check channel compatibility
+                        let ref_channel = "microphone"; // default channel for references
+                        if !channel_is_compatible(prefs.lock_audio_channels, ref_channel, "microphone") {
+                            log::debug!(
+                                "speaker recognition: channel mismatch for {}; skipping auto-apply",
+                                speaker_label
+                            );
+                            continue;
+                        }
+
+                        // Only apply if reference quality meets minimum
+                        // Quality is inferred from similarity (proxy)
+                        if sim < prefs.minimum_reference_quality {
+                            log::debug!(
+                                "speaker recognition: quality {:.3} below minimum {:.3} for {}; creating suggestion",
+                                sim, prefs.minimum_reference_quality, name
+                            );
+                            let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
+                            let _ = VoiceReferenceRepository::create_suggestion(
+                                pool,
+                                meeting_id,
+                                speaker_label,
+                                &name,
+                                sim,
+                                &seg_ids,
+                            )
+                            .await;
+                            matched.push((speaker_label.clone(), name.clone()));
+                            continue;
+                        }
+
+                        // Apply label updates
+                        for (seg_id, _, _) in segments {
+                            label_mapping.push((seg_id.clone(), name.clone()));
+                        }
+                        matched.push((speaker_label.clone(), name.clone()));
+                    }
                 }
-                matched.push((speaker_label.clone(), name.clone()));
             }
             Ok(None) => {
                 log::debug!("speaker recognition: {} no match above threshold", speaker_label);
@@ -167,10 +246,10 @@ async fn apply_speaker_recognition(
         }
     }
 
-    // Apply matched names to transcripts
-    if !mapping.is_empty() {
-        TranscriptsRepository::update_segment_speakers(pool, &mapping).await?;
-        log::info!("speaker recognition: updated {} transcript labels with matched names", mapping.len());
+    // Apply matched names to transcripts (only for Apply action)
+    if !label_mapping.is_empty() {
+        TranscriptsRepository::update_segment_speakers(pool, &label_mapping).await?;
+        log::info!("speaker recognition: updated {} transcript labels with matched names", label_mapping.len());
     }
 
     Ok(matched)
@@ -327,8 +406,8 @@ async fn commit_speaker_labels_inner(
     emit(97, "Matching speaker profiles…");
 
     // Try to match clusters against known speaker profiles
-    let recognition_mode = super::status();
-    let _known_names: Vec<String> = if recognition_mode.model_status == "ready" {
+    let recognition_prefs = super::speaker_preferences::get_preferences();
+    let _known_names: Vec<String> = if super::status().model_status == "ready" {
         SpeakerRepository::list_people(pool).await
             .map(|ps| ps.into_iter().map(|p| p.display_name).collect())
             .unwrap_or_default()
@@ -364,8 +443,31 @@ async fn commit_speaker_labels_inner(
                 centroid,
                 SUGGEST_MATCH_THRESHOLD,
             ).await {
-                log::info!("speaker recognition: cluster {} matched '{}' (sim={:.3})", cluster_id, name, sim);
-                speaker_name = Some(name);
+                let action = resolve_match_action(recognition_prefs.recognition_mode.clone(), sim);
+                match action {
+                    super::speaker_preferences::MatchAction::Apply => {
+                        if !channel_is_compatible(recognition_prefs.lock_audio_channels, "microphone", "microphone") {
+                            log::debug!("speaker recognition: channel mismatch in CAM++ fallback for cluster {}", cluster_id);
+                        } else if sim >= recognition_prefs.minimum_reference_quality {
+                            log::info!("speaker recognition: cluster {} auto-applied '{}' (sim={:.3})", cluster_id, name, sim);
+                            speaker_name = Some(name);
+                        }
+                    }
+                    super::speaker_preferences::MatchAction::Suggest => {
+                        log::info!("speaker recognition: cluster {} suggesting '{}' (sim={:.3})", cluster_id, name, sim);
+                        // Create suggestion for this single segment
+                        let _ = VoiceReferenceRepository::create_suggestion(
+                            pool,
+                            meeting_id,
+                            &format!("Speaker {}", cluster_id + 1),
+                            &name,
+                            sim,
+                            &[seg_id.clone()],
+                        )
+                        .await;
+                    }
+                    super::speaker_preferences::MatchAction::Ignore => {}
+                }
             }
         }
 

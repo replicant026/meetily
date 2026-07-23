@@ -4,6 +4,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 // Removed unused import
 
+use crate::diarization::speaker_preferences::SpeakerRecognitionPreferences;
+
 // ── Voice snippet commands ─────────────────────────────────────────────────
 
 #[derive(Deserialize)]
@@ -873,6 +875,13 @@ pub fn run() {
             create_speaker_voice_reference,
             get_speaker_voice_reference_audio_path,
             delete_speaker_voice_reference,
+            // Speaker recognition preferences
+            get_speaker_recognition_preferences,
+            set_speaker_recognition_preferences,
+            list_speaker_suggestions,
+            accept_speaker_suggestion,
+            reject_speaker_suggestion,
+            assign_meeting_speaker,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -921,6 +930,126 @@ fn set_diarization_config(
 ) -> crate::diarization::DiarizationStatus {
     crate::diarization::update_status(config);
     crate::diarization::status()
+}
+
+// ── Speaker recognition preferences commands ──────────────────────────────
+
+#[tauri::command]
+async fn get_speaker_recognition_preferences() -> Result<SpeakerRecognitionPreferences, String> {
+    Ok(crate::diarization::speaker_preferences::get_preferences())
+}
+
+#[tauri::command]
+async fn set_speaker_recognition_preferences(
+    prefs: SpeakerRecognitionPreferences,
+) -> Result<(), String> {
+    crate::diarization::speaker_preferences::set_preferences(prefs);
+    Ok(())
+}
+
+#[tauri::command]
+async fn list_speaker_suggestions(
+    state: tauri::State<'_, crate::state::AppState>,
+    meeting_id: String,
+) -> Result<Vec<crate::database::repositories::voice_reference::SpeakerSuggestionDto>, String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::voice_reference::VoiceReferenceRepository::list_suggestions(
+        pool,
+        &meeting_id,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn accept_speaker_suggestion(
+    state: tauri::State<'_, crate::state::AppState>,
+    suggestion_id: String,
+) -> Result<(), String> {
+    use crate::database::repositories::voice_reference::VoiceReferenceRepository;
+
+    let pool = state.db_manager.pool();
+
+    // Fetch the suggestion to get segment IDs and speaker ID
+    let suggestions = sqlx::query_as::<_, (String, String, String, String, f32, Option<String>, String, String, String, Option<String>)>(
+        "SELECT id, meeting_id, source_label, speaker_id, confidence, reference_id, segment_ids_json, status, created_at, resolved_at FROM speaker_match_suggestions WHERE id = ?",
+    )
+    .bind(&suggestion_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let (_id, _meeting_id, source_label, _speaker_id, _confidence, _ref_id, segment_ids_json, _status, _created, _resolved) = suggestions.ok_or_else(|| format!("suggestion {} not found", suggestion_id))?;
+
+    let seg_ids: Vec<String> =
+        serde_json::from_str(&segment_ids_json).unwrap_or_default();
+
+    // Update transcript labels for the affected segments
+    if !seg_ids.is_empty() {
+        let mapping: Vec<(String, String)> = seg_ids
+            .iter()
+            .map(|sid| (sid.clone(), source_label.clone()))
+            .collect();
+        crate::database::repositories::transcript::TranscriptsRepository::update_segment_speakers(
+            pool,
+            &mapping,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+
+    // Mark suggestion as accepted
+    VoiceReferenceRepository::resolve_suggestion(pool, &suggestion_id, "accepted", None)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn reject_speaker_suggestion(
+    state: tauri::State<'_, crate::state::AppState>,
+    suggestion_id: String,
+) -> Result<(), String> {
+    use crate::database::repositories::voice_reference::VoiceReferenceRepository;
+
+    let pool = state.db_manager.pool();
+    VoiceReferenceRepository::resolve_suggestion(pool, &suggestion_id, "rejected", None)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn assign_meeting_speaker(
+    state: tauri::State<'_, crate::state::AppState>,
+    meeting_id: String,
+    speaker_id: String,
+    segment_ids: Vec<String>,
+) -> Result<(), String> {
+    use crate::database::repositories::speaker::SpeakerRepository;
+
+    let pool = state.db_manager.pool();
+
+    // Look up the speaker's display name
+    let person = SpeakerRepository::get_person(pool, &speaker_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("speaker {} not found", speaker_id))?;
+
+    // Update transcript labels for the selected segments
+    let mapping: Vec<(String, String)> = segment_ids
+        .iter()
+        .map(|sid| (sid.clone(), person.display_name.clone()))
+        .collect();
+    crate::database::repositories::transcript::TranscriptsRepository::update_segment_speakers(
+        pool,
+        &mapping,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 // ── Speaker profile commands ──────────────────────────────────────────────
