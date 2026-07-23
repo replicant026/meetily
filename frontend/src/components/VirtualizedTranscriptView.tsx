@@ -47,6 +47,7 @@ export interface VirtualizedTranscriptViewProps {
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
     onEnrollSpeaker?: (speakerId: string) => void;
+    onSpeakerClick?: (speakerLabel: string, segmentIds: string[]) => void;
     transientSpeaker?: string | null;
 }
 
@@ -92,6 +93,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     onSpeakerRename,
     speakerColorMap,
     onEnrollSpeaker,
+    onSpeakerClick,
     hotwords,
     protectedSet,
     postprocessFailed,
@@ -110,6 +112,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
     speakerColorMap?: Map<string, import("@/lib/speaker-colors").SpeakerColor>;
     onEnrollSpeaker?: (speakerId: string) => void;
+    onSpeakerClick?: (speakerLabel: string) => void;
     hotwords: HotwordRule[];
     protectedSet?: Set<string>;
     postprocessFailed?: boolean;
@@ -181,13 +184,28 @@ const TranscriptSegment = memo(function TranscriptSegment({
                     <span className="inline-flex items-center gap-0.5 mt-1 flex-shrink-0 group/speaker">
                         <button
                             type="button"
-                            onClick={openRename}
-                            disabled={!onSpeakerRename}
-                            className={`text-xs font-medium px-2 py-0.5 rounded ${speakerColor?.bg ?? 'bg-blue-50'} ${speakerColor?.text ?? 'text-blue-700'} hover:opacity-80 disabled:cursor-default`}
-                            title={onSpeakerRename ? t('speaker_rename_placeholder') : undefined}
+                            onClick={(e) => {
+                                if (onSpeakerClick) {
+                                    onSpeakerClick(speaker);
+                                } else {
+                                    openRename(e);
+                                }
+                            }}
+                            className={`text-xs font-medium px-2 py-0.5 rounded cursor-pointer ${speakerColor?.bg ?? 'bg-blue-50'} ${speakerColor?.text ?? 'text-blue-700'} hover:opacity-80`}
+                            title={onSpeakerClick ? t('speaker_assign_tooltip', { default: 'Click to assign this speaker to a person' }) : t('speaker_rename_placeholder')}
                         >
                             {customName ?? speaker}
                         </button>
+                        {onSpeakerRename && (
+                            <button
+                                type="button"
+                                onClick={openRename}
+                                className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-blue-600 rounded"
+                                title={t('speaker_rename_placeholder')}
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            </button>
+                        )}
                         {onEnrollSpeaker && (
                             <button
                                 type="button"
@@ -258,11 +276,21 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     customSpeakerNames,
     onSpeakerRename,
     onEnrollSpeaker,
+    onSpeakerClick,
 }) => {
     // Wave 18 PR-52: shared hotword rules so every TranscriptSegment uses the same list.
     const { rules: hotwords, protectedSet } = useHotwords();
     // Build stable speaker→color map from segment order (prevents color reset on rename)
     const speakerColorMap = useMemo(() => buildSpeakerColorMap(segments), [segments]);
+
+    // Wrap onSpeakerClick to resolve segment IDs for the clicked label
+    const handleSpeakerClick = useCallback((speakerLabel: string) => {
+        if (!onSpeakerClick) return;
+        const segmentIds = segments
+            .filter((s) => s.speaker === speakerLabel)
+            .map((s) => s.id);
+        onSpeakerClick(speakerLabel, segmentIds);
+    }, [onSpeakerClick, segments]);
     // Create scroll ref first - shared between virtualizer and auto-scroll hook
     const scrollRef = useRef<HTMLDivElement>(null);
     // Ref for infinite scroll trigger element
@@ -448,6 +476,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onSpeakerRename={onSpeakerRename}
                                         speakerColorMap={speakerColorMap}
                                         onEnrollSpeaker={onEnrollSpeaker}
+                                        onSpeakerClick={handleSpeakerClick}
                                         onTimestampClick={onTimestampClick}
                                         hotwords={hotwords}
                                         protectedSet={protectedSet}
@@ -515,6 +544,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onSpeakerRename={onSpeakerRename}
                                         speakerColorMap={speakerColorMap}
                                         onEnrollSpeaker={onEnrollSpeaker}
+                                        onSpeakerClick={handleSpeakerClick}
                                         onTimestampClick={onTimestampClick}
                                         hotwords={hotwords}
                                     />

@@ -65,6 +65,10 @@ export async function setRecognitionPreferences(prefs: { recognitionMode: Recogn
   return invoke('set_speaker_recognition_preferences', { prefs });
 }
 
-export async function assignMeetingSpeaker(meetingId: string, speakerId: string, segmentIds: string[]): Promise<void> {
+export async function assignMeetingSpeaker(
+  meetingId: string,
+  speakerId: string,
+  segmentIds: string[]
+): Promise<{ speakerId: string; segmentIds: string[]; referenceCreated: boolean }> {
   return invoke('assign_meeting_speaker', { meetingId, speakerId, segmentIds });
 }
