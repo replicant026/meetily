@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MeetingTimeline } from '@/components/MeetingWorkspace/MeetingTimeline';
 
+vi.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }));
+
 const audioFixture = {
   isPlaying: false,
   currentTime: 0,
@@ -21,7 +23,7 @@ describe('MeetingTimeline', () => {
     const seek = vi.fn();
     const user = userEvent.setup();
     render(<MeetingTimeline audio={{ ...audioFixture, seek }} peaks={new Float32Array([0.1, 1])} segments={segments} />);
-    await user.click(screen.getByLabelText(/audio timeline/i), { clientX: 150 });
+    await user.click(screen.getByLabelText(/audioTimeline/i), { clientX: 150 });
     expect(seek).toHaveBeenCalledWith(expect.any(Number));
   });
 });

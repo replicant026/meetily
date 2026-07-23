@@ -1,6 +1,7 @@
 "use client";
 
 import { Play, Pause } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { AudioController } from './types';
 
 function formatTime(seconds: number): string {
@@ -16,6 +17,7 @@ interface MeetingHeaderProps {
 }
 
 export function MeetingHeader({ meeting, audio }: MeetingHeaderProps) {
+  const t = useTranslations('meetingWorkspace');
   const date = new Date(meeting.created_at);
   const dateStr = date.toLocaleDateString(undefined, {
     year: 'numeric',
@@ -38,7 +40,7 @@ export function MeetingHeader({ meeting, audio }: MeetingHeaderProps) {
           type="button"
           onClick={audio.toggle}
           disabled={audio.duration === 0}
-          aria-label={audio.isPlaying ? 'Pause' : 'Play'}
+          aria-label={audio.isPlaying ? t('pause') : t('play')}
           className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-300 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {audio.isPlaying ? <Pause size={16} /> : <Play size={16} />}

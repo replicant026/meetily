@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
 import type { AudioController, WorkspaceParticipant } from './types';
 import type { MeetingSummaryTabProps } from './MeetingSummaryTab';
 import { MeetingHeader } from './MeetingHeader';
@@ -31,13 +32,14 @@ export function MeetingWorkspace({
   notesContent,
   actionsContent,
 }: MeetingWorkspaceProps) {
+  const t = useTranslations('meetingWorkspace');
   return (
     <main className="min-h-screen bg-[#fbfaf7] text-stone-900">
       <MeetingHeader meeting={meeting} audio={audio} />
       <MeetingTimeline audio={audio} peaks={peaks} />
       <div className="grid min-h-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section
-          aria-label="Meeting content"
+          aria-label={t('meetingContent')}
           className="min-w-0 border-r border-stone-200 bg-white"
         >
           <MeetingTabs

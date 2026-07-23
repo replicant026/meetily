@@ -11,7 +11,7 @@ describe('ParticipantsSidebar', () => {
       { id: 'ana', name: 'Ana', source: 'system', spokenSeconds: 20, share: 0.4, color: '#2563eb' },
     ]} />);
     expect(screen.getByText(/microphone/i)).toBeVisible();
-    expect(screen.getByText(/system audio/i)).toBeVisible();
+    expect(screen.getByText(/systemAudio/i)).toBeVisible();
     expect(screen.getByText(/30s.*60%/i)).toBeVisible();
   });
 });

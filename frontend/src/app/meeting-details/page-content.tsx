@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Summary, SummaryResponse } from '@/types';
 import { useSidebar } from '@/components/Sidebar/SidebarProvider';
@@ -22,6 +22,10 @@ import { useMeetingOperations } from '@/hooks/meeting-details/useMeetingOperatio
 import { useConfig } from '@/contexts/ConfigContext';
 import { useTranslations } from 'next-intl';
 import { useMeetingAudioPath } from '@/hooks/useMeetingAudioPath';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useAudioPeaks } from '@/hooks/useAudioPeaks';
+import { useMeetingWorkspace } from '@/components/MeetingWorkspace/useMeetingWorkspace';
+import { getMeetingActionStates } from '@/lib/meeting-workspace-storage';
 
 export default function PageContent({
   meeting,
@@ -172,14 +176,33 @@ export default function PageContent({
     };
   }, [shouldAutoGenerate, meeting.id]); // Re-run if meeting changes
 
-  // Build audio controller for the workspace header
+  // Audio player and waveform peaks (Wave 14 PR-44d)
+  const audioPlayer = useAudioPlayer(audioPath);
+  const peaks = useAudioPeaks(audioPath);
+
   const audioController: AudioController = {
-    isPlaying: false,
-    currentTime: 0,
-    duration: 0,
-    toggle: () => {},
-    seek: () => {},
+    isPlaying: audioPlayer.isPlaying,
+    currentTime: audioPlayer.currentTime,
+    duration: audioPlayer.duration,
+    toggle: audioPlayer.isPlaying ? audioPlayer.pause : audioPlayer.play,
+    seek: audioPlayer.seek,
   };
+
+  // Derive participants from transcript speaker data
+  const participants = useMeetingWorkspace(meetingData.transcripts);
+
+  // Persisted action completion states
+  const [completedActionIds, setCompletedActionIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!meeting.id) return;
+    getMeetingActionStates(meeting.id).then((states) => {
+      setCompletedActionIds(new Set(
+        Object.entries(states)
+          .filter(([, completed]) => completed)
+          .map(([id]) => id)
+      ));
+    }).catch(() => {});
+  }, [meeting.id, summaryData]);
 
   const transcriptPanel = (
     <TranscriptPanel
@@ -214,7 +237,7 @@ export default function PageContent({
       id: `summary:action_items:${i}`,
       text: block.content,
       assigneeId: null,
-      completed: false,
+      completed: completedActionIds.has(`summary:action_items:${i}`),
     })) ?? [];
 
   const notesPanel = <MeetingNotesTab meetingId={meeting.id} />;
@@ -230,7 +253,8 @@ export default function PageContent({
       <MeetingWorkspace
         meeting={{ id: meeting.id, title: meeting.title, created_at: meeting.created_at }}
         audio={audioController}
-        participants={[]}
+        participants={participants}
+        peaks={peaks}
         transcriptContent={transcriptPanel}
         summaryProps={{
           meeting,

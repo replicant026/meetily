@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { AudioController } from './types';
 import { secondsFromPointer } from './waveform';
 
@@ -15,6 +16,7 @@ const ELAPSED_COLOR = '#c026d3'; // magenta-600 (matches header progress bar)
 const DISABLED_COLOR = '#e7e5e4'; // stone-200
 
 export function MeetingTimeline({ audio, peaks }: MeetingTimelineProps) {
+  const t = useTranslations('meetingWorkspace');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const draw = useCallback(() => {
@@ -83,7 +85,7 @@ export function MeetingTimeline({ audio, peaks }: MeetingTimelineProps) {
   return (
     <button
       type="button"
-      aria-label="Audio timeline"
+      aria-label={t('audioTimeline')}
       onClick={handleClick}
       className="w-full h-16 px-0 py-1 bg-transparent border-0 cursor-pointer block"
     >

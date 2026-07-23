@@ -1,6 +1,17 @@
 {
+  "pause": "Pause",
+  "play": "Play",
+  "audioTimeline": "Audio timeline",
+  "meetingContent": "Meeting content",
+  "participants": "Participants",
+  "microphone": "Microphone",
+  "systemAudio": "System Audio",
   "saving": "Saving\u2026",
   "saved": "Saved",
   "notesPlaceholder": "Write your meeting notes here\u2026",
-  "noActionItems": "No action items."
+  "noActionItems": "No action items found in the summary.",
+  "transcript": "Transcript",
+  "notes": "Notes",
+  "actions": "Actions",
+  "summary": "Summary"
 }

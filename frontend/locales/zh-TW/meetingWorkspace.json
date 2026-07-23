@@ -1,6 +1,17 @@
 {
+  "pause": "\u66AB\u505C",
+  "play": "\u64AD\u653E",
+  "audioTimeline": "\u97F3\u8A0A\u6642\u9593\u7DDA",
+  "meetingContent": "\u6703\u8B70\u5167\u5BB9",
+  "participants": "\u53C3\u8207\u8005",
+  "microphone": "\u9EA6\u514B\u98A8",
+  "systemAudio": "\u7CFB\u7D71\u97F3\u8A0A",
   "saving": "\u4FDD\u5B58\u4E2D\u2026",
   "saved": "\u5DF2\u4FDD\u5B58",
   "notesPlaceholder": "\u5728\u6B64\u8655\u5BEB\u4E0B\u6703\u8B70\u7B46\u8A18\u2026",
-  "noActionItems": "\u7121\u5F85\u8FA6\u4E8B\u9805\u3002"
+  "noActionItems": "\u672A\u5728\u6458\u8981\u4E2D\u627E\u5230\u5F85\u8FA6\u4E8B\u9805\u3002",
+  "transcript": "\u8B49\u5B57\u7A3F",
+  "notes": "\u7B46\u8A18",
+  "actions": "\u64CD\u4F5C",
+  "summary": "\u6458\u8981"
 }
