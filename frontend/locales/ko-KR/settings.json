@@ -286,7 +286,9 @@
         "cancel": "취소",
         "confirm_delete": "이 중단된 회의를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
         "alert_recover_failed": "회의 복구 실패",
-        "alert_delete_failed": "회의 삭제 실패"
+        "alert_delete_failed": "회의 삭제 실패",
+        "recovery_type_full": "전체 복구: 전사 및 오디오 사용 가능",
+        "recovery_type_transcript_only": "전사만 복구: 오디오 녹음 사용 불가"
     },
     "diarization_enable": "화자 인식 활성화",
     "diarization_min_speakers": "최소 화자 수",

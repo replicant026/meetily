@@ -174,7 +174,7 @@ export function RecoveryFailureBanner() {
     if (failures.length === 0) return null;
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-red-50 border-b border-red-200 shadow-sm">
+        <div className="fixed top-0 left-0 right-0 z-[var(--z-sticky)] bg-red-50 border-b border-red-200 shadow-sm">
             <div className="max-w-6xl mx-auto px-4 py-2">
                 <button
                     type="button"

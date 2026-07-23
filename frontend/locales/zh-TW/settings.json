@@ -280,7 +280,9 @@
         "cancel": "取消",
         "confirm_delete": "確定要刪除這個中斷的會議嗎？此操作無法復原。",
         "alert_recover_failed": "復原會議失敗",
-        "alert_delete_failed": "刪除會議失敗"
+        "alert_delete_failed": "刪除會議失敗",
+        "recovery_type_full": "完整復原：轉寫和音訊均可使用",
+        "recovery_type_transcript_only": "僅轉寫復原：音訊錄音不可用"
     },
     "diarization_enable": "啟用說話人識別",
     "diarization_min_speakers": "最少說話人人數",

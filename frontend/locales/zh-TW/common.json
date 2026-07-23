@@ -29,6 +29,13 @@
     "success_title": "會議已復原。",
     "transcripts_and_audio": "轉寫和音訊已復原。",
     "transcripts_only": "轉寫已復原，無可用音訊。",
-    "view_meeting": "查看會議"
+    "view_meeting": "查看會議",
+    "type_full": "完整復原：轉寫和音訊均可使用",
+    "type_transcript_only": "僅轉寫復原：音訊錄音不可用"
+  },
+  "feedback": {
+    "drop_audio_title": "拖放音訊檔案匯入",
+    "onboarding_complete_setup": "請先完成設定",
+    "onboarding_complete_description": "您需要完成新手引導才能開始錄製。"
   }
 }

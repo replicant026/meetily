@@ -286,7 +286,9 @@
         "cancel": "キャンセル",
         "confirm_delete": "この中断された会議を削除してもよろしいですか？この操作は元に戻せません。",
         "alert_recover_failed": "会議の復元に失敗しました",
-        "alert_delete_failed": "会議の削除に失敗しました"
+        "alert_delete_failed": "会議の削除に失敗しました",
+        "recovery_type_full": "完全復元：文字起こしと音声が利用可能",
+        "recovery_type_transcript_only": "文字起こしのみ復元：音声録音は利用できません"
     },
     "diarization_enable": "話者識別を有効にする",
     "diarization_min_speakers": "最小話者数",

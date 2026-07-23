@@ -29,6 +29,13 @@
     "success_title": "会议已恢复。",
     "transcripts_and_audio": "转写和音频已恢复。",
     "transcripts_only": "转写已恢复，无可用音频。",
-    "view_meeting": "查看会议"
+    "view_meeting": "查看会议",
+    "type_full": "完整恢复：转写和音频均可用",
+    "type_transcript_only": "仅转写恢复：音频录音不可用"
+  },
+  "feedback": {
+    "drop_audio_title": "拖放音频文件导入",
+    "onboarding_complete_setup": "请先完成设置",
+    "onboarding_complete_description": "您需要完成新手引导才能开始录制。"
   }
 }

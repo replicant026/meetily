@@ -286,7 +286,9 @@
         "cancel": "Cancel",
         "confirm_delete": "Are you sure you want to delete this interrupted meeting? This action cannot be undone.",
         "alert_recover_failed": "Failed to recover meeting",
-        "alert_delete_failed": "Failed to delete meeting"
+        "alert_delete_failed": "Failed to delete meeting",
+        "recovery_type_full": "Full recovery: transcripts and audio available",
+        "recovery_type_transcript_only": "Transcript-only recovery: audio recording not available"
     },
     "diarization_enable": "Enable speaker diarization",
     "diarization_min_speakers": "Minimum speakers",

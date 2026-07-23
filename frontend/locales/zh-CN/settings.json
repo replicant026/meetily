@@ -280,7 +280,9 @@
         "cancel": "取消",
         "confirm_delete": "确定要删除这个中断的会议吗？此操作无法撤销。",
         "alert_recover_failed": "恢复会议失败",
-        "alert_delete_failed": "删除会议失败"
+        "alert_delete_failed": "删除会议失败",
+        "recovery_type_full": "完整恢复：转写和音频均可用",
+        "recovery_type_transcript_only": "仅转写恢复：音频录音不可用"
     },
     "diarization_enable": "启用说话人识别",
     "diarization_min_speakers": "最少说话人数",

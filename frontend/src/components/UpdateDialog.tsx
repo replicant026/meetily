@@ -1,20 +1,14 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Download, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
-import { Button } from './ui/button';
-import { updateService, UpdateInfo, UpdateProgress } from '@/services/updateService';
+import React, { useState, useEffect, useRef } from 'react';
+import { Download, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { AppDialog } from './ui/app-dialog';
+import { AppButton } from './ui/app-button';
+import { UpdateInfo, UpdateProgress } from '@/services/updateService';
 import { check, Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import { redactLocalPaths } from '@/lib/ui-state';
 
 interface UpdateDialogProps {
   open: boolean;
@@ -28,15 +22,14 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('settings');
   const [update, setUpdate] = useState<Update | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (open && updateInfo?.available) {
-      // Reset state when dialog opens
       setIsDownloading(false);
       setProgress(null);
       setError(null);
 
-      // Get the update object when dialog opens
       check().then((updateResult) => {
         if (updateResult?.available) {
           setUpdate(updateResult);
@@ -45,10 +38,9 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
         }
       }).catch((err) => {
         console.error('Failed to get update object:', err);
-        setError(t('update.prepare_failed', { message: err.message || 'Unknown error' }));
+        setError(redactLocalPaths(t('update.prepare_failed', { message: err.message || 'Unknown error' })));
       });
     } else {
-      // Reset state when dialog closes
       setIsDownloading(false);
       setProgress(null);
       setError(null);
@@ -57,7 +49,6 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
   }, [open, updateInfo]);
 
   const handleDownloadAndInstall = async () => {
-    // Get update object if not already available
     let updateToUse: Update | null = update;
     if (!updateToUse) {
       try {
@@ -70,15 +61,12 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
           return;
         }
       } catch (err: any) {
-        setError(t('update.get_failed', { message: err.message || 'Unknown error' }));
+        setError(redactLocalPaths(t('update.get_failed', { message: err.message || 'Unknown error' })));
         return;
       }
     }
 
-    // At this point, updateToUse is guaranteed to be non-null
-    if (!updateToUse) {
-      return; // This should never happen, but TypeScript needs this check
-    }
+    if (!updateToUse) return;
 
     setIsDownloading(true);
     setError(null);
@@ -88,215 +76,166 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
       let downloaded = 0;
       let contentLength = 0;
 
-      // Use the official Tauri updater API with progress callbacks
       await updateToUse.downloadAndInstall((event) => {
         switch (event.event) {
           case 'Started':
             contentLength = event.data.contentLength || 0;
-            console.log(`[UpdateDialog] Started downloading ${contentLength} bytes`);
-            setProgress({
-              downloaded: 0,
-              total: contentLength,
-              percentage: 0,
-            });
+            setProgress({ downloaded: 0, total: contentLength, percentage: 0 });
             break;
-
           case 'Progress':
             downloaded += event.data.chunkLength || 0;
             const percentage = contentLength > 0
               ? Math.round((downloaded / contentLength) * 100)
               : 0;
-            console.log(`[UpdateDialog] Progress: ${downloaded} / ${contentLength} bytes (${percentage}%)`);
-            setProgress({
-              downloaded,
-              total: contentLength,
-              percentage,
-            });
+            setProgress({ downloaded, total: contentLength, percentage });
             break;
-
           case 'Finished':
-            console.log('[UpdateDialog] Download finished');
-            setProgress({
-              downloaded: contentLength,
-              total: contentLength,
-              percentage: 100,
-            });
+            setProgress({ downloaded: contentLength, total: contentLength, percentage: 100 });
             break;
         }
       });
 
-      console.log('[UpdateDialog] Update installed successfully');
       toast.success(t('update.installed_toast'));
-
-      // Mark download as complete before closing
       setIsDownloading(false);
-
-      // Close dialog before relaunch
-      handleOpenChange(false);
-
-      // Relaunch the app
+      onOpenChange(false);
       await relaunch();
     } catch (err: any) {
       console.error('Update failed:', err);
-      setError(err.message || 'Failed to download or install update');
+      setError(redactLocalPaths(err.message || 'Failed to download or install update'));
       setIsDownloading(false);
       toast.error(t('update.failed_toast', { message: err.message || 'Unknown error' }));
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch {
-      return dateString;
-    }
+  const handleRetry = () => {
+    setError(null);
+    handleDownloadAndInstall();
   };
 
-  // Prevent closing the dialog when downloading
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    try { return new Date(dateString).toLocaleDateString(); }
+    catch { return dateString; }
+  };
+
+  // Prevent closing while downloading
   const handleOpenChange = (newOpen: boolean) => {
-    // If trying to close while downloading, prevent it
-    if (!newOpen && isDownloading) {
-      return;
-    }
-    // Otherwise, allow normal close behavior
+    if (!newOpen && isDownloading) return;
     onOpenChange(newOpen);
   };
 
-  // Prevent ESC key from closing dialog during download
-  const handleEscapeKeyDown = (event: KeyboardEvent) => {
-    if (isDownloading) {
-      event.preventDefault();
+  // Return focus to trigger when dialog closes
+  useEffect(() => {
+    if (!open && triggerRef.current) {
+      triggerRef.current.focus();
     }
-  };
+  }, [open]);
 
-  // Prevent outside clicks from closing dialog during download
-  const handleInteractOutside = (event: Event) => {
-    if (isDownloading) {
-      event.preventDefault();
-    }
-  };
+  if (!updateInfo?.available) return null;
 
-  if (!updateInfo?.available) {
-    return null;
-  }
+  const dialogTitle = isDownloading
+    ? t('update.downloading_title')
+    : error
+    ? t('update.error_title')
+    : t('update.available_title');
+
+  const dialogDescription = isDownloading
+    ? t('update.downloading_desc')
+    : error
+    ? t('update.error_desc')
+    : t('update.available_desc', { version: updateInfo.version ?? '' });
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        className="sm:max-w-[500px]"
-        onEscapeKeyDown={handleEscapeKeyDown}
-        onInteractOutside={handleInteractOutside}
-      >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {isDownloading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                {t('update.downloading_title')}
-              </>
-            ) : error ? (
-              <>
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                {t('update.error_title')}
-              </>
-            ) : (
-              <>
-                <Download className="h-5 w-5 text-blue-600" />
-                {t('update.available_title')}
-              </>
-            )}
-          </DialogTitle>
-          <DialogDescription>
-            {isDownloading
-              ? t('update.downloading_desc')
-              : error
-              ? t('update.error_desc')
-              : t('update.available_desc', { version: updateInfo.version ?? '' })}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {!isDownloading && !error && (
+    <AppDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={dialogTitle}
+      description={dialogDescription}
+      className="sm:max-w-[500px]"
+      footer={
+        <>
+          {error && (
             <>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t('update.current_version')}</span>
-                  <span className="font-medium">{updateInfo.currentVersion}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t('update.new_version')}</span>
-                  <span className="font-medium text-blue-600">{updateInfo.version}</span>
-                </div>
-                {updateInfo.date && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t('update.release_date')}</span>
-                    <span className="font-medium">{formatDate(updateInfo.date)}</span>
-                  </div>
-                )}
-              </div>
-
-              {updateInfo.body && (
-                <div className="bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {updateInfo.body}
-                  </p>
-                </div>
-              )}
+              <AppButton variant="primary" size="sm" onClick={handleRetry}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                Retry
+              </AppButton>
+              <AppButton variant="quiet" size="sm" onClick={() => onOpenChange(false)}>
+                {t('update.close')}
+              </AppButton>
             </>
           )}
-
-          {isDownloading && progress && (
-            <div className="space-y-2">
-              <div className="relative">
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
-                    style={{ width: `${Math.min(progress.percentage, 100)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>{t('update.percent_complete', { percent: Math.round(progress.percentage) })}</span>
-                  {progress.total > 0 && (
-                    <span>
-                      {formatBytes(progress.downloaded)} / {formatBytes(progress.total)}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground text-center">
-                {t('update.will_restart')}
-              </p>
-            </div>
+          {!isDownloading && !error && (
+            <>
+              <AppButton variant="quiet" size="sm" onClick={() => onOpenChange(false)}>
+                {t('update.later')}
+              </AppButton>
+              <AppButton variant="primary" size="sm" onClick={handleDownloadAndInstall}>
+                <Download className="h-3.5 w-3.5 mr-1" />
+                {t('update.download_install')}
+              </AppButton>
+            </>
           )}
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {!isDownloading && !error && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t('update.current_version')}</span>
+              <span className="font-medium">{updateInfo.currentVersion}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t('update.new_version')}</span>
+              <span className="font-medium text-blue-600">{updateInfo.version}</span>
+            </div>
+            {updateInfo.date && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('update.release_date')}</span>
+                <span className="font-medium">{formatDate(updateInfo.date)}</span>
+              </div>
+            )}
+            {updateInfo.body && (
+              <div className="bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {updateInfo.body}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+        {isDownloading && progress && (
+          <div className="space-y-2">
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs text-gray-600">
+              <span>{t('update.percent_complete', { percent: Math.round(progress.percentage) })}</span>
+              {progress.total > 0 && (
+                <span>{formatBytes(progress.downloaded)} / {formatBytes(progress.total)}</span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              {t('update.will_restart')}
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-red-800">{error}</p>
             </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          {!isDownloading && !error && (
-            <>
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                {t('update.later')}
-              </Button>
-              <Button onClick={handleDownloadAndInstall} className="bg-blue-600 hover:bg-blue-700">
-                <Download className="h-4 w-4 mr-2" />
-                {t('update.download_install')}
-              </Button>
-            </>
-          )}
-          {error && (
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              {t('update.close')}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </div>
+        )}
+      </div>
+    </AppDialog>
   );
 }
 

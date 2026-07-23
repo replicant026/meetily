@@ -7,7 +7,7 @@ import { PermissionRow } from '../shared';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 
 export function PermissionsStep() {
-  const { setPermissionStatus, setPermissionsSkipped, permissions, completeOnboarding } = useOnboarding();
+  const { setPermissionStatus, setPermissionsSkipped, permissions, goNext } = useOnboarding();
   const [isPending, setIsPending] = useState(false);
 
   // Check permissions - only logs current state, doesn't auto-authorize
@@ -94,17 +94,13 @@ export function PermissionsStep() {
   };
 
   const handleFinish = async () => {
-    try {
-      await completeOnboarding();
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to complete onboarding:', error);
-    }
+    // Proceed to ReadyStep
+    goNext();
   };
 
   const handleSkip = async () => {
     setPermissionsSkipped(true);
-    await handleFinish();
+    goNext();
   };
 
   const allPermissionsGranted =
@@ -116,7 +112,7 @@ export function PermissionsStep() {
       title="Grant Permissions"
       description="Meetily needs access to your microphone and system audio to record meetings"
       step={4}
-      hideProgress={true}
+      totalSteps={5}
       showNavigation={allPermissionsGranted}
       canGoNext={allPermissionsGranted}
     >

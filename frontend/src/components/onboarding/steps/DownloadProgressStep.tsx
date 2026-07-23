@@ -32,7 +32,6 @@ export function DownloadProgressStep() {
     summaryModelDownloaded,
     setSummaryModelDownloaded,
     startBackgroundDownloads,
-    completeOnboarding,
   } = useOnboarding();
 
   const [isMac, setIsMac] = useState(false);
@@ -53,7 +52,6 @@ export function DownloadProgressStep() {
     speedMbps: 0,
   });
 
-  const [isCompleting, setIsCompleting] = useState(false);
   const parakeetDownloadStartedRef = useRef(false);
   const summaryDownloadStartedRef = useRef(false);
   const retryingRef = useRef(false);
@@ -364,27 +362,8 @@ export function DownloadProgressStep() {
       });
     }
 
-    if (isMac) {
-      // macOS: Go to Permissions step (will complete after permissions granted)
-      goNext();
-    } else {
-      // Non-macOS: Complete onboarding immediately (downloads continue in background)
-      setIsCompleting(true);
-      try {
-        await completeOnboarding();
-
-        // Small delay to ensure state is saved before reload
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        window.location.reload();
-      } catch (error) {
-        console.error('Failed to complete onboarding:', error);
-        toast.error('Failed to complete setup', {
-          description: 'Please try again.',
-        });
-        setIsCompleting(false);
-      }
-    }
+    // Both platforms now proceed to the Ready step
+    goNext();
   };
 
   const renderDownloadCard = (
@@ -476,7 +455,7 @@ export function DownloadProgressStep() {
       title="Getting things ready"
       description="You can start using Meetily after downloading the Transcription Engine."
       step={3}
-      totalSteps={isMac ? 4 : 3}
+      totalSteps={isMac ? 5 : 4}
     >
       <div className="flex flex-col items-center space-y-6">
         {/* Download Cards */}
@@ -524,10 +503,10 @@ export function DownloadProgressStep() {
         <div className="w-full max-w-xs">
           <Button
             onClick={handleContinue}
-            disabled={!parakeetDownloaded || isCompleting}
+            disabled={!parakeetDownloaded}
             className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {(isCompleting || !parakeetDownloaded) ? (
+            {!parakeetDownloaded ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               'Continue'

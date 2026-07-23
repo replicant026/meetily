@@ -7,6 +7,13 @@
         "success_title": "Reunião recuperada com sucesso!",
         "transcripts_and_audio": "Transcrições e áudio recuperados",
         "transcripts_only": "Transcrições recuperadas (áudio não disponível)",
-        "view_meeting": "Visualizar Reunião"
+        "view_meeting": "Visualizar Reunião",
+        "type_full": "Recuperação completa: transcrições e áudio disponíveis",
+        "type_transcript_only": "Recuperação apenas de transcrições: gravação de áudio não disponível"
+    },
+    "feedback": {
+        "drop_audio_title": "Solte o arquivo de áudio para importar",
+        "onboarding_complete_setup": "Conclua a configuração primeiro",
+        "onboarding_complete_description": "Você precisa finalizar a introdução antes de começar a gravar."
     }
 }

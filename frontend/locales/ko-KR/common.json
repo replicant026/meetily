@@ -29,6 +29,13 @@
     "success_title": "회의 복구 완료!",
     "transcripts_and_audio": "전사와 오디오가 복구되었습니다",
     "transcripts_only": "전사 복구 완료 (오디오 없음)",
-    "view_meeting": "회의 보기"
+    "view_meeting": "회의 보기",
+    "type_full": "전체 복구: 전사 및 오디오 사용 가능",
+    "type_transcript_only": "전사만 복구: 오디오 녹음 사용 불가"
+  },
+  "feedback": {
+    "drop_audio_title": "오디오 파일을 드롭하여 가져오기",
+    "onboarding_complete_setup": "먼저 설정을 완료하세요",
+    "onboarding_complete_description": "녹음을 시작하려면 온보딩을 완료해야 합니다."
   }
 }

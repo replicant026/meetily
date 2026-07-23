@@ -29,6 +29,13 @@
     "success_title": "Meeting recovered successfully!",
     "transcripts_and_audio": "Transcripts and audio recovered",
     "transcripts_only": "Transcripts recovered (no audio available)",
-    "view_meeting": "View Meeting"
+    "view_meeting": "View Meeting",
+    "type_full": "Full recovery: transcripts and audio available",
+    "type_transcript_only": "Transcript-only recovery: audio recording not available"
+  },
+  "feedback": {
+    "drop_audio_title": "Drop audio file to import",
+    "onboarding_complete_setup": "Please complete setup first",
+    "onboarding_complete_description": "You need to finish onboarding before you can start recording."
   }
 }

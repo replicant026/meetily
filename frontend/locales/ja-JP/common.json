@@ -29,6 +29,13 @@
     "success_title": "会議の復元に成功しました!",
     "transcripts_and_audio": "文字起こしと音声を復元しました",
     "transcripts_only": "文字起こしを復元しました（音声なし）",
-    "view_meeting": "会議を表示"
+    "view_meeting": "会議を表示",
+    "type_full": "完全復元：文字起こしと音声が利用可能",
+    "type_transcript_only": "文字起こしのみ復元：音声録音は利用できません"
+  },
+  "feedback": {
+    "drop_audio_title": "オーディオファイルをドロップしてインポート",
+    "onboarding_complete_setup": "最初にセットアップを完了してください",
+    "onboarding_complete_description": "録音を開始するにはオンボーディングを完了する必要があります。"
   }
 }

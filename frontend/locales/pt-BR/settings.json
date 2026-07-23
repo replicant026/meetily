@@ -292,7 +292,9 @@
         "cancel": "Cancelar",
         "confirm_delete": "Tem certeza de que deseja excluir esta reunião interrompida? Esta ação não pode ser desfeita.",
         "alert_recover_failed": "Falha ao recuperar reunião",
-        "alert_delete_failed": "Falha ao excluir reunião"
+        "alert_delete_failed": "Falha ao excluir reunião",
+        "recovery_type_full": "Recuperação completa: transcrições e áudio disponíveis",
+        "recovery_type_transcript_only": "Recuperação apenas de transcrições: gravação de áudio não disponível"
     },
     "diarization_enable": "Ativar diarização de falantes",
     "diarization_min_speakers": "Número mínimo de falantes",
