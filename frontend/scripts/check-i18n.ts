@@ -71,11 +71,12 @@ for (const locale of LOCALES) {
   walk(tree, "");
 }
 
-// --- Phase 2: basic code → catalog cross-check (warnings only) ---
+// --- Phase 2: basic code → catalog cross-check ---
 // Collect t('key') calls from source files and verify keys exist in default locale.
-// Currently warn-only — upgrade to errors once existing gaps are fixed.
+// Uses a baseline file to track known legacy gaps — only fails on NEW gaps.
 
 const SRC_DIR = join(FRONTEND_DIR, "src");
+const BASELINE_FILE = join(FRONTEND_DIR, "scripts", "i18n-known-gaps.txt");
 const defaultKeys = allKeys.get(DEFAULT_LOCALE)!;
 
 function walkDir(dir: string): string[] {
@@ -93,7 +94,15 @@ function walkDir(dir: string): string[] {
   return files;
 }
 
-let codeWarnings = 0;
+// Load baseline of known gaps
+let knownGaps = new Set<string>();
+try {
+  const baseline = readFileSync(BASELINE_FILE, "utf-8");
+  knownGaps = new Set(baseline.split("\n").filter(l => l.trim() && !l.startsWith("#")));
+} catch { /* no baseline yet */ }
+
+let newGaps = 0;
+let totalGaps = 0;
 
 for (const file of walkDir(SRC_DIR)) {
   const src = readFileSync(file, "utf-8");
@@ -108,20 +117,28 @@ for (const file of walkDir(SRC_DIR)) {
   let m;
   while ((m = tRe.exec(src)) !== null) {
     const key = m[1];
-    // Resolve full key: if key contains a dot, treat as absolute; else prefix with namespace
-    const fullKey = key.includes(".") ? key : ns ? `${ns}.${key}` : key;
+    // Always prefix with namespace when available — dotted keys like 'status.loading'
+    // with useTranslations('common') should resolve to 'common.status.loading'
+    const fullKey = ns ? `${ns}.${key}` : key;
     if (!defaultKeys.has(fullKey)) {
-      const rel = file.replace(FRONTEND_DIR + sep, "");
-      console.warn(
-        `WARN: key "${fullKey}" used in ${rel} not found in default locale (${DEFAULT_LOCALE})`
-      );
-      codeWarnings++;
+      totalGaps++;
+      if (!knownGaps.has(fullKey)) {
+        const rel = file.replace(FRONTEND_DIR + sep, "");
+        console.error(
+          `ERROR: NEW missing key "${fullKey}" used in ${rel} — add to locale or baseline`
+        );
+        newGaps++;
+      }
     }
   }
 }
 
-if (codeWarnings > 0) {
-  console.warn(`\n${codeWarnings} code→catalog warning(s) (non-blocking)`);
+if (newGaps > 0) {
+  console.error(`\n${newGaps} NEW code→catalog gap(s) — add keys to locale or baseline file`);
+  errors += newGaps;
+}
+if (totalGaps > newGaps) {
+  console.warn(`${totalGaps - newGaps} known legacy gap(s) (baseline-suppressed)`);
 }
 
 if (errors > 0) {

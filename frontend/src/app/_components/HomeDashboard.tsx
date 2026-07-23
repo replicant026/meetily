@@ -39,7 +39,7 @@ export function HomeDashboard({
     return (
       <div className="flex items-center justify-center h-full">
         <AppStatus
-          model={{ kind: 'loading', tone: 'neutral', title: 'Loading meetings...' }}
+          model={{ kind: 'loading', tone: 'neutral', title: t('status.loading') }}
         />
       </div>
     );
@@ -52,7 +52,7 @@ export function HomeDashboard({
           model={{
             kind: 'error',
             tone: 'danger',
-            title: 'Failed to load meetings',
+            title: t('status.failed'),
             description: error,
           }}
         />

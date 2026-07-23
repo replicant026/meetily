@@ -5,6 +5,10 @@ import { SpeakerDirectory } from './SpeakerDirectory';
 
 let user: ReturnType<typeof userEvent.setup>;
 
+// ── Browser API mocks ────────────────────────────────────────────────────
+Object.defineProperty(URL, 'createObjectURL', { value: vi.fn(() => 'blob:mock'), writable: true });
+Object.defineProperty(URL, 'revokeObjectURL', { value: vi.fn(), writable: true });
+
 // ── Mocks ────────────────────────────────────────────────────────────────
 
 const mockListPeople = vi.fn();
