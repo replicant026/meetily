@@ -20,6 +20,8 @@ export interface MeetingWorkspaceProps {
   summaryProps?: MeetingSummaryTabProps;
   notesContent?: React.ReactNode;
   actionsContent?: React.ReactNode;
+  /** Transcript segments for speaker panel (meeting details only) */
+  transcriptSegments?: Array<{ speaker?: string | null; timestamp: number; endTime?: number }>;
 }
 
 export function MeetingWorkspace({
@@ -31,6 +33,7 @@ export function MeetingWorkspace({
   summaryProps,
   notesContent,
   actionsContent,
+  transcriptSegments,
 }: MeetingWorkspaceProps) {
   const t = useTranslations('meetingWorkspace');
   return (
@@ -49,7 +52,11 @@ export function MeetingWorkspace({
             actionsContent={actionsContent}
           />
         </section>
-        <ParticipantsSidebar participants={participants} />
+        <ParticipantsSidebar
+          participants={participants}
+          meetingId={meeting.id}
+          transcriptSegments={transcriptSegments}
+        />
       </div>
     </main>
   );

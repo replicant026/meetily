@@ -2,22 +2,27 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Users, Mic, Monitor } from 'lucide-react';
+import { Users, Mic, Monitor, UserCircle } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
+import { MeetingPeoplePanel } from '@/components/speakers/MeetingPeoplePanel';
 import type { WorkspaceParticipant } from './types';
 
 interface ParticipantsSidebarProps {
   participants: WorkspaceParticipant[];
+  meetingId?: string;
+  transcriptSegments?: Array<{ speaker?: string | null; timestamp: number; endTime?: number }>;
   className?: string;
 }
 
-export function ParticipantsSidebar({ participants, className }: ParticipantsSidebarProps) {
+export function ParticipantsSidebar({ participants, meetingId, transcriptSegments, className }: ParticipantsSidebarProps) {
   const t = useTranslations('meetingWorkspace');
   const [open, setOpen] = useState(false);
 
   const micParticipants = participants.filter(p => p.source === 'microphone');
   const sysParticipants = participants.filter(p => p.source === 'system');
+
+  const hasPeoplePanel = !!meetingId && transcriptSegments != null && transcriptSegments.length > 0;
 
   const participantList = (
     <>
@@ -42,11 +47,27 @@ export function ParticipantsSidebar({ participants, className }: ParticipantsSid
     </>
   );
 
+  const peopleSection = hasPeoplePanel ? (
+    <div className="border-t border-stone-200 mt-4 pt-4">
+      <h3 className="text-xs uppercase text-stone-500 font-medium tracking-wider mb-2 px-4">
+        <UserCircle className="inline w-3 h-3 mr-1" />
+        {t('speakers')}
+      </h3>
+      <MeetingPeoplePanel
+        meetingId={meetingId}
+        segments={transcriptSegments}
+      />
+    </div>
+  ) : null;
+
   return (
     <>
       {/* Desktop: fixed aside in grid */}
-      <aside aria-label={t('participants')} className={`hidden lg:block ${className ?? ''}`}>
-        {participantList}
+      <aside aria-label={t('participants')} className={`hidden lg:flex lg:flex-col ${className ?? ''}`}>
+        <div className="flex flex-col gap-4">
+          {participantList}
+        </div>
+        {peopleSection}
       </aside>
 
       {/* Mobile: floating sheet trigger */}
@@ -68,6 +89,7 @@ export function ParticipantsSidebar({ participants, className }: ParticipantsSid
             </VisuallyHidden>
             <div className="flex flex-col gap-4 mt-6">
               {participantList}
+              {peopleSection}
             </div>
           </SheetContent>
         </Sheet>

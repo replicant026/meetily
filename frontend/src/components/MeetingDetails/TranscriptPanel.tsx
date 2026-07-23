@@ -3,7 +3,8 @@
 import { Transcript, TranscriptSegmentData } from '@/types';
 import { VirtualizedTranscriptView } from '@/components/VirtualizedTranscriptView';
 import { TranscriptButtonGroup } from './TranscriptButtonGroup';
-import { useMemo, useCallback } from 'react';
+import { AssignSpeakerDialog } from '@/components/speakers/AssignSpeakerDialog';
+import { useMemo, useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useSpeakerNames } from '@/hooks/useSpeakerNames';
@@ -39,6 +40,9 @@ interface TranscriptPanelProps {
   // Audio jump props (PR-44c): optional audio file path enables
   // transcript timestamp click-to-jump + compact player UI.
   audioPath?: string | null;
+
+  // Speaker assignment callback (optimistic update in parent)
+  onSpeakerAssigned?: (speakerId: string, segmentIds: string[]) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -69,10 +73,29 @@ export function TranscriptPanel({
   onRefetchTranscripts,
   audioPath,
   width,
+  onSpeakerAssigned,
 }: TranscriptPanelProps) {
   const tSummary = useTranslations('summary');
   const tView = useTranslations('transcript.view');
   const audioPlayer = useAudioPlayer(audioPath ?? null);
+
+  // Assign speaker dialog state
+  const [assignDialog, setAssignDialog] = useState<{
+    open: boolean;
+    sourceLabel: string;
+    segmentIds: string[];
+  }>({ open: false, sourceLabel: '', segmentIds: [] });
+
+  const handleSpeakerClick = useCallback((sourceLabel: string, segmentIds: string[]) => {
+    setAssignDialog({ open: true, sourceLabel, segmentIds });
+  }, []);
+
+  const handleAssigned = useCallback((speakerId: string, segmentIds: string[]) => {
+    setAssignDialog({ open: false, sourceLabel: '', segmentIds: [] });
+    onSpeakerAssigned?.(speakerId, segmentIds);
+    // Refresh transcript data to reflect new speaker labels
+    onRefetchTranscripts?.();
+  }, [onSpeakerAssigned, onRefetchTranscripts]);
 
   const convertedSegments = useMemo(() => {
     if (usePagination && segments) {
@@ -163,6 +186,7 @@ export function TranscriptPanel({
           onLoadMore={onLoadMore}
           customSpeakerNames={speakerNames.allNames}
           onSpeakerRename={speakerNames.setName}
+          onSpeakerClick={handleSpeakerClick}
           onEnrollSpeaker={(speakerId) => {
             toast.success(`Enrolling voice for ${speakerId}...`);
           }}
@@ -178,6 +202,17 @@ export function TranscriptPanel({
             onChange={(e) => onPromptChange(e.target.value)}
           />
         </div>
+      )}
+
+      {assignDialog.open && meetingId && (
+        <AssignSpeakerDialog
+          meetingId={meetingId}
+          sourceLabel={assignDialog.sourceLabel}
+          segmentIds={assignDialog.segmentIds}
+          open={assignDialog.open}
+          onClose={() => setAssignDialog(prev => ({ ...prev, open: false }))}
+          onAssigned={handleAssigned}
+        />
       )}
     </div>
   );

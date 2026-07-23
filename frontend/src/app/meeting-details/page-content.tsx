@@ -293,6 +293,17 @@ export default function PageContent({
         }}
         notesContent={notesPanel}
         actionsContent={actionsPanel}
+        transcriptSegments={
+          segments?.map((s: any) => ({
+            speaker: s.speaker,
+            timestamp: s.timestamp,
+            endTime: s.endTime,
+          })) ?? meetingData.transcripts.map((tr: any) => ({
+            speaker: tr.speaker,
+            timestamp: tr.audio_start_time ?? 0,
+            endTime: tr.audio_end_time,
+          }))
+        }
       />
     </motion.div>
   );
