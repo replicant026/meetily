@@ -21,6 +21,7 @@ export function ParticipantsSidebar({ participants, className }: ParticipantsSid
 
   const peopleContent = (
     <>
+      <h2 className="text-base font-semibold text-stone-800 px-1">{t('people')}</h2>
       {participants.length === 0 ? (
         <p className="text-sm text-stone-400 px-3 py-2">{t('addPerson')}</p>
       ) : (

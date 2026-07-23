@@ -57,6 +57,7 @@ export function SidebarMeetingList({ meetings, currentMeetingId, onDelete, onRen
             onNavigate={() => router.push(`/meeting-details?id=${meeting.id}`)}
             onDelete={onDelete ? () => onDelete(meeting.id) : undefined}
             onRename={onRename ? () => onRename(meeting.id) : undefined}
+            t={t}
           />
         ))}
       </div>
@@ -80,13 +81,14 @@ export function SidebarMeetingList({ meetings, currentMeetingId, onDelete, onRen
   );
 }
 
-function MeetingRow({ meeting, isActive, now, onNavigate, onDelete, onRename }: {
+function MeetingRow({ meeting, isActive, now, onNavigate, onDelete, onRename, t }: {
   meeting: MeetingDirectoryItem;
   isActive: boolean;
   now: Date;
   onNavigate: () => void;
   onDelete?: () => void;
   onRename?: () => void;
+  t: (key: string) => string;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const duration = formatDuration(meeting.durationSeconds);

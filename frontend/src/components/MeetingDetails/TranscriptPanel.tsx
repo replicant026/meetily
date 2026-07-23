@@ -143,7 +143,7 @@ export function TranscriptPanel({
           onSpeakerRename={speakerNames.setName}
           onSpeakerClick={handleSpeakerClick}
           onEnrollSpeaker={(speakerId) => {
-            toast.success(`Enrolling voice for ${speakerId}...`);
+            toast.success(tSummary('enrolling_voice', { speakerId }));
           }}
         />
       </div>

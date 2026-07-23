@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
+import { useTranslations } from 'next-intl'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { RecordingStateProvider } from '@/contexts/RecordingStateContext'
 import { OllamaDownloadProvider } from '@/contexts/OllamaDownloadContext'
@@ -21,6 +22,7 @@ import { GlobalFeedbackLayer } from './_components/GlobalFeedbackLayer'
 
 export default function ClientRootLayout({ children }: { children: React.ReactNode }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const t = useTranslations('common');
 
   useEffect(() => {
     invoke<{ completed: boolean } | null>('get_onboarding_status')
@@ -46,8 +48,8 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
   useEffect(() => {
     const unlisten = listen('request-recording-toggle', () => {
       if (showOnboarding) {
-        toast.error('Please complete setup first', {
-          description: 'You need to finish onboarding before you can start recording.'
+        toast.error(t('feedback.onboarding_complete_setup'), {
+          description: t('feedback.onboarding_complete_description')
         });
       } else {
         window.dispatchEvent(new CustomEvent('start-recording-from-sidebar'));

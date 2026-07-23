@@ -358,7 +358,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     return () => {
       cleanup?.();
     };
-  }, [updateProviderApiKey]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load device preferences on mount
   useEffect(() => {

@@ -142,7 +142,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
         const trimmed = draftName.trim();
         if (speaker && trimmed) {
             onSpeakerRename?.(speaker, trimmed);
-            toast.success(`${speaker} is now "${trimmed}"`);
+            toast.success(t('speaker_renamed', { from: speaker, to: trimmed }));
         }
         setIsRenaming(false);
     };
@@ -161,7 +161,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
                     ? "text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                     : "text-gray-400 cursor-default")
             }
-            aria-label={`Jump to ${formatRecordingTime(timestamp)}`}
+            aria-label={t('jump_to', { time: formatRecordingTime(timestamp) })}
         >
             {formatRecordingTime(timestamp)}
         </button>
@@ -211,7 +211,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); onEnrollSpeaker(speaker); }}
                                 className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-green-600 rounded"
-                                title="Save voice profile"
+                                title={t('save_voice_profile')}
                             >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                             </button>
@@ -278,6 +278,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     onEnrollSpeaker,
     onSpeakerClick,
 }) => {
+    const t = useTranslations('settings.transcript');
     // Wave 18 PR-52: shared hotword rules so every TranscriptSegment uses the same list.
     const { rules: hotwords, protectedSet } = useHotwords();
     // Build stable speaker→color map from segment order (prevents color reset on rename)
@@ -421,16 +422,16 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                 <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-orange-500' : 'bg-blue-500 animate-pulse'}`}></div>
                             </div>
                             <p className="text-sm text-gray-600">
-                                {isPaused ? 'Recording paused' : 'Listening for speech...'}
+                                {isPaused ? t('recording_paused') : t('listening_for_speech')}
                             </p>
                             <p className="text-xs mt-1 text-gray-400">
-                                {isPaused ? 'Click resume to continue recording' : 'Speak to see live transcription'}
+                                {isPaused ? t('click_resume') : t('speak_to_see')}
                             </p>
                         </>
                     ) : (
                         <>
-                            <p className="text-lg font-semibold">Welcome to meetily!</p>
-                            <p className="text-xs mt-1">Start recording to see live transcription</p>
+                            <p className="text-lg font-semibold">{t('welcome')}</p>
+                            <p className="text-xs mt-1">{t('start_recording_hint')}</p>
                         </>
                     )}
                 </motion.div>
@@ -492,11 +493,11 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             {isLoadingMore ? (
                                 <div className="flex items-center gap-2 text-gray-500">
                                     <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                                    <span className="text-sm">Loading more...</span>
+                                    <span className="text-sm">{t('loading_more')}</span>
                                 </div>
                             ) : hasMore && totalCount > 0 ? (
                                 <span className="text-sm text-gray-400">
-                                    Showing {loadedCount} of {totalCount} segments
+                                    {t('showing_segments', { loaded: loadedCount, total: totalCount })}
                                 </span>
                             ) : null}
                         </div>
@@ -511,7 +512,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             className="flex items-center gap-2 mt-4 text-gray-500"
                         >
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm">Listening...</span>
+                            <span className="text-sm">{t('listening')}</span>
                         </motion.div>
                     )}
                 </>
@@ -559,11 +560,11 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             {isLoadingMore ? (
                                 <div className="flex items-center gap-2 text-gray-500">
                                     <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                                    <span className="text-sm">Loading more...</span>
+                                    <span className="text-sm">{t('loading_more')}</span>
                                 </div>
                             ) : hasMore && totalCount > 0 ? (
                                 <span className="text-sm text-gray-400">
-                                    Showing {loadedCount} of {totalCount} segments
+                                    {t('showing_segments', { loaded: loadedCount, total: totalCount })}
                                 </span>
                             ) : null}
                         </div>
@@ -578,7 +579,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             className="flex items-center gap-2 mt-4 text-gray-500"
                         >
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm">Listening...</span>
+                            <span className="text-sm">{t('listening')}</span>
                         </motion.div>
                     )}
                 </>
