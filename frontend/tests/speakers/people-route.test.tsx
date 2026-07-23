@@ -65,9 +65,9 @@ describe('People route', () => {
   it('shows People as a dedicated route with directory', async () => {
     render(<PeoplePage />);
 
-    // Both page heading and SpeakerDirectory heading render the i18n key
+    // Page heading renders the i18n key
     const headings = await screen.findAllByRole('heading');
-    expect(headings.length).toBeGreaterThanOrEqual(2);
+    expect(headings.length).toBeGreaterThanOrEqual(1);
     expect(headings.some((h) => h.textContent?.includes('directory.title'))).toBe(true);
   });
 

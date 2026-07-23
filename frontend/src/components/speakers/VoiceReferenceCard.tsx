@@ -67,7 +67,7 @@ export function VoiceReferenceCard({ reference, meetingName, onDeleted }: VoiceR
 
   return (
     <>
-      <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+      <div className="rounded-lg border border-[rgb(var(--app-border))] bg-[rgb(var(--app-surface))] p-3 space-y-2">
         {/* Waveform + player row */}
         <div className="flex items-start gap-3">
           {peakBars && (

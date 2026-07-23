@@ -19,7 +19,7 @@ export default function PeoplePage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">
+      <h1 className="text-2xl text-[rgb(var(--app-fg))] mb-6 app-display-heading">
         {t('directory.title')}
       </h1>
       {pendingReviews !== null && pendingReviews > 0 && (

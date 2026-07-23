@@ -30,7 +30,7 @@ export function MeetingHeader({ meeting, audio }: MeetingHeaderProps) {
       <p className="text-[11px] font-medium tracking-widest uppercase text-stone-400 mb-1">
         {dateStr}
       </p>
-      <h1 className="text-2xl font-semibold text-stone-900 leading-tight">
+      <h1 className="text-2xl font-semibold text-stone-900 leading-tight app-display-heading">
         {meeting.title}
       </h1>
 
@@ -50,7 +50,7 @@ export function MeetingHeader({ meeting, audio }: MeetingHeaderProps) {
         </span>
         <div className="flex-1 h-1 bg-stone-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#c026d3] rounded-full transition-[width] duration-100"
+            className="h-full bg-[rgb(var(--app-accent))] rounded-full transition-[width] duration-100"
             style={{
               width: audio.duration > 0
                 ? `${(audio.currentTime / audio.duration) * 100}%`

@@ -30,8 +30,10 @@ describe('ParticipantsSidebar', () => {
     expect(screen.getByText(/tags/i)).toBeVisible();
   });
 
-  it('shows empty state when no participants', () => {
+  it('always shows source cards even with no participants', () => {
     render(<ParticipantsSidebar participants={[]} />);
-    expect(screen.getByText(/addPerson/i)).toBeVisible();
+    expect(screen.getByText(/microphone/i)).toBeVisible();
+    expect(screen.getByText(/systemAudio/i)).toBeVisible();
+    expect(screen.getAllByText(/unassigned/i).length).toBe(2);
   });
 });

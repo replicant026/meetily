@@ -17,7 +17,7 @@ export default function ImportPage() {
           </div>
         </div>
 
-        <h1 className="text-xl font-semibold text-[rgb(var(--app-fg))]">
+        <h1 className="app-display-heading text-[rgb(var(--app-fg))]">
           {t('importRecording')}
         </h1>
 
@@ -27,7 +27,7 @@ export default function ImportPage() {
 
         <button
           onClick={() => openImportDialog()}
-          className="inline-flex items-center gap-2 rounded-md bg-[rgb(var(--app-primary))] px-4 py-2 text-sm font-medium text-[rgb(var(--app-primary-fg))] hover:opacity-90 transition-opacity"
+          className="inline-flex items-center gap-2 rounded-[var(--app-radius-sm)] border border-[rgb(var(--app-border))] bg-transparent px-4 py-2 text-sm text-[rgb(var(--app-fg))] hover:bg-[rgb(var(--app-muted))]"
         >
           <Upload className="h-4 w-4" />
           {t('importFile')}

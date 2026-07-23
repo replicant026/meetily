@@ -74,12 +74,12 @@ export function SpeakerRecognitionSettings() {
                   : 'bg-background text-foreground border-border hover:bg-muted'
               }`}
             >
-              {t(`mode_${m}`)}
+              {t(`mode_${m.toLowerCase()}`)}
             </button>
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          {t(`mode_${mode}_desc`)}
+          {t(`mode_${mode.toLowerCase()}_desc`)}
         </p>
       </div>
 

@@ -21,31 +21,32 @@ export function ParticipantsSidebar({ participants, className }: ParticipantsSid
 
   const peopleContent = (
     <>
-      <h2 className="text-base font-semibold text-stone-800 px-1">{t('people')}</h2>
-      {participants.length === 0 ? (
-        <p className="text-sm text-stone-400 px-3 py-2">{t('addPerson')}</p>
-      ) : (
-        <>
-          <SourceCard
-            icon={<Mic className="w-3.5 h-3.5" />}
-            label={t('microphone')}
-            participants={micParticipants}
-            emptyLabel={t('unassigned')}
-          />
-          <SourceCard
-            icon={<Monitor className="w-3.5 h-3.5" />}
-            label={t('systemAudio')}
-            participants={sysParticipants}
-            emptyLabel={t('unassigned')}
-          />
-        </>
-      )}
+      <h2 className="text-base font-semibold text-stone-800 px-1 app-display-heading">{t('people')}</h2>
+      <SourceCard
+        icon={<Mic className="w-3.5 h-3.5" />}
+        label={t('microphone')}
+        participants={micParticipants}
+        emptyLabel={t('unassigned')}
+      />
+      <SourceCard
+        icon={<Monitor className="w-3.5 h-3.5" />}
+        label={t('systemAudio')}
+        participants={sysParticipants}
+        emptyLabel={t('unassigned')}
+      />
 
       {/* Tags section */}
-      <div className="rounded-xl bg-[#fbfaf7] border border-stone-200 px-3 py-2">
+      <div className="rounded-xl bg-[rgb(var(--app-surface))] border border-stone-200 px-3 py-2">
         <h3 className="text-[11px] uppercase tracking-wide text-stone-400 font-medium flex items-center gap-1.5 mb-1">
           <Tag className="w-3 h-3" />
           {t('tags')}
+          <button
+            type="button"
+            className="ml-auto text-stone-400 hover:text-stone-600 transition-colors"
+            aria-label={t('addTag', { default: 'Add tag' })}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
         </h3>
       </div>
     </>
@@ -97,7 +98,7 @@ function SourceCard({
   emptyLabel: string;
 }) {
   return (
-    <div className="rounded-xl bg-[#fbfaf7] border border-stone-200 px-3 py-2">
+    <div className="rounded-xl bg-[rgb(var(--app-surface))] border border-stone-200 px-3 py-2">
       <h3 className="text-[11px] uppercase tracking-wide text-stone-400 font-medium flex items-center gap-1.5 mb-1">
         {icon}
         {label}

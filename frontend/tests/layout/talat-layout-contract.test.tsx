@@ -34,6 +34,7 @@ vi.mock('lucide-react', () => ({
   Users: () => <span data-testid="icon-users" />,
   Settings: () => <span data-testid="icon-settings" />,
   Plus: () => <span data-testid="icon-plus" />,
+  Upload: () => <span data-testid="icon-upload" />,
   Download: () => <span data-testid="icon-download" />,
 }));
 

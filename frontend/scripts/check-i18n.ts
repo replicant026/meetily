@@ -1,15 +1,13 @@
 // Validates that all locale JSONs are in sync. Reports:
 //  (a) any key present in one locale but missing in another
 //  (b) any empty string values (a translation in progress would be invisible)
-//
-// Known limitations:
-//  - Does NOT cross-check code usage.
+//  (c) static t() calls in source that reference keys missing from default locale
 //
 //  - Add a key in any locale => all locales must be updated, or this script fails.
 
 import { readFileSync, readdirSync } from "fs";
-import { join, resolve } from "path";
-import { LOCALES } from "../src/i18n/config";
+import { join, resolve, sep } from "path";
+import { LOCALES, DEFAULT_LOCALE } from "../src/i18n/config";
 
 const FRONTEND_DIR = resolve(__dirname, "..");
 const LOCALES_DIR = join(FRONTEND_DIR, "locales");
@@ -42,7 +40,7 @@ function flatten(obj: KeyTree, prefix: string, out: string[] = []): string[] {
 let errors = 0;
 const allKeys = new Map<string, Set<string>>();
 for (const locale of LOCALES) {
-  allKeys.set(locale, new Set(flatten(loadLocale(locale), "")));
+  allKeys.set(locale, new Set(flatten(loadLocale(locale), "").map((k) => k.replace(/^\./, ""))));
 }
 
 const union = new Set<string>();
@@ -71,6 +69,59 @@ for (const locale of LOCALES) {
     }
   }
   walk(tree, "");
+}
+
+// --- Phase 2: basic code → catalog cross-check (warnings only) ---
+// Collect t('key') calls from source files and verify keys exist in default locale.
+// Currently warn-only — upgrade to errors once existing gaps are fixed.
+
+const SRC_DIR = join(FRONTEND_DIR, "src");
+const defaultKeys = allKeys.get(DEFAULT_LOCALE)!;
+
+function walkDir(dir: string): string[] {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const e of entries) {
+    const full = join(dir, e.name);
+    if (e.isDirectory()) {
+      if (e.name === "node_modules" || e.name === ".next") continue;
+      files.push(...walkDir(full));
+    } else if (e.name.endsWith(".tsx") || e.name.endsWith(".ts")) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+let codeWarnings = 0;
+
+for (const file of walkDir(SRC_DIR)) {
+  const src = readFileSync(file, "utf-8");
+
+  // Find namespace prefix (first useTranslations call)
+  let ns = "";
+  const nsMatch = /useTranslations\(\s*['"`]([^'"]+)['"`]\s*\)/.exec(src);
+  if (nsMatch) ns = nsMatch[1];
+
+  // Collect static t('...') calls
+  const tRe = /\bt\(\s*['"`]([^'"`{}]+)['"`]\s*\)/g;
+  let m;
+  while ((m = tRe.exec(src)) !== null) {
+    const key = m[1];
+    // Resolve full key: if key contains a dot, treat as absolute; else prefix with namespace
+    const fullKey = key.includes(".") ? key : ns ? `${ns}.${key}` : key;
+    if (!defaultKeys.has(fullKey)) {
+      const rel = file.replace(FRONTEND_DIR + sep, "");
+      console.warn(
+        `WARN: key "${fullKey}" used in ${rel} not found in default locale (${DEFAULT_LOCALE})`
+      );
+      codeWarnings++;
+    }
+  }
+}
+
+if (codeWarnings > 0) {
+  console.warn(`\n${codeWarnings} code→catalog warning(s) (non-blocking)`);
 }
 
 if (errors > 0) {

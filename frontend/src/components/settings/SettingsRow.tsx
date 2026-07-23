@@ -23,7 +23,7 @@ export function SettingsRow({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-4 py-3',
+        'flex items-center justify-between gap-4 py-3 first:pt-4 last:pb-4',
         disabled && 'opacity-50 pointer-events-none',
         className,
       )}

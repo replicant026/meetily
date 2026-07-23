@@ -50,18 +50,18 @@ export function SettingsShell({ children }: SettingsShellProps) {
       </div>
 
       {/* Body: nav + content */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-x-hidden">
         {/* Navigation sidebar */}
         <aside className="w-56 shrink-0 border-r border-[rgb(var(--app-border))] overflow-y-auto p-3">
           <SettingsNavigation activeId={activeSection} onSelect={handleSelect} />
         </aside>
 
         {/* Content panel */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main role="main" className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-6">
           <div
             id={`settings-section-${activeSection}`}
             tabIndex={-1}
-            className="outline-none max-w-2xl"
+            className="outline-none min-w-0 max-w-3xl mx-auto"
           >
             {children(activeSection)}
           </div>

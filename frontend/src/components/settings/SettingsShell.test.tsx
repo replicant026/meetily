@@ -47,6 +47,15 @@ describe('SettingsShell', () => {
     expect(screen.queryAllByRole('navigation', { name: /main navigation/i })).toHaveLength(0);
   });
 
+  it('keeps settings content within desktop viewport', () => {
+    render(
+      <SettingsShell>{() => <div>content</div>}</SettingsShell>,
+    );
+    const main = screen.getByRole('main');
+    expect(main).toHaveClass('min-w-0');
+    expect(main).toHaveClass('overflow-x-hidden');
+  });
+
   it('marks the active section with aria-current after click', async () => {
     render(
       <SettingsShell>{(section) => <div>{section}</div>}</SettingsShell>,

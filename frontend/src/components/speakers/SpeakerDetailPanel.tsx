@@ -167,7 +167,7 @@ export function SpeakerDetailPanel({ person, allPeople, onUpdated }: SpeakerDeta
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold text-foreground truncate">
+              <h3 className="text-base font-semibold text-foreground truncate app-display-heading">
                 {person.display_name}
               </h3>
               <button
@@ -247,7 +247,7 @@ export function SpeakerDetailPanel({ person, allPeople, onUpdated }: SpeakerDeta
         {loadingRefs ? (
           <div className="text-xs text-muted-foreground py-2">Loading...</div>
         ) : references.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-4 text-center">
+          <div className="rounded-lg border border-dashed border-[rgb(var(--app-border))] bg-[rgb(var(--app-surface))] p-4 text-center">
             <p className="text-sm text-muted-foreground">{t('references_empty')}</p>
             <p className="text-xs text-muted-foreground/70 mt-1">{t('references_empty_hint')}</p>
           </div>

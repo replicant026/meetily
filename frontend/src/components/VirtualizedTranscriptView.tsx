@@ -156,7 +156,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
             }}
             disabled={!onTimestampClick}
             className={
-                "text-xs mt-1 flex-shrink-0 min-w-[50px] text-left " +
+                "text-xs flex-shrink-0 min-w-[50px] text-right " +
                 (onTimestampClick
                     ? "text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                     : "text-gray-400 cursor-default")
@@ -169,89 +169,98 @@ const TranscriptSegment = memo(function TranscriptSegment({
 
     return (
         <div id={`segment-${id}`} className="mb-3">
-            <div className="flex items-start gap-2">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        {timeButton}
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        {confidence !== undefined && showConfidence && (
-                            <ConfidenceIndicator confidence={confidence} showIndicator={showConfidence} />
-                        )}
-                    </TooltipContent>
-                </Tooltip>
-                {speaker && !isRenaming && (
-                    <span className="inline-flex items-center gap-0.5 mt-1 flex-shrink-0 group/speaker">
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                if (onSpeakerClick) {
-                                    onSpeakerClick(speaker);
-                                } else {
-                                    openRename(e);
-                                }
-                            }}
-                            className={`text-xs font-medium px-2 py-0.5 rounded cursor-pointer ${speakerColor?.bg ?? 'bg-blue-50'} ${speakerColor?.text ?? 'text-blue-700'} hover:opacity-80`}
-                            title={onSpeakerClick ? t('speaker_assign_tooltip', { default: 'Click to assign this speaker to a person' }) : t('speaker_rename_placeholder')}
+            <div className="grid items-start gap-x-3" style={{ gridTemplateColumns: 'auto minmax(0,1fr) auto' }}>
+                {/* Column 1: Speaker identity */}
+                <div className="min-w-0 pt-0.5">
+                    {speaker && !isRenaming && (
+                        <span className="inline-flex items-center gap-0.5 group/speaker">
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    if (onSpeakerClick) {
+                                        onSpeakerClick(speaker);
+                                    } else {
+                                        openRename(e);
+                                    }
+                                }}
+                                className={`text-xs font-medium px-2 py-0.5 rounded cursor-pointer ${speakerColor?.bg ?? 'bg-blue-50'} ${speakerColor?.text ?? 'text-blue-700'} hover:opacity-80`}
+                                title={onSpeakerClick ? t('speaker_assign_tooltip', { default: 'Click to assign this speaker to a person' }) : t('speaker_rename_placeholder')}
+                            >
+                                {customName ?? speaker}
+                            </button>
+                            {onSpeakerRename && (
+                                <button
+                                    type="button"
+                                    onClick={openRename}
+                                    className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-blue-600 rounded"
+                                    title={t('speaker_rename_placeholder')}
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                </button>
+                            )}
+                            {onEnrollSpeaker && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onEnrollSpeaker(speaker); }}
+                                    className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-green-600 rounded"
+                                    title={t('save_voice_profile')}
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                </button>
+                            )}
+                        </span>
+                    )}
+                    {!speaker && transientSpeaker && !isRenaming && (
+                        <span
+                            className="text-xs font-medium text-gray-600 border border-dashed border-gray-400 px-2 py-0.5 rounded cursor-help"
+                            title={t('transient_tooltip', { default: 'Realtime hint; will be re-clustered when the recording stops.' })}
                         >
-                            {customName ?? speaker}
-                        </button>
-                        {onSpeakerRename && (
-                            <button
-                                type="button"
-                                onClick={openRename}
-                                className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-blue-600 rounded"
-                                title={t('speaker_rename_placeholder')}
-                            >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                            </button>
-                        )}
-                        {onEnrollSpeaker && (
-                            <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); onEnrollSpeaker(speaker); }}
-                                className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-green-600 rounded"
-                                title={t('save_voice_profile')}
-                            >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                            </button>
-                        )}
-                    </span>
-                )}
-                {!speaker && transientSpeaker && !isRenaming && (
-                    <span
-                        className="text-xs font-medium text-gray-600 border border-dashed border-gray-400 px-2 py-0.5 rounded mt-1 flex-shrink-0 cursor-help"
-                        title={t('transient_tooltip', { default: 'Realtime hint; will be re-clustered when the recording stops.' })}
-                    >
-                        {transientSpeaker}
-                    </span>
-                )}
-                {speaker && isRenaming && (
-                    <span className="flex items-center gap-1 mt-1 flex-shrink-0">
-                        <input
-                            autoFocus
-                            type="text"
-                            value={draftName}
-                            onChange={(e) => setDraftName(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') commitRename();
-                                else if (e.key === 'Escape') cancelRename();
-                            }}
-                            placeholder={t('speaker_rename_placeholder')}
-                            className="text-xs px-1.5 py-0.5 border border-blue-300 rounded w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        <button type="button" onClick={commitRename} className="p-0.5 text-green-600 hover:text-green-800" title={t('speaker_rename_save')} aria-label={t('speaker_rename_save')}><Check size={14} /></button>
-                        <button type="button" onClick={cancelRename} className="p-0.5 text-gray-500 hover:text-gray-700" title={t('speaker_rename_cancel')} aria-label={t('speaker_rename_cancel')}><X size={14} /></button>
-                    </span>
-                )}
-                <div className="flex-1">
+                            {transientSpeaker}
+                        </span>
+                    )}
+                    {speaker && isRenaming && (
+                        <span className="inline-flex items-center gap-1">
+                            <input
+                                autoFocus
+                                type="text"
+                                value={draftName}
+                                onChange={(e) => setDraftName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') commitRename();
+                                    else if (e.key === 'Escape') cancelRename();
+                                }}
+                                placeholder={t('speaker_rename_placeholder')}
+                                className="text-xs px-1.5 py-0.5 border border-blue-300 rounded w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <button type="button" onClick={commitRename} className="p-0.5 text-green-600 hover:text-green-800" title={t('speaker_rename_save')} aria-label={t('speaker_rename_save')}><Check size={14} /></button>
+                            <button type="button" onClick={cancelRename} className="p-0.5 text-gray-500 hover:text-gray-700" title={t('speaker_rename_cancel')} aria-label={t('speaker_rename_cancel')}><X size={14} /></button>
+                        </span>
+                    )}
+                </div>
+
+                {/* Column 2: Transcript body text */}
+                <div className="min-w-0">
                     {isStreaming ? (
                         <div className="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
-                            <p className="text-base text-gray-800 leading-relaxed">{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
+                            <p className="text-base text-gray-800 leading-relaxed" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
                         </div>
                     ) : (
-                        <p className="text-base text-gray-800 leading-relaxed">{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
+                        <p className="text-base text-gray-800 leading-relaxed" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
                     )}
+                </div>
+
+                {/* Column 3: Timestamp action */}
+                <div className="pt-0.5">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            {timeButton}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            {confidence !== undefined && showConfidence && (
+                                <ConfidenceIndicator confidence={confidence} showIndicator={showConfidence} />
+                            )}
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
             </div>
         </div>

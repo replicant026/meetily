@@ -8,8 +8,22 @@ vi.mock('next-intl', () => ({
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-// Import the component that currently shows raw keys
+// Mock sonner
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+// Mock speaker-api
+vi.mock('@/lib/speaker-api', () => ({
+  getRecognitionPreferences: vi.fn().mockResolvedValue({
+    recognitionMode: 'off',
+    lockAudioChannels: false,
+    minimumReferenceQuality: 0.5,
+  }),
+  setRecognitionPreferences: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Import components that may show raw keys
 import { ParticipantsSidebar } from '@/components/MeetingWorkspace/ParticipantsSidebar';
+import { SpeakerRecognitionSettings } from '@/components/speakers/SpeakerRecognitionSettings';
 
 const fixtureParticipants = [
   { id: '1', name: 'Speaker 1', source: 'microphone', spokenSeconds: 30, share: 0.6, color: '#16a34a' },
@@ -23,10 +37,17 @@ describe('raw translation key prevention', () => {
         participants={fixtureParticipants}
       />,
     );
-    // Raw keys match pattern: UPPERCASE.UPPERCASE (dotted, all caps)
-    // e.g. MEETINGWORKSPACE.MICROPHONE
+    // Raw keys match pattern: word.dotted.key.segments (common i18n key shape)
+    // e.g. MEETINGWORKSPACE.MICROPHONE or speakers.recognition.mode_Suggest_desc
     expect(
-      screen.queryByText(/^[A-Z][A-Z0-9_]*(\.[A-Z0-9_]+)+$/),
+      screen.queryByText(/^[a-z]+\.[a-z]+(\.[a-z0-9_]+)+$/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it('never renders a raw locale key in speaker recognition settings', async () => {
+    render(<SpeakerRecognitionSettings />);
+    expect(
+      screen.queryByText(/^[a-z]+\.[a-z]+(\.[a-z0-9_]+)+$/i),
     ).not.toBeInTheDocument();
   });
 });

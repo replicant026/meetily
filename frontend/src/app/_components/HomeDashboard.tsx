@@ -61,7 +61,7 @@ export function HomeDashboard({
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6 space-y-6">
+    <div className="mx-auto max-w-6xl p-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[rgb(var(--app-fg))]">
