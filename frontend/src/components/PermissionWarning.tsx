@@ -2,6 +2,7 @@
 import React from 'react';
 import { AlertTriangle, Mic, Speaker, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AppButton } from '@/components/ui/app-button';
 import { invoke } from '@tauri-apps/api/core';
 import { useIsLinux } from '@/hooks/usePlatform';
 import { useTranslations } from 'next-intl';
@@ -58,9 +59,9 @@ export function PermissionWarning({
     <div className="max-w-md mb-4 space-y-3">
       {/* Combined Permission Warning - Show when either permission is missing */}
       {(!hasMicrophone || !hasSystemAudio) && (
-        <Alert variant="destructive" className="border-amber-400 bg-amber-50">
-          <AlertTriangle className="h-5 w-5 text-amber-600" />
-          <AlertTitle className="text-amber-900 font-semibold">
+        <Alert variant="destructive" className="border-[rgb(var(--app-warning))] bg-[rgb(var(--app-muted))]">
+          <AlertTriangle className="h-5 w-5 text-[rgb(var(--app-warning))]" />
+          <AlertTitle className="text-[rgb(var(--app-fg))] font-semibold">
             <div className="flex items-center gap-2">
               {!hasMicrophone && <Mic className="h-4 w-4" />}
               {!hasSystemAudio && <Speaker className="h-4 w-4" />}
@@ -70,33 +71,33 @@ export function PermissionWarning({
           {/* Action Buttons */}
           <div className="mt-4 flex flex-wrap gap-2">
             {isMacOS && !hasMicrophone && (
-              <button
+              <AppButton
+                variant="primary"
                 onClick={openMicrophoneSettings}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
               >
                 <Mic className="h-4 w-4" />
                 {t('permission.open_mic')}
-              </button>
+              </AppButton>
             )}
             {isMacOS && !hasSystemAudio && (
-              <button
+              <AppButton
+                variant="primary"
                 onClick={openScreenRecordingSettings}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
               >
                 <Speaker className="h-4 w-4" />
                 {t('permission.open_screen')}
-              </button>
+              </AppButton>
             )}
-            <button
+            <AppButton
+              variant="secondary"
               onClick={onRecheck}
               disabled={isRechecking}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 ${isRechecking ? 'animate-spin' : ''}`} />
               {t('permission.recheck')}
-            </button>
+            </AppButton>
           </div>
-          <AlertDescription className="text-amber-800 mt-2">
+          <AlertDescription className="text-[rgb(var(--app-muted-fg))] mt-2">
             {/* Microphone Warning */}
             {!hasMicrophone && (
               <>
