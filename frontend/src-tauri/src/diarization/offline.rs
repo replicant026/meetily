@@ -10,7 +10,7 @@
 
 use super::clustering::{remap_by_first_appearance, spectral_cluster};
 use super::embedding::{diarize_full_audio, extract_embedding};
-use super::speaker_preferences::{channel_is_compatible, get_preferences, resolve_match_action};
+use super::speaker_preferences::{get_preferences, resolve_match_action, SpeakerRecognitionPreferences};
 use super::{WindowedEmbedding, EMBEDDING_DIM};
 use anyhow::Result;
 use hound::WavReader;
@@ -23,6 +23,88 @@ use crate::database::repositories::voice_reference::VoiceReferenceRepository;
 /// Maximum number of embedding windows fed to spectral_cluster.
 /// Eigendecomposition is O(N³); 192 keeps worst-case under a few seconds.
 const MAX_CLUSTER_WINDOWS: usize = 192;
+
+/// Shared speaker recognition logic used by both the sherpa and CAM++ paths.
+///
+/// Finds the best matching profile, resolves the action based on preferences,
+/// and either creates a suggestion or returns the match for label application.
+/// Channel compatibility is skipped in the offline path since audio is always mixed.
+///
+/// Returns `Some((speaker_label, matched_name))` when labels should be applied
+/// (Automatic mode, quality threshold met). `None` otherwise.
+async fn process_speaker_match(
+    pool: &SqlitePool,
+    meeting_id: &str,
+    speaker_label: &str,
+    segments: &[(String, Option<f64>, Option<f64>)],
+    centroid: &[f32],
+    prefs: &SpeakerRecognitionPreferences,
+) -> Result<Option<(String, String)>> {
+    let (name, sim, _ref_id) = match SpeakerRepository::find_match(pool, centroid, SUGGEST_MATCH_THRESHOLD).await {
+        Ok(Some(result)) => result,
+        Ok(None) => return Ok(None),
+        Err(e) => {
+            log::warn!("speaker recognition: match lookup failed for {}: {}", speaker_label, e);
+            return Ok(None);
+        }
+    };
+
+    let action = resolve_match_action(prefs.recognition_mode.clone(), sim, prefs.minimum_reference_quality);
+
+    log::info!(
+        "speaker recognition: {} matched '{}' (sim={:.3}, action={:?}, {} segments)",
+        speaker_label, name, sim, action, segments.len()
+    );
+
+    match action {
+        super::speaker_preferences::MatchAction::Ignore => Ok(None),
+
+        super::speaker_preferences::MatchAction::Suggest => {
+            let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
+            match VoiceReferenceRepository::create_suggestion(
+                pool,
+                meeting_id,
+                speaker_label,
+                &name,
+                sim,
+                &seg_ids,
+            )
+            .await
+            {
+                Ok(sug_id) => {
+                    log::info!("speaker recognition: created suggestion {} for {}", sug_id, name);
+                }
+                Err(e) => {
+                    log::warn!("speaker recognition: failed to create suggestion: {}", e);
+                }
+            }
+            Ok(None)
+        }
+
+        super::speaker_preferences::MatchAction::Apply => {
+            // Skip channel check — offline path audio is always mixed
+            if sim < prefs.minimum_reference_quality {
+                log::debug!(
+                    "speaker recognition: quality {:.3} below minimum {:.3} for {}; creating suggestion",
+                    sim, prefs.minimum_reference_quality, name
+                );
+                let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
+                let _ = VoiceReferenceRepository::create_suggestion(
+                    pool,
+                    meeting_id,
+                    speaker_label,
+                    &name,
+                    sim,
+                    &seg_ids,
+                )
+                .await;
+                return Ok(None);
+            }
+
+            Ok(Some((speaker_label.to_string(), name)))
+        }
+    }
+}
 
 /// After diarization labels are written, try to match each unique speaker
 /// against known profiles. Respects [`SpeakerRecognitionPreferences`]:
@@ -151,105 +233,23 @@ async fn apply_speaker_recognition(
         }
 
         // Compute centroid (average embedding)
-        let dim = speaker_embeddings[0].len();
-        let mut centroid = vec![0.0f32; dim];
-        for emb in &speaker_embeddings {
-            for (i, v) in emb.iter().enumerate() {
-                centroid[i] += v;
-            }
-        }
-        for v in centroid.iter_mut() {
-            *v /= speaker_embeddings.len() as f32;
-        }
+        let centroid = compute_centroid(&speaker_embeddings);
 
         // Match against saved profiles
-        match SpeakerRepository::find_match(pool, &centroid, SUGGEST_MATCH_THRESHOLD).await {
-            Ok(Some((name, sim, ref_id))) => {
-                let action = resolve_match_action(prefs.recognition_mode.clone(), sim, prefs.minimum_reference_quality);
-                log::info!(
-                    "speaker recognition: {} matched '{}' (sim={:.3}, action={:?}, {} embeddings)",
-                    speaker_label, name, sim, action, speaker_embeddings.len()
-                );
-
-                match action {
-                    super::speaker_preferences::MatchAction::Ignore => {
-                        // Below threshold — nothing to do
-                    }
-                    super::speaker_preferences::MatchAction::Suggest => {
-                        // Create suggestion row; do NOT update transcript labels
-                        let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
-                        match VoiceReferenceRepository::create_suggestion(
-                            pool,
-                            meeting_id,
-                            speaker_label,
-                            &name,
-                            sim,
-                            &seg_ids,
-                        )
-                        .await
-                        {
-                            Ok(sug_id) => {
-                                log::info!("speaker recognition: created suggestion {} for {}", sug_id, name);
-                                matched.push((speaker_label.clone(), name.clone()));
-                            }
-                            Err(e) => {
-                                log::warn!("speaker recognition: failed to create suggestion: {}", e);
-                            }
-                        }
-                    }
-                    super::speaker_preferences::MatchAction::Apply => {
-                        // Get the reference's actual channel from DB
-                        let ref_channel = VoiceReferenceRepository::get(pool, &ref_id)
-                            .await
-                            .ok()
-                            .flatten()
-                            .map(|r| r.channel)
-                            .unwrap_or_else(|| "unknown".into());
-
-                        // Check channel compatibility
-                        if !channel_is_compatible(prefs.lock_audio_channels, &ref_channel, "mixed") {
-                            log::debug!(
-                                "speaker recognition: channel mismatch for {} (ref={}, match=mixed); skipping auto-apply",
-                                speaker_label, ref_channel
-                            );
-                            continue;
-                        }
-
-                        // Only apply if reference quality meets minimum
-                        // Quality is inferred from similarity (proxy)
-                        if sim < prefs.minimum_reference_quality {
-                            log::debug!(
-                                "speaker recognition: quality {:.3} below minimum {:.3} for {}; creating suggestion",
-                                sim, prefs.minimum_reference_quality, name
-                            );
-                            let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
-                            let _ = VoiceReferenceRepository::create_suggestion(
-                                pool,
-                                meeting_id,
-                                speaker_label,
-                                &name,
-                                sim,
-                                &seg_ids,
-                            )
-                            .await;
-                            matched.push((speaker_label.clone(), name.clone()));
-                            continue;
-                        }
-
-                        // Apply label updates
-                        for (seg_id, _, _) in segments {
-                            label_mapping.push((seg_id.clone(), name.clone()));
-                        }
-                        matched.push((speaker_label.clone(), name.clone()));
-                    }
-                }
+        if let Some((label, name)) = process_speaker_match(
+            pool,
+            meeting_id,
+            speaker_label,
+            segments,
+            &centroid,
+            &prefs,
+        )
+        .await?
+        {
+            for (seg_id, _, _) in segments {
+                label_mapping.push((seg_id.clone(), name.clone()));
             }
-            Ok(None) => {
-                log::debug!("speaker recognition: {} no match above threshold", speaker_label);
-            }
-            Err(e) => {
-                log::warn!("speaker recognition: match lookup failed for {}: {}", speaker_label, e);
-            }
+            matched.push((label, name));
         }
     }
 
@@ -445,44 +445,19 @@ async fn commit_speaker_labels_inner(
         // Check if this cluster matches a known speaker profile
         let mut speaker_name = None;
         if let Some((_, centroid)) = cluster_embeddings.iter().find(|(cid, _)| *cid == cluster_id) {
-            if let Ok(Some((name, sim, ref_id))) = SpeakerRepository::find_match(
+            let cluster_label = format!("Speaker {}", cluster_id + 1);
+            let single_segment = [(seg_id.clone(), Some(seg_start), Some(seg_end))];
+            if let Some((_, name)) = process_speaker_match(
                 pool,
+                meeting_id,
+                &cluster_label,
+                &single_segment,
                 centroid,
-                SUGGEST_MATCH_THRESHOLD,
-            ).await {
-                let action = resolve_match_action(recognition_prefs.recognition_mode.clone(), sim, recognition_prefs.minimum_reference_quality);
-                match action {
-                    super::speaker_preferences::MatchAction::Apply => {
-                        // Get the reference's actual channel from DB
-                        let ref_channel = VoiceReferenceRepository::get(pool, &ref_id)
-                            .await
-                            .ok()
-                            .flatten()
-                            .map(|r| r.channel)
-                            .unwrap_or_else(|| "unknown".into());
-
-                        if !channel_is_compatible(recognition_prefs.lock_audio_channels, &ref_channel, "mixed") {
-                            log::debug!("speaker recognition: channel mismatch in CAM++ fallback for cluster {} (ref={}, match=mixed)", cluster_id, ref_channel);
-                        } else if sim >= recognition_prefs.minimum_reference_quality {
-                            log::info!("speaker recognition: cluster {} auto-applied '{}' (sim={:.3})", cluster_id, name, sim);
-                            speaker_name = Some(name);
-                        }
-                    }
-                    super::speaker_preferences::MatchAction::Suggest => {
-                        log::info!("speaker recognition: cluster {} suggesting '{}' (sim={:.3})", cluster_id, name, sim);
-                        // Create suggestion for this single segment
-                        let _ = VoiceReferenceRepository::create_suggestion(
-                            pool,
-                            meeting_id,
-                            &format!("Speaker {}", cluster_id + 1),
-                            &name,
-                            sim,
-                            &[seg_id.clone()],
-                        )
-                        .await;
-                    }
-                    super::speaker_preferences::MatchAction::Ignore => {}
-                }
+                &recognition_prefs,
+            )
+            .await?
+            {
+                speaker_name = Some(name);
             }
         }
 
@@ -659,6 +634,25 @@ fn choose_k(n: usize, min_k: usize, max_k: usize) -> usize {
     guess.min(n)
 }
 
+/// Compute the average (centroid) embedding from a list of embeddings.
+fn compute_centroid(embeddings: &[Vec<f32>]) -> Vec<f32> {
+    if embeddings.is_empty() {
+        return Vec::new();
+    }
+    let dim = embeddings[0].len();
+    let mut centroid = vec![0.0f32; dim];
+    for emb in embeddings {
+        for (i, v) in emb.iter().enumerate() {
+            centroid[i] += v;
+        }
+    }
+    let n = embeddings.len() as f32;
+    for v in centroid.iter_mut() {
+        *v /= n;
+    }
+    centroid
+}
+
 /// Compute the centroid embedding for each cluster.
 /// Returns Vec<(cluster_id, centroid_embedding)>.
 fn compute_cluster_centroids(
@@ -668,27 +662,18 @@ fn compute_cluster_centroids(
 ) -> Vec<(usize, Vec<f32>)> {
     let mut centroids = Vec::with_capacity(num_clusters);
     for cluster_id in 0..num_clusters {
-        let members: Vec<&Vec<f32>> = windows
+        let members: Vec<Vec<f32>> = windows
             .iter()
             .zip(labels.iter())
             .filter(|(_, &label)| label == cluster_id)
-            .map(|(w, _)| &w.vec)
+            .map(|(w, _)| w.vec.clone())
             .collect();
 
         if members.is_empty() {
             continue;
         }
 
-        let dim = members[0].len();
-        let mut centroid = vec![0.0f32; dim];
-        for member in &members {
-            for (i, &v) in member.iter().enumerate() {
-                centroid[i] += v;
-            }
-        }
-        for v in &mut centroid {
-            *v /= members.len() as f32;
-        }
+        let centroid = compute_centroid(&members);
         centroids.push((cluster_id, centroid));
     }
     centroids
