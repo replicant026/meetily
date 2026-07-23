@@ -1,39 +1,51 @@
 "use client";
 
 import type { WorkspaceParticipant } from './types';
+import { Mic, Monitor } from 'lucide-react';
 
 interface ParticipantsSidebarProps {
   participants: WorkspaceParticipant[];
+  className?: string;
 }
 
-/** Placeholder sidebar – Task 5 will flesh this out. */
-export function ParticipantsSidebar({ participants }: ParticipantsSidebarProps) {
+export function ParticipantsSidebar({ participants, className }: ParticipantsSidebarProps) {
+  const micParticipants = participants.filter(p => p.source === 'microphone');
+  const sysParticipants = participants.filter(p => p.source === 'system');
+
   return (
-    <aside
-      role="complementary"
-      aria-label="Participants"
-      className="hidden lg:block w-[22rem] border-l border-stone-200 bg-white overflow-y-auto"
-    >
-      <div className="px-4 pt-4 pb-2 text-xs font-medium tracking-widest uppercase text-stone-400">
-        Participants
+    <aside aria-label="Participants" className={className}>
+      {/* Microphone section */}
+      <div>
+        <h3 className="text-xs uppercase text-stone-500 font-medium tracking-wider">
+          <Mic className="inline w-3 h-3 mr-1" />
+          Microphone
+        </h3>
+        {micParticipants.map(p => (
+          <ParticipantRow key={p.id} participant={p} />
+        ))}
       </div>
-      {participants.length === 0 ? (
-        <div className="px-4 py-6 text-sm text-stone-400">
-          No participants yet.
-        </div>
-      ) : (
-        <ul className="divide-y divide-stone-100">
-          {participants.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 px-4 py-3">
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: p.color }}
-              />
-              <span className="text-sm text-stone-700 truncate">{p.name}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* System audio section */}
+      <div>
+        <h3 className="text-xs uppercase text-stone-500 font-medium tracking-wider">
+          <Monitor className="inline w-3 h-3 mr-1" />
+          System Audio
+        </h3>
+        {sysParticipants.map(p => (
+          <ParticipantRow key={p.id} participant={p} />
+        ))}
+      </div>
     </aside>
+  );
+}
+
+function ParticipantRow({ participant }: { participant: WorkspaceParticipant }) {
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: participant.color }} />
+      <span className="text-sm text-stone-700">{participant.name}</span>
+      <span className="text-xs text-stone-400 ml-auto">
+        {participant.spokenSeconds}s · {Math.round(participant.share * 100)}%
+      </span>
+    </div>
   );
 }
