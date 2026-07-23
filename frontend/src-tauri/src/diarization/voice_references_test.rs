@@ -7,6 +7,14 @@ use super::*;
 
 // ── select_reference_window ───────────────────────────────────────────────
 
+async fn test_pool() -> sqlx::SqlitePool {
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:")
+        .await
+        .unwrap();
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    pool
+}
+
 #[test]
 fn select_reference_window_caps_to_eight_seconds_around_speech() {
     let window = select_reference_window(&[(1_000, 5_000), (6_000, 12_000)]).unwrap();
@@ -124,4 +132,141 @@ fn reference_window_duration_ms_is_correct() {
         end_ms: 4500,
     };
     assert_eq!(w.duration_ms(), 3500);
+}
+
+// ── delete_voice_reference (file + DB) ───────────────────────────────────
+
+#[tokio::test]
+async fn delete_reference_removes_only_managed_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    set_references_dir(tmp.path().to_path_buf());
+
+    let pool = test_pool().await;
+
+    let alice = crate::database::repositories::speaker::SpeakerRepository::create_person(
+        &pool, "Alice", None, None,
+    )
+    .await
+    .unwrap();
+    let bob = crate::database::repositories::speaker::SpeakerRepository::create_person(
+        &pool, "Bob", None, None,
+    )
+    .await
+    .unwrap();
+
+    // Create reference with audio for Alice
+    let ref_a = crate::database::repositories::voice_reference::VoiceReferenceRepository::create(
+        &pool,
+        &alice,
+        &crate::database::repositories::voice_reference::CreateReferenceParams {
+            meeting_id: None,
+            embedding: vec![0.5; 192],
+            audio_relative_path: Some(format!("{alice}/ref-a.wav")),
+            waveform_peaks: None,
+            source_start_ms: 0,
+            source_end_ms: 1000,
+            duration_ms: 1000,
+            channel: "unknown".into(),
+            quality_score: 0.8,
+            status: "confirmed".into(),
+            origin: "manual".into(),
+        },
+    )
+    .await
+    .unwrap();
+
+    // Create reference with audio for Bob
+    let _ref_b = crate::database::repositories::voice_reference::VoiceReferenceRepository::create(
+        &pool,
+        &bob,
+        &crate::database::repositories::voice_reference::CreateReferenceParams {
+            meeting_id: None,
+            embedding: vec![0.5; 192],
+            audio_relative_path: Some(format!("{bob}/ref-b.wav")),
+            waveform_peaks: None,
+            source_start_ms: 0,
+            source_end_ms: 1000,
+            duration_ms: 1000,
+            channel: "unknown".into(),
+            quality_score: 0.8,
+            status: "confirmed".into(),
+            origin: "manual".into(),
+        },
+    )
+    .await
+    .unwrap();
+
+    // Write audio files on disk
+    let alice_dir = tmp.path().join(&alice);
+    std::fs::create_dir_all(&alice_dir).unwrap();
+    std::fs::write(alice_dir.join("ref-a.wav"), b"RIFF fake").unwrap();
+
+    let bob_dir = tmp.path().join(&bob);
+    std::fs::create_dir_all(&bob_dir).unwrap();
+    std::fs::write(bob_dir.join("ref-b.wav"), b"RIFF fake").unwrap();
+
+    assert!(alice_dir.join("ref-a.wav").is_file());
+    assert!(bob_dir.join("ref-b.wav").is_file());
+
+    // Delete Alice's reference
+    super::delete_voice_reference(&pool, &ref_a).await.unwrap();
+
+    // Alice's file gone
+    assert!(!alice_dir.join("ref-a.wav").is_file());
+    // Alice's DB row gone
+    let alice_refs =
+        crate::database::repositories::voice_reference::VoiceReferenceRepository::list_for_person(
+            &pool, &alice,
+        )
+        .await
+        .unwrap();
+    assert!(alice_refs.is_empty());
+
+    // Bob's file untouched
+    assert!(bob_dir.join("ref-b.wav").is_file());
+    let bob_refs =
+        crate::database::repositories::voice_reference::VoiceReferenceRepository::list_for_person(
+            &pool, &bob,
+        )
+        .await
+        .unwrap();
+    assert_eq!(bob_refs.len(), 1);
+}
+
+// ── get_voice_reference_audio_path privacy ────────────────────────────────
+
+#[tokio::test]
+async fn no_command_returns_path_outside_managed_directory() {
+    let tmp = tempfile::tempdir().unwrap();
+    set_references_dir(tmp.path().to_path_buf());
+
+    let pool = test_pool().await;
+
+    let person = crate::database::repositories::speaker::SpeakerRepository::create_person(
+        &pool, "Escaper", None, None,
+    )
+    .await
+    .unwrap();
+
+    // Insert a reference whose path tries to escape via ".."
+    let ref_id = "ref-escape";
+    sqlx::query(
+        r#"INSERT INTO speaker_voice_references
+           (id, speaker_id, embedding, audio_relative_path, status, origin, created_at)
+           VALUES (?, ?, ?, ?, 'confirmed', 'manual', ?)"#,
+    )
+    .bind(ref_id)
+    .bind(&person)
+    .bind(vec![0u8; 192 * 4]) // dummy embedding
+    .bind("../escape.wav")
+    .bind(chrono::Utc::now().to_rfc3339())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // get_voice_reference_audio_path must return None for suspicious paths
+    let result = super::get_voice_reference_audio_path(&pool, ref_id)
+        .await
+        .unwrap();
+    assert!(result.is_none(), "must not return path outside managed dir");
 }

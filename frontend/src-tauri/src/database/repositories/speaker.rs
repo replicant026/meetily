@@ -562,4 +562,148 @@ mod tests {
             .unwrap();
         assert!(result.is_none());
     }
+
+    // ── Migration / regression tests ────────────────────────────────────
+
+    #[tokio::test]
+    async fn migration_creates_one_person_per_unique_name() {
+        let pool = test_pool().await;
+
+        // Simulate legacy state: create old speaker_profiles table with 3
+        // rows sharing the same display_name but different embeddings.
+        sqlx::query(
+            r#"CREATE TABLE speaker_profiles (
+                id TEXT PRIMARY KEY,
+                display_name TEXT NOT NULL,
+                embedding BLOB NOT NULL,
+                slot INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                last_seen_at TEXT,
+                meeting_count INTEGER NOT NULL DEFAULT 1
+            )"#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let to_bytes = |emb: &[f32]| -> Vec<u8> {
+            emb.iter().flat_map(|f| f.to_le_bytes()).collect()
+        };
+
+        for (id, emb) in [
+            ("l1", vec![0.25f32; 192]),
+            ("l2", vec![0.30f32; 192]),
+            ("l3", vec![0.35f32; 192]),
+        ] {
+            sqlx::query(
+                "INSERT INTO speaker_profiles (id, display_name, embedding, created_at, meeting_count)
+                 VALUES (?, 'Alice', ?, '2024-01-01T00:00:00Z', 1)",
+            )
+            .bind(id)
+            .bind(to_bytes(&emb))
+            .execute(&pool)
+            .await
+            .unwrap();
+        }
+
+        // Run the migration SQL from the migration file (INSERT parts).
+        sqlx::query(
+            r#"INSERT OR IGNORE INTO speaker_people (id, display_name, created_at, updated_at)
+               SELECT 'person-' || id, display_name, created_at, created_at
+               FROM speaker_profiles
+               GROUP BY display_name"#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"INSERT OR IGNORE INTO speaker_voice_references
+               (id, speaker_id, embedding, status, origin, created_at)
+               SELECT 'ref-' || sp.id, 'person-' || p.id, sp.embedding, 'legacy', 'legacy', sp.created_at
+               FROM speaker_profiles sp
+               JOIN (SELECT id, display_name FROM speaker_profiles GROUP BY display_name) p
+               ON p.display_name = sp.display_name
+               WHERE sp.embedding IS NOT NULL"#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // 1 person in speaker_people
+        let people_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM speaker_people")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(people_count.0, 1);
+
+        // 3 legacy references in speaker_voice_references
+        let ref_count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM speaker_voice_references WHERE status = 'legacy'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(ref_count.0, 3);
+    }
+
+    #[tokio::test]
+    async fn legacy_profile_still_matches() {
+        let pool = test_pool().await;
+        let p = SpeakerRepository::create_person(&pool, "Alice", None, None)
+            .await
+            .unwrap();
+
+        let mut params = fixture_reference();
+        params.embedding = vec![1.0; 256];
+        params.status = "legacy".into();
+        params.origin = "legacy".into();
+        VoiceReferenceRepository::create(&pool, &p, &params)
+            .await
+            .unwrap();
+
+        // find_match queries for status IN ('confirmed', 'legacy')
+        let result = SpeakerRepository::find_match(&pool, &vec![1.0; 256], 0.5)
+            .await
+            .unwrap();
+        assert!(result.is_some());
+        let (name, sim, _) = result.unwrap();
+        assert_eq!(name, "Alice");
+        assert!(sim > 0.99);
+    }
+
+    #[tokio::test]
+    async fn delete_person_removes_only_their_snippets() {
+        let pool = test_pool().await;
+        let alice = SpeakerRepository::create_person(&pool, "Alice", None, None)
+            .await
+            .unwrap();
+        let bob = SpeakerRepository::create_person(&pool, "Bob", None, None)
+            .await
+            .unwrap();
+
+        let ref_a = VoiceReferenceRepository::create(&pool, &alice, &fixture_reference())
+            .await
+            .unwrap();
+        let ref_b = VoiceReferenceRepository::create(&pool, &bob, &fixture_reference())
+            .await
+            .unwrap();
+
+        // Delete Alice — CASCADE removes her references
+        SpeakerRepository::delete_person(&pool, &alice)
+            .await
+            .unwrap();
+
+        let alice_refs = VoiceReferenceRepository::list_for_person(&pool, &alice)
+            .await
+            .unwrap();
+        assert!(alice_refs.is_empty(), "alice's references should be gone");
+
+        let bob_refs = VoiceReferenceRepository::list_for_person(&pool, &bob)
+            .await
+            .unwrap();
+        assert_eq!(bob_refs.len(), 1, "bob's reference should survive");
+        assert_eq!(bob_refs[0].id, ref_b);
+    }
 }
