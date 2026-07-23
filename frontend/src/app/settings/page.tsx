@@ -7,8 +7,8 @@ import { SettingsShell } from '@/components/settings/SettingsShell';
 import { GeneralSettings } from '@/components/settings/GeneralSettings';
 import { AudioSettings } from '@/components/settings/AudioSettings';
 import { RecordingSettingsSection } from '@/components/settings/RecordingSettingsSection';
-import { TranscriptSettings } from '@/components/TranscriptSettings';
-import { SpeakersSettings } from '@/components/SpeakersSettings';
+import { TranscriptionSettingsSection } from '@/components/settings/TranscriptionSettingsSection';
+import { SpeakerSettingsSection } from '@/components/settings/SpeakerSettingsSection';
 import { SummaryModelSettings } from '@/components/SummaryModelSettings';
 import { LlmProviderSettings } from '@/components/settings/LlmProviderSettings';
 import { SummarySettingsSection } from '@/components/settings/SummarySettingsSection';
@@ -62,14 +62,9 @@ export default function SettingsPage() {
           case 'recordings':
             return <RecordingSettingsSection />;
           case 'transcription':
-            return (
-              <TranscriptSettings
-                transcriptModelConfig={transcriptModelConfig}
-                setTranscriptModelConfig={setTranscriptModelConfig}
-              />
-            );
+            return <TranscriptionSettingsSection />;
           case 'speakers':
-            return <SpeakersSettings />;
+            return <SpeakerSettingsSection />;
           case 'llms':
             return <LlmProviderSettings />;
           case 'summaries':
