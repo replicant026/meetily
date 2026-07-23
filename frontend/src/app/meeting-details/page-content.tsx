@@ -9,7 +9,9 @@ import { toast } from 'sonner';
 import { TranscriptPanel } from '@/components/MeetingDetails/TranscriptPanel';
 import { SummaryPanel } from '@/components/MeetingDetails/SummaryPanel';
 import { MeetingWorkspace } from '@/components/MeetingWorkspace/MeetingWorkspace';
-import type { AudioController } from '@/components/MeetingWorkspace/types';
+import { MeetingNotesTab } from '@/components/MeetingWorkspace/MeetingNotesTab';
+import { MeetingActionsTab } from '@/components/MeetingWorkspace/MeetingActionsTab';
+import type { AudioController, WorkspaceAction } from '@/components/MeetingWorkspace/types';
 import { ModelConfig } from '@/components/ModelSettingsModal';
 
 // Custom hooks
@@ -208,6 +210,17 @@ export default function PageContent({
     />
   );
 
+  const actionItems: WorkspaceAction[] =
+    summaryData?.action_items?.map((text, i) => ({
+      id: `summary:action_items:${i}`,
+      text,
+      assigneeId: null,
+      completed: false,
+    })) ?? [];
+
+  const notesPanel = <MeetingNotesTab meetingId={meeting.id} />;
+  const actionsPanel = <MeetingActionsTab meetingId={meeting.id} actions={actionItems} />;
+
   const summaryPanel = (
     <SummaryPanel
       meeting={meeting}
@@ -259,6 +272,8 @@ export default function PageContent({
         participants={[]}
         transcriptContent={transcriptPanel}
         summaryContent={summaryPanel}
+        notesContent={notesPanel}
+        actionsContent={actionsPanel}
       />
     </motion.div>
   );
