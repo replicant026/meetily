@@ -2,7 +2,7 @@
 -- Migrates data from legacy speaker_profiles, then drops that table.
 
 -- 1. New tables
-CREATE TABLE speaker_people (
+CREATE TABLE IF NOT EXISTS speaker_people (
   id TEXT PRIMARY KEY NOT NULL,
   display_name TEXT NOT NULL COLLATE NOCASE UNIQUE,
   email TEXT,
@@ -12,7 +12,7 @@ CREATE TABLE speaker_people (
   last_seen_at TEXT
 );
 
-CREATE TABLE speaker_voice_references (
+CREATE TABLE IF NOT EXISTS speaker_voice_references (
   id TEXT PRIMARY KEY NOT NULL,
   speaker_id TEXT NOT NULL REFERENCES speaker_people(id) ON DELETE CASCADE,
   embedding BLOB NOT NULL,
@@ -29,10 +29,10 @@ CREATE TABLE speaker_voice_references (
   created_at TEXT NOT NULL,
   CHECK(audio_relative_path IS NULL OR audio_relative_path NOT LIKE '/%')
 );
-CREATE INDEX idx_voice_references_speaker ON speaker_voice_references(speaker_id, status);
-CREATE INDEX idx_voice_references_meeting ON speaker_voice_references(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_voice_references_speaker ON speaker_voice_references(speaker_id, status);
+CREATE INDEX IF NOT EXISTS idx_voice_references_meeting ON speaker_voice_references(meeting_id);
 
-CREATE TABLE speaker_match_suggestions (
+CREATE TABLE IF NOT EXISTS speaker_match_suggestions (
   id TEXT PRIMARY KEY NOT NULL,
   meeting_id TEXT NOT NULL,
   source_label TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE speaker_match_suggestions (
   created_at TEXT NOT NULL,
   resolved_at TEXT
 );
-CREATE INDEX idx_speaker_suggestions_pending
+CREATE INDEX IF NOT EXISTS idx_speaker_suggestions_pending
   ON speaker_match_suggestions(meeting_id, status);
 
 -- 2. Migrate data from legacy speaker_profiles

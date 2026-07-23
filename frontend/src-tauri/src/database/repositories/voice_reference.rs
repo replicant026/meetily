@@ -203,7 +203,7 @@ impl VoiceReferenceRepository {
         .fetch_all(pool)
         .await?;
 
-        Ok(rows.into_iter().filter_map(|r| r.try_into_dto().ok()).collect())
+        rows.into_iter().map(|r| r.try_into_dto().map_err(|e| sqlx::Error::Decode(Box::new(e)))).collect()
     }
 
     /// Resolve a suggestion (accept/reject).
@@ -247,7 +247,7 @@ impl VoiceReferenceRepository {
             quality_score: 0.0,
             status: "legacy".into(),
             origin: "legacy".into(),
-            created_at: String::new(),
+            created_at: "1970-01-01T00:00:00Z".into(),
             has_playable_audio: false,
             waveform_peaks: Vec::new(),
         }

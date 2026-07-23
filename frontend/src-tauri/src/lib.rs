@@ -873,9 +873,9 @@ fn set_diarization_config(
 #[tauri::command]
 async fn list_speaker_profiles(
     state: tauri::State<'_, crate::state::AppState>,
-) -> Result<Vec<crate::database::repositories::speaker::SpeakerProfile>, String> {
+) -> Result<Vec<crate::database::repositories::speaker::SpeakerPersonDto>, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::list_profiles(pool)
+    crate::database::repositories::speaker::SpeakerRepository::list_people(pool)
         .await
         .map_err(|e| e.to_string())
 }
@@ -886,9 +886,15 @@ async fn delete_speaker_profile(
     display_name: String,
 ) -> Result<u64, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::delete_by_name(pool, &display_name)
+    match crate::database::repositories::speaker::SpeakerRepository::find_person_by_name(pool, &display_name)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?
+    {
+        Some((id, _)) => crate::database::repositories::speaker::SpeakerRepository::delete_person(pool, &id)
+            .await
+            .map_err(|e| e.to_string()),
+        None => Ok(0),
+    }
 }
 
 #[tauri::command]
@@ -898,9 +904,18 @@ async fn rename_speaker_profile(
     new_name: String,
 ) -> Result<u64, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::rename(pool, &old_name, &new_name)
+    match crate::database::repositories::speaker::SpeakerRepository::find_person_by_name(pool, &old_name)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?
+    {
+        Some((id, _)) => {
+            let renamed = crate::database::repositories::speaker::SpeakerRepository::rename_person(pool, &id, &new_name)
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(if renamed { 1 } else { 0 })
+        }
+        None => Ok(0),
+    }
 }
 
 #[tauri::command]
@@ -910,10 +925,26 @@ async fn enroll_speaker(
     embedding: Vec<f32>,
 ) -> Result<String, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::upsert_profile(
+    // Ensure person exists, then create a voice reference
+    let person_id = crate::database::repositories::speaker::SpeakerRepository::get_or_create_person(pool, &display_name)
+        .await
+        .map_err(|e| e.to_string())?;
+    crate::database::repositories::voice_reference::VoiceReferenceRepository::create(
         pool,
-        &display_name,
-        &embedding,
+        &person_id,
+        &crate::database::repositories::voice_reference::CreateReferenceParams {
+            meeting_id: None,
+            embedding,
+            audio_relative_path: None,
+            waveform_peaks: None,
+            source_start_ms: 0,
+            source_end_ms: 0,
+            duration_ms: 0,
+            channel: "unknown".into(),
+            quality_score: 0.0,
+            status: "confirmed".into(),
+            origin: "manual".into(),
+        },
     )
     .await
     .map_err(|e| e.to_string())
@@ -940,9 +971,10 @@ async fn list_speaker_names(
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<Vec<String>, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::get_all_names(pool)
+    let people = crate::database::repositories::speaker::SpeakerRepository::list_people(pool)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok(people.into_iter().map(|p| p.display_name).collect())
 }
 
 #[tauri::command]
@@ -959,9 +991,9 @@ async fn rename_speaker_in_meeting(
     )
     .await
     .map_err(|e| e.to_string())?;
-    // 2. Enroll speaker profile (name-only, embedding populated later by diarization)
-    let _ = crate::database::repositories::speaker::SpeakerRepository::upsert_profile(
-        pool, &new_name, &[],
+    // 2. Ensure person exists (voice references added later by diarization)
+    let _ = crate::database::repositories::speaker::SpeakerRepository::get_or_create_person(
+        pool, &new_name,
     )
     .await;
     Ok(rows)

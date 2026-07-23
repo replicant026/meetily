@@ -329,7 +329,9 @@ async fn commit_speaker_labels_inner(
     // Try to match clusters against known speaker profiles
     let recognition_mode = super::status();
     let _known_names: Vec<String> = if recognition_mode.model_status == "ready" {
-        SpeakerRepository::get_all_names(pool).await.unwrap_or_default()
+        SpeakerRepository::list_people(pool).await
+            .map(|ps| ps.into_iter().map(|p| p.display_name).collect())
+            .unwrap_or_default()
     } else {
         Vec::new()
     };
