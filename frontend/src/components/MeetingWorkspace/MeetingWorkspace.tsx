@@ -1,10 +1,12 @@
 "use client";
 
 import type { AudioController, WorkspaceParticipant } from './types';
+import type { MeetingSummaryTabProps } from './MeetingSummaryTab';
 import { MeetingHeader } from './MeetingHeader';
 import { MeetingTimeline } from './MeetingTimeline';
 import { MeetingTabs } from './MeetingTabs';
 import { ParticipantsSidebar } from './ParticipantsSidebar';
+import { MeetingSummaryTab } from './MeetingSummaryTab';
 
 export interface MeetingWorkspaceProps {
   meeting: { id: string; title: string; created_at: string };
@@ -13,8 +15,8 @@ export interface MeetingWorkspaceProps {
   peaks?: Float32Array | null;
   /** Passed through to MeetingTabs as transcriptContent */
   transcriptContent?: React.ReactNode;
-  /** Passed through to MeetingTabs as summaryContent */
-  summaryContent?: React.ReactNode;
+  /** Summary-related props passed through to MeetingSummaryTab */
+  summaryProps?: MeetingSummaryTabProps;
   notesContent?: React.ReactNode;
   actionsContent?: React.ReactNode;
 }
@@ -25,7 +27,7 @@ export function MeetingWorkspace({
   participants,
   peaks = null,
   transcriptContent,
-  summaryContent,
+  summaryProps,
   notesContent,
   actionsContent,
 }: MeetingWorkspaceProps) {
@@ -40,7 +42,7 @@ export function MeetingWorkspace({
         >
           <MeetingTabs
             transcriptContent={transcriptContent}
-            summaryContent={summaryContent}
+            summaryContent={summaryProps ? <MeetingSummaryTab {...summaryProps} /> : undefined}
             notesContent={notesContent}
             actionsContent={actionsContent}
           />

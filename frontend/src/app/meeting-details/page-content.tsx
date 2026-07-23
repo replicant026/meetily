@@ -7,7 +7,6 @@ import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { TranscriptPanel } from '@/components/MeetingDetails/TranscriptPanel';
-import { SummaryPanel } from '@/components/MeetingDetails/SummaryPanel';
 import { MeetingWorkspace } from '@/components/MeetingWorkspace/MeetingWorkspace';
 import { MeetingNotesTab } from '@/components/MeetingWorkspace/MeetingNotesTab';
 import { MeetingActionsTab } from '@/components/MeetingWorkspace/MeetingActionsTab';
@@ -221,44 +220,6 @@ export default function PageContent({
   const notesPanel = <MeetingNotesTab meetingId={meeting.id} />;
   const actionsPanel = <MeetingActionsTab meetingId={meeting.id} actions={actionItems} />;
 
-  const summaryPanel = (
-    <SummaryPanel
-      meeting={meeting}
-      meetingTitle={meetingData.meetingTitle}
-      onTitleChange={meetingData.handleTitleChange}
-      isEditingTitle={meetingData.isEditingTitle}
-      onStartEditTitle={() => meetingData.setIsEditingTitle(true)}
-      onFinishEditTitle={() => meetingData.setIsEditingTitle(false)}
-      isTitleDirty={meetingData.isTitleDirty}
-      summaryRef={meetingData.blockNoteSummaryRef}
-      isSaving={meetingData.isSaving}
-      onSaveAll={meetingData.saveAllChanges}
-      onCopySummary={copyOperations.handleCopySummary}
-      onOpenFolder={meetingOperations.handleOpenMeetingFolder}
-      aiSummary={meetingData.aiSummary}
-      summaryStatus={summaryGeneration.summaryStatus}
-      transcripts={meetingData.transcripts}
-      modelConfig={modelConfig}
-      setModelConfig={setModelConfig}
-      onSaveModelConfig={handleSaveModelConfig}
-      onGenerateSummary={summaryGeneration.handleGenerateSummary}
-      onStopGeneration={summaryGeneration.handleStopGeneration}
-      customPrompt={customPrompt}
-      summaryResponse={summaryResponse}
-      onSaveSummary={meetingData.handleSaveSummary}
-      onSummaryChange={meetingData.handleSummaryChange}
-      onDirtyChange={meetingData.setIsSummaryDirty}
-      summaryError={summaryGeneration.summaryError}
-      onRegenerateSummary={summaryGeneration.handleRegenerateSummary}
-      getSummaryStatusMessage={summaryGeneration.getSummaryStatusMessage}
-      availableTemplates={templates.availableTemplates}
-      selectedTemplate={templates.selectedTemplate}
-      onTemplateSelect={templates.handleTemplateSelection}
-      isModelConfigLoading={false}
-      onOpenModelSettings={handleRegisterModalOpen}
-    />
-  );
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -271,7 +232,41 @@ export default function PageContent({
         audio={audioController}
         participants={[]}
         transcriptContent={transcriptPanel}
-        summaryContent={summaryPanel}
+        summaryProps={{
+          meeting,
+          meetingTitle: meetingData.meetingTitle,
+          onTitleChange: meetingData.handleTitleChange,
+          isEditingTitle: meetingData.isEditingTitle,
+          onStartEditTitle: () => meetingData.setIsEditingTitle(true),
+          onFinishEditTitle: () => meetingData.setIsEditingTitle(false),
+          isTitleDirty: meetingData.isTitleDirty,
+          summaryRef: meetingData.blockNoteSummaryRef,
+          isSaving: meetingData.isSaving,
+          onSaveAll: meetingData.saveAllChanges,
+          onCopySummary: copyOperations.handleCopySummary,
+          onOpenFolder: meetingOperations.handleOpenMeetingFolder,
+          aiSummary: meetingData.aiSummary,
+          summaryStatus: summaryGeneration.summaryStatus,
+          transcripts: meetingData.transcripts,
+          modelConfig,
+          setModelConfig,
+          onSaveModelConfig: handleSaveModelConfig,
+          onGenerateSummary: summaryGeneration.handleGenerateSummary,
+          onStopGeneration: summaryGeneration.handleStopGeneration,
+          customPrompt,
+          summaryResponse,
+          onSaveSummary: meetingData.handleSaveSummary,
+          onSummaryChange: meetingData.handleSummaryChange,
+          onDirtyChange: meetingData.setIsSummaryDirty,
+          summaryError: summaryGeneration.summaryError,
+          onRegenerateSummary: summaryGeneration.handleRegenerateSummary,
+          getSummaryStatusMessage: summaryGeneration.getSummaryStatusMessage,
+          availableTemplates: templates.availableTemplates,
+          selectedTemplate: templates.selectedTemplate,
+          onTemplateSelect: templates.handleTemplateSelection,
+          isModelConfigLoading: false,
+          onOpenModelSettings: handleRegisterModalOpen,
+        }}
         notesContent={notesPanel}
         actionsContent={actionsPanel}
       />
