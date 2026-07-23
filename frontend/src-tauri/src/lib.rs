@@ -812,6 +812,11 @@ pub fn run() {
             audio::import::is_import_in_progress_command,
             // Post-save diarization command
             audio::recording_commands::run_meeting_diarization,
+            // Workspace notes & actions
+            database::commands::get_meeting_note,
+            database::commands::save_meeting_note,
+            database::commands::get_meeting_action_states,
+            database::commands::set_meeting_action_completed,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

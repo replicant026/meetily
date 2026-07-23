@@ -7,6 +7,7 @@ use super::manager::DatabaseManager;
 use crate::audio;
 use super::orphan_checkpoints::{discard_orphan_checkpoint, scan_orphan_checkpoints, OrphanCheckpoint};
 use super::repositories::meeting::MeetingsRepository;
+use super::repositories::workspace::WorkspaceRepository;
 use crate::state::AppState;
 
 #[derive(Serialize)]
@@ -363,6 +364,75 @@ pub async fn discard_recovery_cmd<
         .app_data_dir()
         .map_err(|e| format!("Failed to get app data dir: {}", e))?;
     Ok(audio::recovery::mark_discarded(&app_data_dir, std::path::Path::new(&meeting_folder)))
+}
+
+// ===== Workspace commands =====
+
+#[tauri::command]
+pub async fn get_meeting_note(
+    app: AppHandle,
+    meeting_id: String,
+) -> Result<Option<String>, String> {
+    let pool = app
+        .state::<AppState>()
+        .inner()
+        .db_manager
+        .pool();
+    let repo = WorkspaceRepository::new(pool.clone());
+    repo.get_note(&meeting_id)
+        .await
+        .map_err(|e| format!("Failed to get note: {}", e))
+}
+
+#[tauri::command]
+pub async fn save_meeting_note(
+    app: AppHandle,
+    meeting_id: String,
+    content: String,
+) -> Result<(), String> {
+    let pool = app
+        .state::<AppState>()
+        .inner()
+        .db_manager
+        .pool();
+    let repo = WorkspaceRepository::new(pool.clone());
+    repo.save_note(&meeting_id, &content)
+        .await
+        .map_err(|e| format!("Failed to save note: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_meeting_action_states(
+    app: AppHandle,
+    meeting_id: String,
+) -> Result<std::collections::HashMap<String, bool>, String> {
+    let pool = app
+        .state::<AppState>()
+        .inner()
+        .db_manager
+        .pool();
+    let repo = WorkspaceRepository::new(pool.clone());
+    repo.get_action_states(&meeting_id)
+        .await
+        .map_err(|e| format!("Failed to get action states: {}", e))
+}
+
+#[tauri::command]
+pub async fn set_meeting_action_completed(
+    app: AppHandle,
+    meeting_id: String,
+    action_id: String,
+    completed: bool,
+) -> Result<(), String> {
+    let pool = app
+        .state::<AppState>()
+        .inner()
+        .db_manager
+        .pool();
+    let repo = WorkspaceRepository::new(pool.clone());
+    repo.set_action_completed(&meeting_id, &action_id, completed)
+        .await
+        .map_err(|e| format!("Failed to set action completed: {}", e))
 }
 
 /// Resolve the local audio file path for a meeting so the frontend can
