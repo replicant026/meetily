@@ -10,7 +10,9 @@ export function useMeetingWorkspace(transcripts: Transcript[]): WorkspacePartici
     
     for (const seg of transcripts) {
       const id = seg.speaker ?? seg.transient_speaker ?? 'unassigned';
-      const duration = Math.max(0, (seg.audio_end_time ?? seg.audio_start_time) - seg.audio_start_time);
+      const start = seg.audio_start_time ?? 0;
+      const end = seg.audio_end_time ?? start;
+      const duration = Math.max(0, end - start);
       const existing = speakerMap.get(id);
       if (existing) {
         existing.seconds += duration;

@@ -210,9 +210,9 @@ export default function PageContent({
   );
 
   const actionItems: WorkspaceAction[] =
-    summaryData?.action_items?.map((text, i) => ({
+    summaryData?.action_items?.blocks?.map((block, i) => ({
       id: `summary:action_items:${i}`,
-      text,
+      text: block.content,
       assigneeId: null,
       completed: false,
     })) ?? [];
