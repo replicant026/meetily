@@ -358,7 +358,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     return () => {
       cleanup?.();
     };
-  }, []);
+  }, [updateProviderApiKey]);
 
   // Load device preferences on mount
   useEffect(() => {

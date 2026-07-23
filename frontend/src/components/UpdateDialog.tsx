@@ -46,7 +46,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
       setError(null);
       setUpdate(null);
     }
-  }, [open, updateInfo]);
+  }, [open, updateInfo, t]);
 
   const handleDownloadAndInstall = async () => {
     let updateToUse: Update | null = update;

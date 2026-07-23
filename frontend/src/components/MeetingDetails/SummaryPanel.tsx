@@ -150,7 +150,7 @@ export function SummaryPanel({
     return () => {
       cancelled = true;
     };
-  }, [meeting.id]);
+  }, [meeting.id, t]);
 
   const persistLatestLanguageSelection = async () => {
     if (languageSaveLoopRunningRef.current) return;

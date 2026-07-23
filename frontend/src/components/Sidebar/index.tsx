@@ -317,7 +317,7 @@ const Sidebar: React.FC = () => {
         })
         .filter((item): item is SidebarItem => item !== undefined); // Type-safe filter
     }
-  }, [sidebarItems, searchQuery, searchResults, expandedFolders]);
+  }, [sidebarItems, searchQuery, searchResults]);
 
 
   const handleDelete = async (itemId: string) => {

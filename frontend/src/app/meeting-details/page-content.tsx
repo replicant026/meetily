@@ -174,7 +174,7 @@ export default function PageContent({
     return () => {
       cancelled = true;
     };
-  }, [shouldAutoGenerate, meeting.id]); // Re-run if meeting changes
+  }, [shouldAutoGenerate, meeting.id, t]); // Re-run if meeting changes
 
   // Audio player and waveform peaks (Wave 14 PR-44d)
   const audioPlayer = useAudioPlayer(audioPath);

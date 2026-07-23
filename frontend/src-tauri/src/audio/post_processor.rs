@@ -57,7 +57,7 @@ static CONTRACTION_RULES: Lazy<Vec<(Regex, &str)>> = Lazy::new(|| {
     ];
     raw.iter()
         .map(|(pat, repl)| {
-            let re = Regex::new(&format!("\\b{}\\b", regex::escape(pat)))
+            let re = Regex::new(&format!("(?i)\\b{}\\b", regex::escape(pat)))
                 .expect("contraction regex must compile");
             (re, *repl)
         })
@@ -183,6 +183,21 @@ impl PostProcessor {
     /// Clean repetitive text patterns (same as whisper_engine but moved to background)
     fn clean_repetitive_text(text: &str) -> String {
         let words: Vec<&str> = text.split_whitespace().collect();
+        let normalized = words
+            .iter()
+            .map(|word| word.trim_matches(|c: char| !c.is_alphabetic()).to_ascii_lowercase())
+            .collect::<Vec<_>>();
+
+        // Filter known English ASR hallucinations before the short-input
+        // fast path. Keeping this token-based limits the rule to English and
+        // leaves unsegmented CJK text untouched.
+        if normalized == ["thank", "you", "for", "watching"]
+            || (!normalized.is_empty()
+                && normalized.iter().all(|word| matches!(word.as_str(), "uh" | "um" | "er" | "ah" | "oh" | "hm" | "hmm" | "uhh" | "umm" | "err" | "ahh" | "ohh")))
+        {
+            return String::new();
+        }
+
         if words.len() < 4 {
             return text.to_string();
         }

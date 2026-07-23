@@ -78,7 +78,7 @@ export function RecordingStateProvider({ children }: { children: React.ReactNode
       status,
       statusMessage: message,
     }));
-  }, [state.status, state.isRecording, state.isPaused]);
+  }, [state.status]);
 
   /**
    * Sync recording state with backend

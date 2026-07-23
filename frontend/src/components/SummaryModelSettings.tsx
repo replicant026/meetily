@@ -67,7 +67,7 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
       console.error('Failed to fetch model config:', error);
       toast.error(t('summary.load_failed'));
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {

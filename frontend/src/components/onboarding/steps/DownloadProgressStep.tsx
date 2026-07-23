@@ -246,7 +246,7 @@ export function DownloadProgressStep() {
       unlistenComplete.then((fn) => fn());
       unlistenError.then((fn) => fn());
     };
-  }, []);
+  }, [setParakeetDownloaded]);
 
   // Listen to Summary Model download progress (always downloading for builtin-ai)
   useEffect(() => {
@@ -284,7 +284,7 @@ export function DownloadProgressStep() {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [selectedSummaryModel]);
+  }, [selectedSummaryModel, setSummaryModelDownloaded]);
 
   useEffect(() => {
     const modelForSize = selectedSummaryModel || recommendedSummaryModel;

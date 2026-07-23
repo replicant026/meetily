@@ -198,7 +198,7 @@ export function RetranscribeDialog({
       cleanedUpRef.current = true;
       unlisteners.forEach((unlisten) => unlisten());
     };
-  }, [open, meetingId]);
+  }, [open, meetingId, t]);
 
   const handleStartRetranscription = async () => {
     if (!meetingFolderPath) {
@@ -334,7 +334,7 @@ export function RetranscribeDialog({
                   <span className="text-sm font-medium">Language</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Language selection isn't supported for Parakeet. It always uses automatic detection.
+                  Language selection isn&apos;t supported for Parakeet. It always uses automatic detection.
                 </p>
               </div>
             )

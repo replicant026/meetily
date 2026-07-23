@@ -83,7 +83,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
       }
     };
     checkTauri();
-  }, []);
+  }, [t]);
 
   const handleStartRecording = useCallback(async () => {
     if (isStarting || isValidatingModel) return;
@@ -137,7 +137,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
         });
       }
     }
-  }, [onRecordingStart, isStarting, isValidatingModel, selectedDevices, meetingName, isRecording]);
+  }, [onRecordingStart, isStarting, isValidatingModel, selectedDevices, meetingName, isRecording, t]);
 
   const stopRecordingAction = useCallback(async () => {
     console.log('Executing stop recording...');
@@ -219,7 +219,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
     } finally {
       setIsPausing(false);
     }
-  }, [isRecording, isPaused, isPausing]);
+  }, [isRecording, isPaused, isPausing, t]);
 
   const handleResumeRecording = useCallback(async () => {
     if (!isRecording || !isPaused || isResuming) return;
@@ -237,7 +237,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
     } finally {
       setIsResuming(false);
     }
-  }, [isRecording, isPaused, isResuming]);
+  }, [isRecording, isPaused, isResuming, t]);
 
   useEffect(() => {
     return () => {
