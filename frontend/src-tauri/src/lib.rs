@@ -979,16 +979,17 @@ async fn accept_speaker_suggestion(
     .await
     .map_err(|e| e.to_string())?;
 
-    let (_id, _meeting_id, source_label, _speaker_id, _confidence, _ref_id, segment_ids_json, _status, _created, _resolved) = suggestions.ok_or_else(|| format!("suggestion {} not found", suggestion_id))?;
+    let (_id, _meeting_id, _source_label, speaker_id, _confidence, _ref_id, segment_ids_json, _status, _created, _resolved) = suggestions.ok_or_else(|| format!("suggestion {} not found", suggestion_id))?;
 
     let seg_ids: Vec<String> =
         serde_json::from_str(&segment_ids_json).unwrap_or_default();
 
-    // Update transcript labels for the affected segments
+    // Update transcript labels for the affected segments using the person's display name
+    // (speaker_id in the suggestion stores the matched display name from find_match)
     if !seg_ids.is_empty() {
         let mapping: Vec<(String, String)> = seg_ids
             .iter()
-            .map(|sid| (sid.clone(), source_label.clone()))
+            .map(|sid| (sid.clone(), speaker_id.clone()))
             .collect();
         crate::database::repositories::transcript::TranscriptsRepository::update_segment_speakers(
             pool,
@@ -1147,6 +1148,7 @@ async fn match_speaker(
         threshold,
     )
     .await
+    .map(|opt| opt.map(|(name, sim, _ref_id)| (name, sim)))
     .map_err(|e| e.to_string())
 }
 

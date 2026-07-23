@@ -164,8 +164,8 @@ async fn apply_speaker_recognition(
 
         // Match against saved profiles
         match SpeakerRepository::find_match(pool, &centroid, SUGGEST_MATCH_THRESHOLD).await {
-            Ok(Some((name, sim))) => {
-                let action = resolve_match_action(prefs.recognition_mode.clone(), sim);
+            Ok(Some((name, sim, ref_id))) => {
+                let action = resolve_match_action(prefs.recognition_mode.clone(), sim, prefs.minimum_reference_quality);
                 log::info!(
                     "speaker recognition: {} matched '{}' (sim={:.3}, action={:?}, {} embeddings)",
                     speaker_label, name, sim, action, speaker_embeddings.len()
@@ -198,12 +198,19 @@ async fn apply_speaker_recognition(
                         }
                     }
                     super::speaker_preferences::MatchAction::Apply => {
+                        // Get the reference's actual channel from DB
+                        let ref_channel = VoiceReferenceRepository::get(pool, &ref_id)
+                            .await
+                            .ok()
+                            .flatten()
+                            .map(|r| r.channel)
+                            .unwrap_or_else(|| "unknown".into());
+
                         // Check channel compatibility
-                        let ref_channel = "microphone"; // default channel for references
-                        if !channel_is_compatible(prefs.lock_audio_channels, ref_channel, "microphone") {
+                        if !channel_is_compatible(prefs.lock_audio_channels, &ref_channel, "mixed") {
                             log::debug!(
-                                "speaker recognition: channel mismatch for {}; skipping auto-apply",
-                                speaker_label
+                                "speaker recognition: channel mismatch for {} (ref={}, match=mixed); skipping auto-apply",
+                                speaker_label, ref_channel
                             );
                             continue;
                         }
@@ -438,16 +445,24 @@ async fn commit_speaker_labels_inner(
         // Check if this cluster matches a known speaker profile
         let mut speaker_name = None;
         if let Some((_, centroid)) = cluster_embeddings.iter().find(|(cid, _)| *cid == cluster_id) {
-            if let Ok(Some((name, sim))) = SpeakerRepository::find_match(
+            if let Ok(Some((name, sim, ref_id))) = SpeakerRepository::find_match(
                 pool,
                 centroid,
                 SUGGEST_MATCH_THRESHOLD,
             ).await {
-                let action = resolve_match_action(recognition_prefs.recognition_mode.clone(), sim);
+                let action = resolve_match_action(recognition_prefs.recognition_mode.clone(), sim, recognition_prefs.minimum_reference_quality);
                 match action {
                     super::speaker_preferences::MatchAction::Apply => {
-                        if !channel_is_compatible(recognition_prefs.lock_audio_channels, "microphone", "microphone") {
-                            log::debug!("speaker recognition: channel mismatch in CAM++ fallback for cluster {}", cluster_id);
+                        // Get the reference's actual channel from DB
+                        let ref_channel = VoiceReferenceRepository::get(pool, &ref_id)
+                            .await
+                            .ok()
+                            .flatten()
+                            .map(|r| r.channel)
+                            .unwrap_or_else(|| "unknown".into());
+
+                        if !channel_is_compatible(recognition_prefs.lock_audio_channels, &ref_channel, "mixed") {
+                            log::debug!("speaker recognition: channel mismatch in CAM++ fallback for cluster {} (ref={}, match=mixed)", cluster_id, ref_channel);
                         } else if sim >= recognition_prefs.minimum_reference_quality {
                             log::info!("speaker recognition: cluster {} auto-applied '{}' (sim={:.3})", cluster_id, name, sim);
                             speaker_name = Some(name);

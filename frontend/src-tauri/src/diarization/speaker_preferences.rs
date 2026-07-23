@@ -45,18 +45,17 @@ pub enum MatchAction {
 // ── Pure functions ────────────────────────────────────────────────────────
 
 const AUTOMATIC_APPLY_THRESHOLD: f32 = 0.90;
-const SUGGEST_THRESHOLD: f32 = 0.45; // mirrors SUGGEST_MATCH_THRESHOLD
 
-/// Resolve what action to take based on recognition mode and confidence.
+/// Resolve what action to take based on recognition mode, confidence, and minimum reference quality.
 ///
 /// * `Off` → always `Ignore`
-/// * `Suggest` → `Suggest` when confidence ≥ suggest threshold
-/// * `Automatic` → `Apply` when ≥ 0.90, else `Suggest` when ≥ suggest threshold
-pub fn resolve_match_action(mode: RecognitionMode, confidence: f32) -> MatchAction {
+/// * `Suggest` → `Suggest` when confidence ≥ `min_quality`
+/// * `Automatic` → `Apply` when ≥ 0.90, else `Suggest` when ≥ `min_quality`
+pub fn resolve_match_action(mode: RecognitionMode, confidence: f32, min_quality: f32) -> MatchAction {
     match mode {
         RecognitionMode::Off => MatchAction::Ignore,
         RecognitionMode::Suggest => {
-            if confidence >= SUGGEST_THRESHOLD {
+            if confidence >= min_quality {
                 MatchAction::Suggest
             } else {
                 MatchAction::Ignore
@@ -65,7 +64,7 @@ pub fn resolve_match_action(mode: RecognitionMode, confidence: f32) -> MatchActi
         RecognitionMode::Automatic => {
             if confidence >= AUTOMATIC_APPLY_THRESHOLD {
                 MatchAction::Apply
-            } else if confidence >= SUGGEST_THRESHOLD {
+            } else if confidence >= min_quality {
                 MatchAction::Suggest
             } else {
                 MatchAction::Ignore
@@ -109,7 +108,7 @@ mod tests {
     #[test]
     fn off_never_returns_match_or_suggestion() {
         assert_eq!(
-            resolve_match_action(RecognitionMode::Off, 0.99),
+            resolve_match_action(RecognitionMode::Off, 0.99, 0.60),
             MatchAction::Ignore
         );
     }
@@ -117,7 +116,7 @@ mod tests {
     #[test]
     fn suggest_creates_review_item_without_changing_labels() {
         assert_eq!(
-            resolve_match_action(RecognitionMode::Suggest, 0.91),
+            resolve_match_action(RecognitionMode::Suggest, 0.91, 0.60),
             MatchAction::Suggest
         );
     }
@@ -125,7 +124,7 @@ mod tests {
     #[test]
     fn suggest_below_threshold_is_ignore() {
         assert_eq!(
-            resolve_match_action(RecognitionMode::Suggest, 0.30),
+            resolve_match_action(RecognitionMode::Suggest, 0.30, 0.60),
             MatchAction::Ignore
         );
     }
@@ -133,11 +132,11 @@ mod tests {
     #[test]
     fn automatic_requires_stricter_threshold_than_suggest() {
         assert_eq!(
-            resolve_match_action(RecognitionMode::Automatic, 0.84),
+            resolve_match_action(RecognitionMode::Automatic, 0.84, 0.60),
             MatchAction::Suggest
         );
         assert_eq!(
-            resolve_match_action(RecognitionMode::Automatic, 0.93),
+            resolve_match_action(RecognitionMode::Automatic, 0.93, 0.60),
             MatchAction::Apply
         );
     }
@@ -145,8 +144,22 @@ mod tests {
     #[test]
     fn automatic_below_suggest_threshold_is_ignore() {
         assert_eq!(
-            resolve_match_action(RecognitionMode::Automatic, 0.10),
+            resolve_match_action(RecognitionMode::Automatic, 0.10, 0.60),
             MatchAction::Ignore
+        );
+    }
+
+    #[test]
+    fn custom_min_quality_threshold() {
+        // With min_quality=0.70, confidence=0.65 should be Ignore
+        assert_eq!(
+            resolve_match_action(RecognitionMode::Suggest, 0.65, 0.70),
+            MatchAction::Ignore
+        );
+        // But with min_quality=0.60, same confidence should be Suggest
+        assert_eq!(
+            resolve_match_action(RecognitionMode::Suggest, 0.65, 0.60),
+            MatchAction::Suggest
         );
     }
 

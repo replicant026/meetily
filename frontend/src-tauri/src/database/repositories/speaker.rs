@@ -30,13 +30,14 @@ impl SpeakerRepository {
     /// Find the best matching speaker for an embedding.
     /// Queries confirmed/legacy references from the normalized schema,
     /// groups by speaker display name, and returns the best cosine match.
+    /// Returns (display_name, similarity, reference_id).
     pub async fn find_match(
         pool: &SqlitePool,
         embedding: &[f32],
         min_threshold: f32,
-    ) -> Result<Option<(String, f32)>, sqlx::Error> {
+    ) -> Result<Option<(String, f32, String)>, sqlx::Error> {
         let rows = sqlx::query_as::<_, RawEmbeddingRef>(
-            r#"SELECT r.embedding, p.display_name
+            r#"SELECT r.id, r.embedding, p.display_name
                FROM speaker_voice_references r
                JOIN speaker_people p ON p.id = r.speaker_id
                WHERE r.status IN ('confirmed', 'legacy') AND r.embedding IS NOT NULL"#,
@@ -45,6 +46,7 @@ impl SpeakerRepository {
         .await?;
 
         let mut best_name: Option<String> = None;
+        let mut best_ref_id: Option<String> = None;
         let mut best_sim: f32 = 0.0;
 
         for row in &rows {
@@ -53,12 +55,13 @@ impl SpeakerRepository {
                 if sim > best_sim {
                     best_sim = sim;
                     best_name = Some(row.display_name.clone());
+                    best_ref_id = Some(row.id.clone());
                 }
             }
         }
 
-        match best_name {
-            Some(name) if best_sim >= min_threshold => Ok(Some((name, best_sim))),
+        match (best_name, best_ref_id) {
+            (Some(name), Some(ref_id)) if best_sim >= min_threshold => Ok(Some((name, best_sim, ref_id))),
             _ => Ok(None),
         }
     }
@@ -71,7 +74,7 @@ impl SpeakerRepository {
         min_threshold: f32,
     ) -> Result<Vec<(usize, String, f32)>, sqlx::Error> {
         let rows = sqlx::query_as::<_, RawEmbeddingRef>(
-            r#"SELECT r.embedding, p.display_name
+            r#"SELECT r.id, r.embedding, p.display_name
                FROM speaker_voice_references r
                JOIN speaker_people p ON p.id = r.speaker_id
                WHERE r.status IN ('confirmed', 'legacy') AND r.embedding IS NOT NULL"#,
@@ -335,6 +338,7 @@ impl RawPersonRow {
 /// Raw row for embedding matching queries.
 #[derive(sqlx::FromRow)]
 struct RawEmbeddingRef {
+    id: String,
     embedding: Vec<u8>,
     display_name: String,
 }
@@ -499,7 +503,7 @@ mod tests {
             .await
             .unwrap();
         assert!(result.is_some());
-        let (name, sim) = result.unwrap();
+        let (name, sim, _ref_id) = result.unwrap();
         assert_eq!(name, "Alice");
         assert!(sim > 0.99);
     }
