@@ -774,6 +774,7 @@ pub fn run() {
             database::commands::check_homebrew_database,
             database::commands::import_and_initialize_database,
             database::commands::get_meeting_audio_path,
+            database::commands::list_home_meetings,
             database::commands::initialize_fresh_database,
             database::commands::scan_orphan_checkpoints_cmd,
             database::commands::discard_orphan_checkpoint_cmd,

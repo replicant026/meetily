@@ -1,8 +1,23 @@
 use crate::api::{MeetingDetails, MeetingTranscript};
 use crate::database::models::{MeetingModel, Transcript};
 use chrono::Utc;
+use serde::Serialize;
 use sqlx::{Connection, Error as SqlxError, SqliteConnection, SqlitePool};
 use tracing::{error, info};
+
+/// Lightweight meeting metadata for the home dashboard.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeetingDirectoryItem {
+    pub id: String,
+    pub title: String,
+    pub created_at: String,
+    pub updated_at: Option<String>,
+    pub duration_seconds: Option<i64>,
+    pub transcript_segment_count: i64,
+    pub has_summary: bool,
+    pub recording_state: String,
+}
 
 pub struct MeetingsRepository;
 
@@ -13,6 +28,73 @@ impl MeetingsRepository {
                 .fetch_all(pool)
                 .await?;
         Ok(meetings)
+    }
+
+    /// List lightweight meeting metadata for the home dashboard.
+    /// Returns meetings ordered by most recently updated, with transcript
+    /// counts and summary status. Limit is clamped to 1–200.
+    pub async fn list_directory_items(
+        pool: &SqlitePool,
+        limit: u32,
+    ) -> Result<Vec<MeetingDirectoryItem>, sqlx::Error> {
+        let limit = limit.clamp(1, 200) as i64;
+
+        let rows = sqlx::query_as::<_, (String, String, String, Option<String>, Option<String>)>(
+            r#"
+            SELECT
+                m.id,
+                m.title,
+                m.created_at,
+                m.updated_at,
+                m.folder_path
+            FROM meetings m
+            ORDER BY COALESCE(m.updated_at, m.created_at) DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+
+        let mut items = Vec::with_capacity(rows.len());
+        for (id, title, created_at, updated_at, _folder_path) in rows {
+            // Transcript segment count
+            let seg_count: (i64,) =
+                sqlx::query_as("SELECT COUNT(*) FROM transcripts WHERE meeting_id = ?")
+                    .bind(&id)
+                    .fetch_one(pool)
+                    .await?;
+
+            // Summary status
+            let has_summary: bool = sqlx::query_as::<_, (i64,)>(
+                "SELECT COUNT(*) FROM summary_processes WHERE meeting_id = ? AND status = 'completed'",
+            )
+            .bind(&id)
+            .fetch_one(pool)
+            .await?
+            .0 > 0;
+
+            // Duration from transcript timestamps
+            let duration: Option<f64> = sqlx::query_scalar(
+                "SELECT MAX(audio_end_time) - MIN(audio_start_time) FROM transcripts WHERE meeting_id = ? AND audio_start_time IS NOT NULL AND audio_end_time IS NOT NULL",
+            )
+            .bind(&id)
+            .fetch_one(pool)
+            .await?;
+
+            items.push(MeetingDirectoryItem {
+                id,
+                title,
+                created_at,
+                updated_at,
+                duration_seconds: duration.map(|d| d.max(0.0) as i64),
+                transcript_segment_count: seg_count.0,
+                has_summary,
+                recording_state: "ready".to_string(),
+            });
+        }
+
+        Ok(items)
     }
 
     pub async fn delete_meeting(pool: &SqlitePool, meeting_id: &str) -> Result<bool, SqlxError> {

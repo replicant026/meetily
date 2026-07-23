@@ -2,6 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Semantic App Tokens ─────────────────────────────────────────── */
+:root {
+  --ui-scale: 1;
+  --app-bg: 248 250 252;
+  --app-surface: 255 255 255;
+  --app-muted: 241 245 249;
+  --app-border: 226 232 240;
+  --app-fg: 15 23 42;
+  --app-muted-fg: 100 116 139;
+  --app-accent: 37 99 235;
+  --app-accent-fg: 255 255 255;
+  --app-danger: 220 38 38;
+  --app-danger-fg: 255 255 255;
+  --app-success: 22 163 74;
+  --app-warning: 202 138 4;
+  --app-warning-fg: 15 23 42;
+  --app-radius-sm: 8px;
+  --app-radius-md: 12px;
+  --app-shadow-panel: 0 1px 2px rgb(15 23 42 / 0.06);
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-modal: 50;
+  --z-toast: 60;
+}
+
+[data-theme='dark'] {
+  --app-bg: 10 10 12;
+  --app-surface: 20 20 24;
+  --app-muted: 30 30 36;
+  --app-border: 45 45 55;
+  --app-fg: 241 245 249;
+  --app-muted-fg: 148 163 184;
+  --app-accent: 96 165 250;
+  --app-accent-fg: 15 23 42;
+  --app-danger: 248 113 113;
+  --app-danger-fg: 15 23 42;
+  --app-success: 34 197 94;
+  --app-warning: 250 204 21;
+  --app-warning-fg: 15 23 42;
+  --app-shadow-panel: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+html {
+  font-size: calc(16px * var(--ui-scale));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @keyframes vibrate {
   0% {
     transform: translate(0);

@@ -7,6 +7,12 @@ import { configService, ModelConfig } from '@/services/configService';
 import { invoke } from '@tauri-apps/api/core';
 import Analytics from '@/lib/analytics';
 import { BetaFeatures, BetaFeatureKey, loadBetaFeatures, saveBetaFeatures } from '@/types/betaFeatures';
+import {
+  type AppSettings,
+  DEFAULT_SETTINGS,
+  normaliseSettings,
+  mergeSettingsPatch,
+} from '@/lib/settings-preferences';
 
 export interface OllamaModel {
   name: string;
@@ -91,6 +97,12 @@ interface ConfigContextType {
   isLoadingPreferences: boolean;
   loadPreferences: () => Promise<void>;
   updateNotificationSettings: (settings: NotificationSettings) => Promise<void>;
+
+  // Unified app settings (loaded once from Tauri Store)
+  appSettings: AppSettings;
+  updateAppSettings: (patch: Partial<AppSettings>) => Promise<void>;
+  isSettingsLoading: boolean;
+  settingsError: string | null;
 }
 
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
@@ -174,6 +186,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
   const preferencesLoadedRef = useRef(false);
   const isLoadingRef = useRef(false);
+
+  // Unified app settings state (loaded once from Tauri Store)
+  const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const settingsLoadedRef = useRef(false);
 
   // Load Ollama models (uses saved endpoint, re-runs when endpoint changes after config load)
   useEffect(() => {
@@ -361,6 +379,56 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     loadDevicePreferences();
   }, []);
 
+  // Load unified app settings from Tauri Store on mount
+  useEffect(() => {
+    if (settingsLoadedRef.current) return;
+    let cancelled = false;
+
+    const loadSettings = async () => {
+      try {
+        const { Store } = await import('@tauri-apps/plugin-store');
+        const store = await Store.load('app-settings.json');
+        const raw = await store.get<Record<string, unknown>>('settings');
+        if (!cancelled) {
+          setAppSettings(normaliseSettings(raw));
+          setSettingsError(null);
+          settingsLoadedRef.current = true;
+        }
+      } catch (error) {
+        console.error('[ConfigContext] Failed to load app settings:', error);
+        if (!cancelled) {
+          setAppSettings(DEFAULT_SETTINGS);
+          setSettingsError(null); // non-fatal, use defaults
+          settingsLoadedRef.current = true;
+        }
+      } finally {
+        if (!cancelled) setIsSettingsLoading(false);
+      }
+    };
+    loadSettings();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Persist and update app settings with optimistic rollback
+  const updateAppSettings = useCallback(async (patch: Partial<AppSettings>) => {
+    const previous = appSettings;
+    const next = mergeSettingsPatch(previous, patch);
+    setAppSettings(next); // optimistic
+
+    try {
+      const { Store } = await import('@tauri-apps/plugin-store');
+      const store = await Store.load('app-settings.json');
+      // Never persist API keys — the settings object doesn't contain them by design
+      await store.set('settings', next);
+      await store.save();
+      setSettingsError(null);
+    } catch (error) {
+      console.error('[ConfigContext] Failed to persist app settings, rolling back:', error);
+      setAppSettings(previous); // rollback
+      setSettingsError(error instanceof Error ? error.message : 'Failed to save settings');
+    }
+  }, [appSettings]);
+
   // Calculate model options based on available models
   const modelOptions: Record<ModelConfig['provider'], string[]> = {
     ollama: models.map(model => model.name),
@@ -507,6 +575,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     isLoadingPreferences,
     loadPreferences,
     updateNotificationSettings,
+    appSettings,
+    updateAppSettings,
+    isSettingsLoading,
+    settingsError,
   }), [
     modelConfig,
     isAutoSummary,
@@ -529,6 +601,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     isLoadingPreferences,
     loadPreferences,
     updateNotificationSettings,
+    appSettings,
+    updateAppSettings,
+    isSettingsLoading,
+    settingsError,
   ]);
 
   return (

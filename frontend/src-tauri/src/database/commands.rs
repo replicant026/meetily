@@ -495,3 +495,18 @@ pub async fn get_meeting_audio_path(
     info!("No audio file for meeting {}", meeting_id);
     Ok(None)
 }
+
+/// List lightweight meeting metadata for the home dashboard.
+/// Returns meetings ordered by most recently updated, with transcript
+/// counts and summary status.
+#[tauri::command]
+pub async fn list_home_meetings(
+    app: AppHandle,
+    limit: Option<u32>,
+) -> Result<Vec<super::repositories::meeting::MeetingDirectoryItem>, String> {
+    let limit = limit.unwrap_or(50).clamp(1, 200);
+    let pool = app.state::<AppState>().inner().db_manager.pool();
+    super::repositories::meeting::MeetingsRepository::list_directory_items(&pool, limit)
+        .await
+        .map_err(|error| format!("Unable to list local meetings: {error}"))
+}

@@ -297,5 +297,99 @@
     "diarization_model_status_failed": "失敗；リアルタイム推定のみ使用",
     "diarization_model_status_disabled": "無効",
     "diarization_load_error": "話者識別設定の読み込みに失敗しました。",
-    "diarization_loading": "話者識別設定を読み込み中…"
+    "diarization_loading": "話者識別設定を読み込み中…",
+    "app_settings": {
+        "save_failed": "Failed to save settings",
+        "loading": "Loading settings...",
+        "sections": {
+            "general": "General",
+            "audio": "Audio",
+            "recordings": "Recordings",
+            "shortcuts": "Shortcuts",
+            "notifications": "Notifications",
+            "transcription": "Transcription",
+            "speakers": "Speakers",
+            "llms": "LLMs",
+            "summaries": "Summaries",
+            "export": "Export",
+            "advanced": "Advanced"
+        },
+        "general": {
+            "theme_label": "Theme",
+            "theme_system": "System",
+            "theme_light": "Light",
+            "theme_dark": "Dark",
+            "scale_label": "Interface Scale",
+            "sidebar_label": "Sidebar",
+            "sidebar_fixed": "Always visible",
+            "sidebar_auto_hide": "Auto-hide",
+            "start_with_system": "Start with system",
+            "start_with_system_desc": "Launch Meetily when your computer starts",
+            "start_hidden": "Start hidden",
+            "start_hidden_desc": "Start in the background without opening the window",
+            "language_label": "Language",
+            "analytics_consent": "Share anonymous usage data"
+        },
+        "recordings": {
+            "retention_label": "Retention",
+            "retention_desc": "Automatically delete old recordings after the selected period",
+            "retention_never": "Never",
+            "retention_7d": "7 days",
+            "retention_30d": "30 days",
+            "retention_90d": "90 days",
+            "name_pattern_label": "File name pattern",
+            "name_pattern_desc": "Use {date}, {time}, and {title} as placeholders"
+        },
+        "shortcuts": {
+            "toggle_recording": "Toggle recording",
+            "capture_screen": "Capture screen",
+            "press_keys": "Press shortcut keys...",
+            "conflict": "This shortcut is already in use",
+            "clear": "Clear"
+        },
+        "notifications": {
+            "enabled_label": "Enable notifications",
+            "recording_started": "Recording started",
+            "recording_stopped": "Recording stopped",
+            "update_available": "Update available",
+            "update_installed": "Update installed",
+            "suppress_during_recording": "Suppress during recording"
+        },
+        "speakers": {
+            "matching_label": "Speaker matching",
+            "matching_off": "Disabled",
+            "matching_suggest": "Suggest",
+            "matching_automatic": "Automatic",
+            "matching_desc": "How Meetily matches speakers across meetings",
+            "lock_channels": "Lock audio channels",
+            "lock_channels_desc": "Prevent speakers from being moved between microphone and system audio"
+        },
+        "summaries": {
+            "auto_generate": "Auto-generate summaries",
+            "auto_generate_desc": "Generate a summary automatically when recording stops",
+            "include_chapters": "Include chapters",
+            "include_action_items": "Include action items",
+            "default_language": "Default summary language",
+            "language_auto": "Auto-detect",
+            "system_prompt": "System prompt",
+            "system_prompt_desc": "Custom instructions for the summary generator",
+            "default_tab": "Default detail tab",
+            "default_tab_summary": "Summary",
+            "default_tab_transcript": "Transcript"
+        },
+        "export": {
+            "name_pattern_label": "Export file name",
+            "date_format_label": "Date format",
+            "date_format_iso": "ISO 8601",
+            "date_format_local": "Local format",
+            "yaml_metadata": "Include YAML metadata",
+            "inline_metadata": "Inline metadata in document",
+            "auto_export": "Auto-export",
+            "auto_export_desc": "Export automatically after a meeting is saved"
+        },
+        "advanced": {
+            "title": "Experimental",
+            "description": "These features are experimental and may change or be removed."
+        }
+    }
 }

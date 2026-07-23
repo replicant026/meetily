@@ -22,6 +22,8 @@ import { TranscriptRecovery } from '@/components/TranscriptRecovery';
 import { indexedDBService } from '@/services/indexedDBService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { AppShell } from '@/components/AppShell/AppShell';
+import { HomeDashboard } from '@/app/_components/HomeDashboard';
 
 export default function Home() {
   // Local page state (not moved to contexts)
@@ -191,79 +193,82 @@ export default function Home() {
 
   // Computed values using global status
   const isProcessingStop = isStopping || status === RecordingStatus.PROCESSING_TRANSCRIPTS || isProcessing;
+  const isIdle = !recordingState.isRecording && !isProcessingStop && status !== RecordingStatus.SAVING;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex flex-col h-screen bg-gray-50"
-    >
-      {/* All Modals supported*/}
-      <SettingsModals
-        modals={modals}
-        messages={messages}
-        onClose={hideModal}
-      />
-
-      {/* Recovery Dialog */}
-      <TranscriptRecovery
-        isOpen={showRecoveryDialog}
-        onClose={handleDialogClose}
-        recoverableMeetings={recoverableMeetings}
-        onRecover={handleRecovery}
-        onDelete={deleteRecoverableMeeting}
-        onLoadPreview={loadMeetingTranscripts}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <TranscriptPanel
-          isProcessingStop={isProcessingStop}
-          isStopping={isStopping}
-          showModal={showModal}
+    <AppShell>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="flex flex-col h-screen"
+      >
+        {/* All Modals supported*/}
+        <SettingsModals
+          modals={modals}
+          messages={messages}
+          onClose={hideModal}
         />
 
-        {/* Recording controls - only show when permissions are granted or already recording and not showing status messages */}
-        {(hasMicrophone || isRecording) &&
-          status !== RecordingStatus.STOPPING &&
-          status !== RecordingStatus.PROCESSING_TRANSCRIPTS &&
-          status !== RecordingStatus.SAVING && (
-            <div className="fixed bottom-12 left-0 right-0 z-10">
-              <div
-                className="flex justify-center pl-8 transition-[margin] duration-300"
-                style={{
-                  marginLeft: sidebarCollapsed ? '4rem' : '16rem'
-                }}
-              >
-                <div className="w-2/3 max-w-[750px] flex justify-center">
-                  <div className="bg-white rounded-full shadow-lg flex items-center">
-                    <RecordingControls
-                      isRecording={recordingState.isRecording}
-                      onRecordingStop={(callApi = true) => handleRecordingStop(callApi)}
-                      onRecordingStart={handleRecordingStart}
-                      onTranscriptReceived={() => { }} // Not actually used by RecordingControls
-                      onStopInitiated={() => setIsStopping(true)}
-                      barHeights={barHeights}
-                      onTranscriptionError={(message) => {
-                        showModal('errorAlert', message);
-                      }}
-                      isRecordingDisabled={isRecordingDisabled}
-                      isParentProcessing={isProcessingStop}
-                      selectedDevices={selectedDevices}
-                      meetingName={meetingTitle}
-                    />
+        {/* Recovery Dialog */}
+        <TranscriptRecovery
+          isOpen={showRecoveryDialog}
+          onClose={handleDialogClose}
+          recoverableMeetings={recoverableMeetings}
+          onRecover={handleRecovery}
+          onDelete={deleteRecoverableMeeting}
+          onLoadPreview={loadMeetingTranscripts}
+        />
+
+        {isIdle ? (
+          <HomeDashboard />
+        ) : (
+          <div className="flex flex-1 overflow-hidden">
+            <TranscriptPanel
+              isProcessingStop={isProcessingStop}
+              isStopping={isStopping}
+              showModal={showModal}
+            />
+
+            {/* Recording controls - only show when permissions are granted or already recording and not showing status messages */}
+            {(hasMicrophone || isRecording) &&
+              status !== RecordingStatus.STOPPING &&
+              status !== RecordingStatus.PROCESSING_TRANSCRIPTS &&
+              status !== RecordingStatus.SAVING && (
+                <div className="fixed bottom-12 left-0 right-0 z-[var(--z-sticky)]">
+                  <div className="flex justify-center pl-8 transition-[margin] duration-300">
+                    <div className="w-2/3 max-w-[750px] flex justify-center">
+                      <div className="bg-[rgb(var(--app-surface))] rounded-full shadow-lg flex items-center">
+                        <RecordingControls
+                          isRecording={recordingState.isRecording}
+                          onRecordingStop={(callApi = true) => handleRecordingStop(callApi)}
+                          onRecordingStart={handleRecordingStart}
+                          onTranscriptReceived={() => { }} // Not actually used by RecordingControls
+                          onStopInitiated={() => setIsStopping(true)}
+                          barHeights={barHeights}
+                          onTranscriptionError={(message) => {
+                            showModal('errorAlert', message);
+                          }}
+                          isRecordingDisabled={isRecordingDisabled}
+                          isParentProcessing={isProcessingStop}
+                          selectedDevices={selectedDevices}
+                          meetingName={meetingTitle}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-        {/* Status Overlays - Processing and Saving */}
-        <StatusOverlays
-          status={status}
-          statusMessage={statusMessage}
-          sidebarCollapsed={sidebarCollapsed}
-        />
-      </div>
-    </motion.div>
+            {/* Status Overlays - Processing and Saving */}
+            <StatusOverlays
+              status={status}
+              statusMessage={statusMessage}
+              sidebarCollapsed={false}
+            />
+          </div>
+        )}
+      </motion.div>
+    </AppShell>
   );
 }

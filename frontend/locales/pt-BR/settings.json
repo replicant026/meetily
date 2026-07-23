@@ -303,5 +303,99 @@
     "diarization_model_status_failed": "Falha; usando apenas modo em tempo real",
     "diarization_model_status_disabled": "Desativado",
     "diarization_load_error": "Falha ao carregar as configurações de diarização.",
-    "diarization_loading": "Carregando configurações de diarização..."
+    "diarization_loading": "Carregando configurações de diarização...",
+    "app_settings": {
+        "save_failed": "Falha ao salvar configurações",
+        "loading": "Carregando configurações...",
+        "sections": {
+            "general": "Geral",
+            "audio": "Áudio",
+            "recordings": "Gravações",
+            "shortcuts": "Atalhos",
+            "notifications": "Notificações",
+            "transcription": "Transcrição",
+            "speakers": "Falantes",
+            "llms": "LLMs",
+            "summaries": "Resumos",
+            "export": "Exportação",
+            "advanced": "Avançado"
+        },
+        "general": {
+            "theme_label": "Tema",
+            "theme_system": "Sistema",
+            "theme_light": "Claro",
+            "theme_dark": "Escuro",
+            "scale_label": "Escala da interface",
+            "sidebar_label": "Barra lateral",
+            "sidebar_fixed": "Sempre visível",
+            "sidebar_auto_hide": "Ocultar automaticamente",
+            "start_with_system": "Iniciar com o sistema",
+            "start_with_system_desc": "Abrir o Meetily ao ligar o computador",
+            "start_hidden": "Iniciar oculto",
+            "start_hidden_desc": "Iniciar em segundo plano sem abrir a janela",
+            "language_label": "Idioma",
+            "analytics_consent": "Compartilhar dados de uso anônimos"
+        },
+        "recordings": {
+            "retention_label": "Retenção",
+            "retention_desc": "Excluir gravações antigas automaticamente após o período selecionado",
+            "retention_never": "Nunca",
+            "retention_7d": "7 dias",
+            "retention_30d": "30 dias",
+            "retention_90d": "90 dias",
+            "name_pattern_label": "Padrão de nome do arquivo",
+            "name_pattern_desc": "Use {date}, {time} e {title} como marcadores"
+        },
+        "shortcuts": {
+            "toggle_recording": "Iniciar/parar gravação",
+            "capture_screen": "Capturar tela",
+            "press_keys": "Pressione as teclas do atalho...",
+            "conflict": "Este atalho já está em uso",
+            "clear": "Limpar"
+        },
+        "notifications": {
+            "enabled_label": "Ativar notificações",
+            "recording_started": "Gravação iniciada",
+            "recording_stopped": "Gravação parada",
+            "update_available": "Atualização disponível",
+            "update_installed": "Atualização instalada",
+            "suppress_during_recording": "Suprimir durante gravação"
+        },
+        "speakers": {
+            "matching_label": "Correspondência de falantes",
+            "matching_off": "Desativado",
+            "matching_suggest": "Sugerir",
+            "matching_automatic": "Automático",
+            "matching_desc": "Como o Meetily corresponde falantes entre reuniões",
+            "lock_channels": "Bloquear canais de áudio",
+            "lock_channels_desc": "Impedir que falantes sejam movidos entre microfone e áudio do sistema"
+        },
+        "summaries": {
+            "auto_generate": "Gerar resumos automaticamente",
+            "auto_generate_desc": "Gerar um resumo automaticamente ao parar a gravação",
+            "include_chapters": "Incluir capítulos",
+            "include_action_items": "Incluir pontos de ação",
+            "default_language": "Idioma padrão do resumo",
+            "language_auto": "Detectar automaticamente",
+            "system_prompt": "Prompt do sistema",
+            "system_prompt_desc": "Instruções personalizadas para o gerador de resumos",
+            "default_tab": "Aba padrão dos detalhes",
+            "default_tab_summary": "Resumo",
+            "default_tab_transcript": "Transcrição"
+        },
+        "export": {
+            "name_pattern_label": "Nome do arquivo exportado",
+            "date_format_label": "Formato de data",
+            "date_format_iso": "ISO 8601",
+            "date_format_local": "Formato local",
+            "yaml_metadata": "Incluir metadados YAML",
+            "inline_metadata": "Metadados inline no documento",
+            "auto_export": "Exportação automática",
+            "auto_export_desc": "Exportar automaticamente após salvar uma reunião"
+        },
+        "advanced": {
+            "title": "Experimental",
+            "description": "Estes recursos são experimentais e podem ser alterados ou removidos."
+        }
+    }
 }
