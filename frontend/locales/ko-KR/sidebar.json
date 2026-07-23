@@ -7,7 +7,14 @@
     "settings": "설정"
   },
   "meeting_list": {
-    "search_placeholder": "회의 내용 검색...",
+    "list": "회의 목록",
+    "no_meetings": "아직 회의가 없습니다",
+    "today": "오늘",
+    "last_7_days": "지난 7일",
+    "older": "이전",
+    "search_meetings": "회의 검색",
+    "search_placeholder": "전사 검색...",
+    "no_results": "검색 결과 없음",
     "searching": "검색 중...",
     "edit_title_dialog_title": "회의 제목 편집",
     "edit_title_input_placeholder": "회의 제목 입력",

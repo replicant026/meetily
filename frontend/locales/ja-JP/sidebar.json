@@ -7,7 +7,14 @@
     "settings": "設定"
   },
   "meeting_list": {
-    "search_placeholder": "会議内容を検索...",
+    "list": "会議リスト",
+    "no_meetings": "まだ会議がありません",
+    "today": "今日",
+    "last_7_days": "過去7日間",
+    "older": "それ以前",
+    "search_meetings": "会議を検索",
+    "search_placeholder": "文字起こしを検索...",
+    "no_results": "結果が見つかりません",
     "searching": "検索中...",
     "edit_title_dialog_title": "会議タイトルを編集",
     "edit_title_input_placeholder": "会議タイトルを入力",

@@ -1,7 +1,14 @@
 {
     "nav": {"home":"Início","meetings":"Reuniões","import_audio":"Importar Áudio","notes":"Notas da Reunião","settings":"Configurações"},
     "meeting_list": {
-        "search_placeholder": "Buscar conteúdo da reunião...",
+        "list": "Lista de reuniões",
+        "no_meetings": "Nenhuma reunião ainda",
+        "today": "Hoje",
+        "last_7_days": "Últimos 7 dias",
+        "older": "Mais antigas",
+        "search_meetings": "Buscar reuniões",
+        "search_placeholder": "Buscar transcrições...",
+        "no_results": "Nenhum resultado encontrado",
         "searching": "Buscando...",
         "edit_title_dialog_title": "Editar Título da Reunião",
         "edit_title_input_placeholder": "Digite o título da reunião",

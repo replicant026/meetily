@@ -7,7 +7,14 @@
     "settings": "Settings"
   },
   "meeting_list": {
-    "search_placeholder": "Search meeting content...",
+    "list": "Meeting list",
+    "no_meetings": "No meetings yet",
+    "today": "Today",
+    "last_7_days": "Previous 7 days",
+    "older": "Older",
+    "search_meetings": "Search meetings",
+    "search_placeholder": "Search transcripts...",
+    "no_results": "No results found",
     "searching": "Searching...",
     "edit_title_dialog_title": "Edit Meeting Title",
     "edit_title_input_placeholder": "Enter meeting title",

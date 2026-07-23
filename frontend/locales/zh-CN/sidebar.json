@@ -7,7 +7,14 @@
     "settings": "设置"
   },
   "meeting_list": {
-    "search_placeholder": "搜索会议内容...",
+    "list": "会议列表",
+    "no_meetings": "暂无会议",
+    "today": "今天",
+    "last_7_days": "过去7天",
+    "older": "更早",
+    "search_meetings": "搜索会议",
+    "search_placeholder": "搜索转写内容...",
+    "no_results": "未找到结果",
     "searching": "搜索中...",
     "edit_title_dialog_title": "编辑会议标题",
     "edit_title_input_placeholder": "请输入新的会议标题",
