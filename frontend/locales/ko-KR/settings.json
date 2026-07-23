@@ -364,16 +364,28 @@
             "lock_channels": "Lock audio channels",
             "lock_channels_desc": "Prevent speakers from being moved between microphone and system audio"
         },
+        "llms": {
+            "add_provider": "Add Provider",
+            "add_provider_hint": "Provider management coming soon",
+            "no_providers": "No LLM providers configured yet.",
+            "status_connected": "Connected",
+            "status_disconnected": "Disconnected",
+            "status_unknown": "Unknown"
+        },
         "summaries": {
             "auto_generate": "Auto-generate summaries",
             "auto_generate_desc": "Generate a summary automatically when recording stops",
             "include_chapters": "Include chapters",
+            "include_chapters_desc": "Break the summary into chapters",
             "include_action_items": "Include action items",
+            "include_action_items_desc": "Extract action items from the meeting",
             "default_language": "Default summary language",
+            "default_language_desc": "Language for summary generation",
             "language_auto": "Auto-detect",
             "system_prompt": "System prompt",
             "system_prompt_desc": "Custom instructions for the summary generator",
             "default_tab": "Default detail tab",
+            "default_tab_desc": "Which tab to show when opening meeting details",
             "default_tab_summary": "Summary",
             "default_tab_transcript": "Transcript"
         },
@@ -391,5 +403,25 @@
             "title": "Experimental",
             "description": "These features are experimental and may change or be removed."
         }
+    },
+    "export": {
+        "name_pattern": "파일명 패턴",
+        "name_pattern_desc": "내보내기 파일명 패턴. {meeting_name}과 {date}를 사용합니다.",
+        "preview": "미리보기",
+        "date_format": "날짜 형식",
+        "date_format_desc": "내보내기 파일의 날짜 형식",
+        "locale_format": "시스템 로케일",
+        "custom_format": "사용자 지정",
+        "yaml_metadata": "YAML 메타데이터",
+        "yaml_metadata_desc": "회의 메타데이터를 YAML 프론트매터로 포함",
+        "metadata_position": "메타데이터 위치",
+        "metadata_position_desc": "내보내기 파일에서 메타데이터 위치",
+        "frontmatter": "프론트매터 (파일 상단)",
+        "inline": "인라인 (파일 하단)",
+        "auto_export": "자동 내보내기",
+        "auto_export_desc": "회의 종료 후 자동으로 내보내기합니다. 로컬 전용 - 외부 호출 없음."
+    },
+    "advanced": {
+        "experimental_warning": "이 기능은 실험적이며 예상대로 작동하지 않을 수 있습니다. 사용에 주의하세요."
     }
 }

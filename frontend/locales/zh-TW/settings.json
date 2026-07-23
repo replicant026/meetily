@@ -358,16 +358,28 @@
             "lock_channels": "Lock audio channels",
             "lock_channels_desc": "Prevent speakers from being moved between microphone and system audio"
         },
+        "llms": {
+            "add_provider": "Add Provider",
+            "add_provider_hint": "Provider management coming soon",
+            "no_providers": "No LLM providers configured yet.",
+            "status_connected": "Connected",
+            "status_disconnected": "Disconnected",
+            "status_unknown": "Unknown"
+        },
         "summaries": {
             "auto_generate": "Auto-generate summaries",
             "auto_generate_desc": "Generate a summary automatically when recording stops",
             "include_chapters": "Include chapters",
+            "include_chapters_desc": "Break the summary into chapters",
             "include_action_items": "Include action items",
+            "include_action_items_desc": "Extract action items from the meeting",
             "default_language": "Default summary language",
+            "default_language_desc": "Language for summary generation",
             "language_auto": "Auto-detect",
             "system_prompt": "System prompt",
             "system_prompt_desc": "Custom instructions for the summary generator",
             "default_tab": "Default detail tab",
+            "default_tab_desc": "Which tab to show when opening meeting details",
             "default_tab_summary": "Summary",
             "default_tab_transcript": "Transcript"
         },
@@ -385,5 +397,25 @@
             "title": "Experimental",
             "description": "These features are experimental and may change or be removed."
         }
+    },
+    "export": {
+        "name_pattern": "檔案名稱模式",
+        "name_pattern_desc": "匯出檔案名稱的模式。使用 {meeting_name} 和 {date}。",
+        "preview": "預覽",
+        "date_format": "日期格式",
+        "date_format_desc": "匯出檔案中日期的格式",
+        "locale_format": "系統區域",
+        "custom_format": "自訂",
+        "yaml_metadata": "YAML 元資料",
+        "yaml_metadata_desc": "在匯出檔案中包含會議元資料作為 YAML frontmatter",
+        "metadata_position": "元資料位置",
+        "metadata_position_desc": "元資料在匯出檔案中的位置",
+        "frontmatter": "前置元資料（檔案頂部）",
+        "inline": "內聯（檔案末尾）",
+        "auto_export": "自動匯出",
+        "auto_export_desc": "會議結束且轉錄完成後自動匯出。僅限本機 — 不呼叫外部服務。"
+    },
+    "advanced": {
+        "experimental_warning": "這些功能是實驗性的，可能無法按預期運作。使用風險自負。"
     }
 }

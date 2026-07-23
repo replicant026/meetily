@@ -370,16 +370,28 @@
             "lock_channels": "Bloquear canais de áudio",
             "lock_channels_desc": "Impedir que falantes sejam movidos entre microfone e áudio do sistema"
         },
+        "llms": {
+            "add_provider": "Adicionar Provedor",
+            "add_provider_hint": "Gerenciamento de provedores em breve",
+            "no_providers": "Nenhum provedor LLM configurado ainda.",
+            "status_connected": "Conectado",
+            "status_disconnected": "Desconectado",
+            "status_unknown": "Desconhecido"
+        },
         "summaries": {
             "auto_generate": "Gerar resumos automaticamente",
             "auto_generate_desc": "Gerar um resumo automaticamente ao parar a gravação",
             "include_chapters": "Incluir capítulos",
+            "include_chapters_desc": "Dividir o resumo em capítulos",
             "include_action_items": "Incluir pontos de ação",
+            "include_action_items_desc": "Extrair pontos de ação da reunião",
             "default_language": "Idioma padrão do resumo",
+            "default_language_desc": "Idioma para geração de resumos",
             "language_auto": "Detectar automaticamente",
             "system_prompt": "Prompt do sistema",
             "system_prompt_desc": "Instruções personalizadas para o gerador de resumos",
             "default_tab": "Aba padrão dos detalhes",
+            "default_tab_desc": "Qual aba mostrar ao abrir detalhes da reunião",
             "default_tab_summary": "Resumo",
             "default_tab_transcript": "Transcrição"
         },
@@ -397,5 +409,25 @@
             "title": "Experimental",
             "description": "Estes recursos são experimentais e podem ser alterados ou removidos."
         }
+    },
+    "export": {
+        "name_pattern": "Padrão do Nome do Arquivo",
+        "name_pattern_desc": "Padrão para nomes de arquivos exportados. Use {meeting_name} e {date}.",
+        "preview": "Pré-visualização",
+        "date_format": "Formato de Data",
+        "date_format_desc": "Formato das datas nos arquivos exportados",
+        "locale_format": "Localidade do Sistema",
+        "custom_format": "Personalizado",
+        "yaml_metadata": "Metadados YAML",
+        "yaml_metadata_desc": "Incluir metadados da reunião como frontmatter YAML",
+        "metadata_position": "Posição dos Metadados",
+        "metadata_position_desc": "Onde colocar os metadados no arquivo exportado",
+        "frontmatter": "Frontmatter (início do arquivo)",
+        "inline": "Inline (final do arquivo)",
+        "auto_export": "Exportação automática",
+        "auto_export_desc": "Exportar automaticamente após o término da reunião e conclusão da transcrição. Somente local — sem chamadas externas."
+    },
+    "advanced": {
+        "experimental_warning": "Estes recursos são experimentais e podem não funcionar como esperado. Use por sua conta e risco."
     }
 }

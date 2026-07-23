@@ -10,7 +10,12 @@ import { RecordingSettingsSection } from '@/components/settings/RecordingSetting
 import { TranscriptSettings } from '@/components/TranscriptSettings';
 import { SpeakersSettings } from '@/components/SpeakersSettings';
 import { SummaryModelSettings } from '@/components/SummaryModelSettings';
-import { BetaSettings } from '@/components/BetaSettings';
+import { LlmProviderSettings } from '@/components/settings/LlmProviderSettings';
+import { SummarySettingsSection } from '@/components/settings/SummarySettingsSection';
+import { ShortcutSettings } from '@/components/settings/ShortcutSettings';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { ExportSettings } from '@/components/settings/ExportSettings';
+import { AdvancedSettings } from '@/components/settings/AdvancedSettings';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { useTranslations } from 'next-intl';
 
@@ -65,10 +70,18 @@ export default function SettingsPage() {
             );
           case 'speakers':
             return <SpeakersSettings />;
+          case 'llms':
+            return <LlmProviderSettings />;
           case 'summaries':
-            return <SummaryModelSettings />;
+            return <SummarySettingsSection />;
+          case 'shortcuts':
+            return <ShortcutSettings />;
+          case 'notifications':
+            return <NotificationSettings />;
+          case 'export':
+            return <ExportSettings />;
           case 'advanced':
-            return <BetaSettings />;
+            return <AdvancedSettings />;
           default:
             return <PlaceholderSection sectionId={activeSection} />;
         }

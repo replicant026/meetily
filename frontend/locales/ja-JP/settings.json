@@ -364,16 +364,28 @@
             "lock_channels": "Lock audio channels",
             "lock_channels_desc": "Prevent speakers from being moved between microphone and system audio"
         },
+        "llms": {
+            "add_provider": "Add Provider",
+            "add_provider_hint": "Provider management coming soon",
+            "no_providers": "No LLM providers configured yet.",
+            "status_connected": "Connected",
+            "status_disconnected": "Disconnected",
+            "status_unknown": "Unknown"
+        },
         "summaries": {
             "auto_generate": "Auto-generate summaries",
             "auto_generate_desc": "Generate a summary automatically when recording stops",
             "include_chapters": "Include chapters",
+            "include_chapters_desc": "Break the summary into chapters",
             "include_action_items": "Include action items",
+            "include_action_items_desc": "Extract action items from the meeting",
             "default_language": "Default summary language",
+            "default_language_desc": "Language for summary generation",
             "language_auto": "Auto-detect",
             "system_prompt": "System prompt",
             "system_prompt_desc": "Custom instructions for the summary generator",
             "default_tab": "Default detail tab",
+            "default_tab_desc": "Which tab to show when opening meeting details",
             "default_tab_summary": "Summary",
             "default_tab_transcript": "Transcript"
         },
@@ -391,5 +403,25 @@
             "title": "Experimental",
             "description": "These features are experimental and may change or be removed."
         }
+    },
+    "export": {
+        "name_pattern": "ファイル名パターン",
+        "name_pattern_desc": "エクスポートファイル名のパターン。{meeting_name} と {date} を使用します。",
+        "preview": "プレビュー",
+        "date_format": "日付形式",
+        "date_format_desc": "エクスポートファイル内の日付形式",
+        "locale_format": "システムロケール",
+        "custom_format": "カスタム",
+        "yaml_metadata": "YAMLメタデータ",
+        "yaml_metadata_desc": "会議メタデータをYAMLフロントマターとして含める",
+        "metadata_position": "メタデータの位置",
+        "metadata_position_desc": "エクスポートファイル内でのメタデータの配置場所",
+        "frontmatter": "フロントマター（ファイルの先頭）",
+        "inline": "インライン（ファイルの末尾）",
+        "auto_export": "自動エクスポート",
+        "auto_export_desc": "会議終了後、文字起こし完了時に自動的にエクスポートします。ローカルのみ - 外部呼び出しなし。"
+    },
+    "advanced": {
+        "experimental_warning": "これらの機能は実験的なものであり、予期しない動作になる可能性があります。ご自身の責任でご使用ください。"
     }
 }

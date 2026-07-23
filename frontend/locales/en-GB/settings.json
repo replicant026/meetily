@@ -364,16 +364,28 @@
             "lock_channels": "Lock audio channels",
             "lock_channels_desc": "Prevent speakers from being moved between microphone and system audio"
         },
+        "llms": {
+            "add_provider": "Add Provider",
+            "add_provider_hint": "Provider management coming soon",
+            "no_providers": "No LLM providers configured yet.",
+            "status_connected": "Connected",
+            "status_disconnected": "Disconnected",
+            "status_unknown": "Unknown"
+        },
         "summaries": {
             "auto_generate": "Auto-generate summaries",
             "auto_generate_desc": "Generate a summary automatically when recording stops",
             "include_chapters": "Include chapters",
+            "include_chapters_desc": "Break the summary into chapters",
             "include_action_items": "Include action items",
+            "include_action_items_desc": "Extract action items from the meeting",
             "default_language": "Default summary language",
+            "default_language_desc": "Language for summary generation",
             "language_auto": "Auto-detect",
             "system_prompt": "System prompt",
             "system_prompt_desc": "Custom instructions for the summary generator",
             "default_tab": "Default detail tab",
+            "default_tab_desc": "Which tab to show when opening meeting details",
             "default_tab_summary": "Summary",
             "default_tab_transcript": "Transcript"
         },
@@ -391,5 +403,25 @@
             "title": "Experimental",
             "description": "These features are experimental and may change or be removed."
         }
+    },
+    "export": {
+        "name_pattern": "File Name Pattern",
+        "name_pattern_desc": "Pattern for exported file names. Use {meeting_name} and {date}.",
+        "preview": "Preview",
+        "date_format": "Date Format",
+        "date_format_desc": "Format for dates in exported files",
+        "locale_format": "System Locale",
+        "custom_format": "Custom",
+        "yaml_metadata": "YAML Metadata",
+        "yaml_metadata_desc": "Include meeting metadata as YAML frontmatter",
+        "metadata_position": "Metadata Position",
+        "metadata_position_desc": "Where to place metadata in the exported file",
+        "frontmatter": "Frontmatter (top of file)",
+        "inline": "Inline (at end)",
+        "auto_export": "Auto-export",
+        "auto_export_desc": "Automatically export after meeting ends and transcription completes. Local only — no external calls."
+    },
+    "advanced": {
+        "experimental_warning": "These features are experimental and may not work as expected. Use at your own risk."
     }
 }
