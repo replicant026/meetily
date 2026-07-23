@@ -147,12 +147,12 @@ impl VoiceReferenceRepository {
     }
 
     /// Delete a voice reference by id.
-    pub async fn delete(pool: &SqlitePool, id: &str) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query("DELETE FROM speaker_voice_references WHERE id = ?")
+    pub async fn delete(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM speaker_voice_references WHERE id = ?")
             .bind(id)
             .execute(pool)
             .await?;
-        Ok(result.rows_affected() > 0)
+        Ok(())
     }
 
     /// Create a speaker match suggestion.

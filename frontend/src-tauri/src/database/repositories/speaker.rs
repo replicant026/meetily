@@ -359,8 +359,8 @@ impl SpeakerRepository {
     /// Runs in a single transaction.
     pub async fn merge_people(
         pool: &SqlitePool,
-        target_id: &str,
         source_id: &str,
+        target_id: &str,
     ) -> Result<(), sqlx::Error> {
         let mut tx = pool.begin().await?;
 
@@ -556,7 +556,7 @@ mod tests {
         VoiceReferenceRepository::create(&pool, &anna, &fixture_reference())
             .await
             .unwrap();
-        SpeakerRepository::merge_people(&pool, &ana, &anna)
+        SpeakerRepository::merge_people(&pool, &anna, &ana)
             .await
             .unwrap();
         assert_eq!(
