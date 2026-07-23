@@ -8,10 +8,10 @@ import { useTranslations } from 'next-intl';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const NAV_ITEMS = [
-  { id: 'home', href: '/', icon: Home, labelKey: 'nav.home' },
-  { id: 'meetings', href: '/#meetings', icon: ListVideo, labelKey: 'nav.meetings' },
-  { id: 'people', href: '/people', icon: Users, labelKey: 'speakers.directory.title' },
-  { id: 'settings', href: '/settings', icon: Settings, labelKey: 'nav.settings' },
+  { id: 'home', href: '/', icon: Home, labelKey: 'common.nav.home', exact: true },
+  { id: 'meetings', href: '/', icon: ListVideo, labelKey: 'common.nav.meetings', exact: true },
+  { id: 'people', href: '/people', icon: Users, labelKey: 'speakers.directory.title', exact: false },
+  { id: 'settings', href: '/settings', icon: Settings, labelKey: 'common.nav.settings', exact: false },
 ] as const;
 
 export function SidebarNavigation() {
@@ -22,12 +22,9 @@ export function SidebarNavigation() {
     <div className="flex flex-col gap-0.5">
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const isActive =
-          item.id === 'home'
-            ? pathname === '/'
-            : item.id === 'settings'
-              ? pathname === '/settings'
-              : pathname.startsWith(item.href.split('?')[0].split('#')[0]);
+        const isActive = item.exact
+          ? pathname === item.href
+          : pathname.startsWith(item.href);
         const label = t(item.labelKey);
 
         return (

@@ -46,6 +46,8 @@ vi.mock('@tauri-apps/api/core', () => ({
         return mockDeleteReference(args);
       case 'get_speaker_voice_reference_audio_path':
         return mockGetReferenceAudioPath(args);
+      case 'read_audio_file':
+        return Promise.resolve(null);
       case 'get_speaker_recognition_preferences':
         return mockGetRecognitionPreferences();
       case 'set_speaker_recognition_preferences':

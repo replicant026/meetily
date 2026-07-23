@@ -56,7 +56,7 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
       }
     });
     return () => { unlisten.then(fn => fn()); };
-  }, [showOnboarding]);
+  }, [showOnboarding, t]);
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
