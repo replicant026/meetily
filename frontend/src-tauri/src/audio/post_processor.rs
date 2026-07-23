@@ -614,7 +614,7 @@ mod protected_terms_tests {
         let middle = sentinel
             .trim_start_matches("__MP_PROTECTED_v1_")
             .trim_end_matches("__");
-        let parts: Vec<&'static str> = middle.splitn(2, '_').collect();
+        let parts: Vec<&str> = middle.splitn(2, '_').collect();
         assert_eq!(parts.len(), 2);
         assert_eq!(parts[0].len(), 8);
         assert!(parts[0].chars().all(|c| c.is_ascii_hexdigit()));

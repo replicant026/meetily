@@ -815,7 +815,7 @@ mod tests {
         assert_eq!(
             english_markdown_after_normalization_result(
                 "# Original",
-                Err("normalization failed".to_string())
+                Err(LLMError::Other("normalization failed".to_string()))
             )
             .unwrap(),
             "# Original"
@@ -827,7 +827,7 @@ mod tests {
         assert!(
             english_markdown_after_normalization_result(
                 "# Original",
-                Err("Summary generation was cancelled".to_string())
+                Err(LLMError::Cancelled)
             )
             .is_err()
         );
