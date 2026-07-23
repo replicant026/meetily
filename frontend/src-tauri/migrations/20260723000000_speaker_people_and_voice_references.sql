@@ -59,7 +59,7 @@ FROM speaker_profiles
 GROUP BY display_name;
 
 --    Copy every embedding row as a legacy voice reference
-INSERT INTO speaker_voice_references
+INSERT OR IGNORE INTO speaker_voice_references
   (id, speaker_id, embedding, status, origin, created_at)
 SELECT
   'ref-' || sp.id,
