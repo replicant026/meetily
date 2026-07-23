@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, X, Play, Pause, UserPlus } from 'lucide-react';
 import { listSuggestions, acceptSuggestion, rejectSuggestion, listPeople, assignMeetingSpeaker, getReferenceAudioPath } from '@/lib/speaker-api';
@@ -48,7 +48,7 @@ export function SpeakerReviewQueue({ meetingId, onResolved }: SpeakerReviewQueue
   const [acting, setActing] = useState<string | null>(null);
   const [choosingFor, setChoosingFor] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [s, p] = await Promise.all([listSuggestions(meetingId), listPeople()]);
@@ -59,11 +59,11 @@ export function SpeakerReviewQueue({ meetingId, onResolved }: SpeakerReviewQueue
     } finally {
       setLoading(false);
     }
-  };
+  }, [meetingId]);
 
   useEffect(() => {
     load();
-  }, [meetingId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [load]);
 
   const handleAccept = async (sug: SpeakerSuggestion) => {
     setActing(sug.id);

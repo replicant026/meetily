@@ -31,6 +31,9 @@ export function SpeakerRecognitionSettings() {
   }, []);
 
   const save = async (next: Partial<{ recognitionMode: RecognitionMode; lockAudioChannels: boolean; minimumReferenceQuality: number }>) => {
+    const prevMode = mode;
+    const prevLock = lockChannels;
+    const prevQuality = minQuality;
     const prefs = {
       recognitionMode: next.recognitionMode ?? mode,
       lockAudioChannels: next.lockAudioChannels ?? lockChannels,
@@ -43,6 +46,9 @@ export function SpeakerRecognitionSettings() {
       await setRecognitionPreferences(prefs);
       toast.success(t('saved'));
     } catch {
+      setMode(prevMode);
+      setLockChannels(prevLock);
+      setMinQuality(prevQuality);
       toast.error(t('save_failed'));
     }
   };

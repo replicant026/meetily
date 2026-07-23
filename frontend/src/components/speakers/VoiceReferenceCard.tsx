@@ -8,6 +8,7 @@ import { deleteReference } from '@/lib/speaker-api';
 import { VoiceReferencePlayer } from './VoiceReferencePlayer';
 import { AppDialog } from '@/components/ui/app-dialog';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const CHANNEL_LABELS: Record<string, string> = {
   microphone: 'reference.channel_mic',
@@ -38,10 +39,11 @@ export function VoiceReferenceCard({ reference, meetingName, onDeleted }: VoiceR
     setDeleting(true);
     try {
       await deleteReference(reference.id);
+      toast.success(t('reference.deleted'));
       onDeleted?.();
       setConfirmDelete(false);
-    } catch (e) {
-      console.warn('Failed to delete reference:', e);
+    } catch (err) {
+      toast.error(t('reference.delete_failed'));
     } finally {
       setDeleting(false);
     }
