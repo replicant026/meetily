@@ -1,0 +1,14 @@
+{
+  "quick_start_title": "Start a meeting",
+  "no_microphone": "No microphone detected",
+  "start_recording": "Start recording",
+  "configure_audio": "Configure audio",
+  "recent_meetings": "Recent meetings",
+  "no_meetings_yet": "No meetings yet. Start recording to create one.",
+  "has_summary": "Summary available",
+  "needs_attention": "Needs attention",
+  "recover": "Recover",
+  "processing": "Processing...",
+  "meetings_this_week": "This week",
+  "summaries_ready": "Summaries"
+}

@@ -1,0 +1,14 @@
+{
+  "quick_start_title": "開始會議",
+  "no_microphone": "未偵測到麥克風",
+  "start_recording": "開始錄音",
+  "configure_audio": "音訊設定",
+  "recent_meetings": "最近的會議",
+  "no_meetings_yet": "尚無會議。開始錄音以建立。",
+  "has_summary": "有摘要",
+  "needs_attention": "需要關注",
+  "recover": "復原",
+  "processing": "處理中...",
+  "meetings_this_week": "本週",
+  "summaries_ready": "摘要"
+}

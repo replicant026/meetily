@@ -40,7 +40,7 @@ export default function Home() {
   const { status, statusMessage, isStopping, isProcessing } = recordingState;
 
   // Hooks
-  const { hasMicrophone } = usePermissionCheck();
+  const { hasMicrophone, hasSystemAudio } = usePermissionCheck();
   const { setIsMeetingActive, isCollapsed: sidebarCollapsed, refetchMeetings } = useSidebar();
   const { modals, messages, showModal, hideModal } = useModalState(transcriptModelConfig);
   const { isRecordingDisabled, setIsRecordingDisabled } = useRecordingStateSync(isRecording, setIsRecordingState, setIsMeetingActive);
@@ -221,7 +221,17 @@ export default function Home() {
         />
 
         {isIdle ? (
-          <HomeDashboard />
+          <HomeDashboard
+            hasMicPermission={hasMicrophone}
+            hasSystemAudio={hasSystemAudio}
+            micDeviceName={selectedDevices?.micDevice ?? undefined}
+            systemDeviceName={selectedDevices?.systemDevice ?? undefined}
+            onStartRecording={handleRecordingStart}
+            onConfigureAudio={() => showModal('deviceSettings')}
+            recoverableMeetings={recoverableMeetings.map((m) => ({ id: m.meetingId, title: m.title }))}
+            processingMeetings={[]}
+            onRecover={handleRecovery}
+          />
         ) : (
           <div className="flex flex-1 overflow-hidden">
             <TranscriptPanel

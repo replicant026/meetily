@@ -1,0 +1,14 @@
+{
+  "quick_start_title": "开始会议",
+  "no_microphone": "未检测到麦克风",
+  "start_recording": "开始录音",
+  "configure_audio": "音频配置",
+  "recent_meetings": "最近的会议",
+  "no_meetings_yet": "暂无会议。开始录音以创建。",
+  "has_summary": "有摘要",
+  "needs_attention": "需要关注",
+  "recover": "恢复",
+  "processing": "处理中...",
+  "meetings_this_week": "本周",
+  "summaries_ready": "摘要"
+}

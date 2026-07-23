@@ -1,0 +1,14 @@
+{
+  "quick_start_title": "会議を開始",
+  "no_microphone": "マイクが検出されません",
+  "start_recording": "録音開始",
+  "configure_audio": "オーディオ設定",
+  "recent_meetings": "最近の会議",
+  "no_meetings_yet": "まだ会議がありません。録音を開始して作成してください。",
+  "has_summary": "要約あり",
+  "needs_attention": "要対応",
+  "recover": "復元",
+  "processing": "処理中...",
+  "meetings_this_week": "今週",
+  "summaries_ready": "要約"
+}
