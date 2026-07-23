@@ -14,5 +14,10 @@
   "transcript": "Transcript",
   "notes": "Notes",
   "actions": "Actions",
-  "summary": "Summary"
+  "summary": "Summary",
+  "people": "Who's here",
+  "tags": "Tags",
+  "addPerson": "Add someone…",
+  "unassigned": "Unassigned",
+  "listening": "Listening…"
 }

@@ -27,5 +27,9 @@
     "start_recording": "録音を開始",
     "import_audio": "音声をインポート"
   },
+  "newRecording": "新しい録音",
+  "rename": "名前を変更",
+  "delete": "削除",
+  "moreActions": "その他のアクション",
   "brand": "Meetily"
 }

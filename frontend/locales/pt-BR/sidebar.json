@@ -17,5 +17,9 @@
         "cancel": "Cancelar"
     },
     "status": {"recording_in_progress":"Gravação em andamento...","start_recording":"Iniciar Gravação","import_audio":"Importar Áudio"},
+    "newRecording": "Nova gravação",
+    "rename": "Renomear",
+    "delete": "Excluir",
+    "moreActions": "Mais ações",
     "brand": "Meetily"
 }

@@ -227,8 +227,8 @@ export default function PageContent({
       meetingId={meeting.id}
       meetingFolderPath={meeting.folder_path}
       onRefetchTranscripts={onRefetchTranscripts}
-      // Audio jump props (Wave 14 PR-44d): null disables the player gracefully
-      audioPath={audioPath}
+      // Audio jump props (Wave 14 PR-44d): seek callback for timestamp click-to-jump
+      onSeekToTimestamp={audioPlayer.seek}
     />
   );
 
@@ -293,17 +293,6 @@ export default function PageContent({
         }}
         notesContent={notesPanel}
         actionsContent={actionsPanel}
-        transcriptSegments={
-          segments?.map((s: any) => ({
-            speaker: s.speaker,
-            timestamp: s.timestamp,
-            endTime: s.endTime,
-          })) ?? meetingData.transcripts.map((tr: any) => ({
-            speaker: tr.speaker,
-            timestamp: tr.audio_start_time ?? 0,
-            endTime: tr.audio_end_time,
-          }))
-        }
       />
     </motion.div>
   );

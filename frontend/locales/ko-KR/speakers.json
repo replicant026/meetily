@@ -75,6 +75,7 @@
   },
   "review_queue": {
     "title": "Speaker Suggestions",
+    "pending_count": "{count, plural, other {#개의 음성 프린트가 검토 대기 중}}",
     "empty": "No pending suggestions",
     "empty_hint": "Suggestions appear here after meetings when speakers are detected.",
     "accept": "Accept",

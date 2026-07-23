@@ -75,6 +75,7 @@
   },
   "review_queue": {
     "title": "Speaker Suggestions",
+    "pending_count": "{count, plural, other {# 人の声紋がレビュー待ちです}}",
     "empty": "No pending suggestions",
     "empty_hint": "Suggestions appear here after meetings when speakers are detected.",
     "accept": "Accept",

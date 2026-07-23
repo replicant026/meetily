@@ -10,5 +10,8 @@
   "recover": "復元",
   "processing": "処理中...",
   "meetings_this_week": "今週",
-  "summaries_ready": "要約"
+  "summaries_ready": "要約",
+  "importRecording": "録音をインポート",
+  "importDescription": "オーディオファイルをインポートして文字起こしと要約を作成",
+  "importFile": "ファイルをインポート"
 }

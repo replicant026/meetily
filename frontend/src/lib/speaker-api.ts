@@ -49,6 +49,10 @@ export async function listSuggestions(meetingId: string): Promise<SpeakerSuggest
   return invoke('list_speaker_suggestions', { meetingId });
 }
 
+export async function countPendingSuggestions(): Promise<number> {
+  return invoke('count_pending_speaker_suggestions');
+}
+
 export async function acceptSuggestion(suggestionId: string): Promise<void> {
   return invoke('accept_speaker_suggestion', { suggestionId });
 }

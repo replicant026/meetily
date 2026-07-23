@@ -27,5 +27,9 @@
     "start_recording": "녹음 시작",
     "import_audio": "오디오 가져오기"
   },
+  "newRecording": "새 녹음",
+  "rename": "이름 변경",
+  "delete": "삭제",
+  "moreActions": "더 많은 작업",
   "brand": "Meetily"
 }

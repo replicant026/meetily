@@ -27,5 +27,9 @@
     "start_recording": "开始录音",
     "import_audio": "导入音频"
   },
+  "newRecording": "新录音",
+  "rename": "重命名",
+  "delete": "删除",
+  "moreActions": "更多操作",
   "brand": "Meetily"
 }

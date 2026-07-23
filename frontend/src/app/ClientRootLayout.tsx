@@ -1,9 +1,8 @@
 'use client'
 
 import './globals.css'
-import Sidebar from '@/components/Sidebar'
 import { SidebarProvider } from '@/components/Sidebar/SidebarProvider'
-import MainContent from '@/components/MainContent'
+import { AppShell } from '@/components/AppShell/AppShell'
 import AnalyticsProvider from '@/components/AnalyticsProvider'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
@@ -78,10 +77,7 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
                           {showOnboarding ? (
                             <OnboardingFlow onComplete={handleOnboardingComplete} />
                           ) : (
-                            <div className="flex">
-                              <Sidebar />
-                              <MainContent>{children}</MainContent>
-                            </div>
+                            <AppShell>{children}</AppShell>
                           )}
                         </GlobalFeedbackLayer>
                       </RecordingPostProcessingProvider>

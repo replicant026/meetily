@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { describe, it } from 'vitest';
 
 const modulePath = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -41,6 +42,7 @@ const {
   resolveOnboardingSummaryModelStatus,
 } = loadTsModule(modulePath);
 
+describe('onboarding summary model', () => it('resolves model availability and download sizes', () => {
 assert.equal(
   JSON.stringify(resolveOnboardingSummaryModelStatus({
     selectedModel: 'qwen3.5:4b',
@@ -92,3 +94,4 @@ assert.equal(getSummaryModelSizeLabel('unknown:model'), '');
 assert.equal(getDownloadTotalMb(0, 'qwen3.5:4b'), 2614);
 assert.equal(getDownloadTotalMb(undefined, 'qwen3.5:2b'), 1221);
 assert.equal(getDownloadTotalMb(512, 'qwen3.5:4b'), 512);
+}));

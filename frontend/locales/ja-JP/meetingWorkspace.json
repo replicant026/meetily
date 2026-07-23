@@ -14,5 +14,10 @@
   "transcript": "\u30C8\u30E9\u30F3\u30B9\u30AF\u30EA\u30D7\u30C8",
   "notes": "\u30E1\u30E2",
   "actions": "\u30A2\u30AF\u30B7\u30E7\u30F3",
-  "summary": "\u30B5\u30E1\u30EA\u30FC"
+  "summary": "\u30B5\u30E1\u30EA\u30FC",
+  "people": "\u53C2\u52A0\u8005",
+  "tags": "\u30BF\u30B0",
+  "addPerson": "\u4EBA\u3092\u8FFD\u52A0\u2026",
+  "unassigned": "\u672A\u5272\u308A\u5F53\u3066",
+  "listening": "\u30EA\u30B9\u30CB\u30F3\u30B0\u4E2D\u2026"
 }

@@ -10,5 +10,8 @@
   "recover": "Recuperar",
   "processing": "Processando...",
   "meetings_this_week": "Esta semana",
-  "summaries_ready": "Resumos"
+  "summaries_ready": "Resumos",
+  "importRecording": "Importar uma gravação",
+  "importDescription": "Importe um arquivo de áudio para transcrever e resumir",
+  "importFile": "Importar arquivo"
 }

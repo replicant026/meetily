@@ -37,6 +37,16 @@ describe('SettingsShell', () => {
     expect(screen.getByTestId('content')).toHaveTextContent('audio');
   });
 
+  it('keeps the settings category list scoped to the settings page', () => {
+    render(
+      <SettingsShell>{(section) => <div data-testid="content">{section}</div>}</SettingsShell>,
+    );
+
+    expect(screen.getByRole('navigation', { name: /settings sections/i })).toBeVisible();
+    // Should NOT have a second "main navigation" — that's AppShell's job
+    expect(screen.queryAllByRole('navigation', { name: /main navigation/i })).toHaveLength(0);
+  });
+
   it('marks the active section with aria-current after click', async () => {
     render(
       <SettingsShell>{(section) => <div>{section}</div>}</SettingsShell>,

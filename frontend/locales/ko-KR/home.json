@@ -10,5 +10,8 @@
   "recover": "복구",
   "processing": "처리 중...",
   "meetings_this_week": "이번 주",
-  "summaries_ready": "요약"
+  "summaries_ready": "요약",
+  "importRecording": "녹음 가져오기",
+  "importDescription": "오디오 파일을 가져와서 녹취 및 요약",
+  "importFile": "파일 가져오기"
 }

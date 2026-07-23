@@ -14,5 +14,10 @@
   "transcript": "Transcri\u00e7\u00e3o",
   "notes": "Notas",
   "actions": "A\u00e7\u00f5es",
-  "summary": "Resumo"
+  "summary": "Resumo",
+  "people": "Quem está aqui",
+  "tags": "Etiquetas",
+  "addPerson": "Adicionar pessoa…",
+  "unassigned": "Não atribuído",
+  "listening": "Ouvindo…"
 }

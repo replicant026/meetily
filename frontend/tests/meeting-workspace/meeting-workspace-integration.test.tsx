@@ -37,7 +37,7 @@ describe('MeetingWorkspace integration', () => {
     expect(screen.getByRole('tab', { name: /notes/i })).toBeVisible();
     expect(screen.getByRole('tab', { name: /actions/i })).toBeVisible();
     expect(screen.getByRole('tab', { name: /summary/i })).toBeVisible();
-    expect(screen.getByRole('complementary', { name: /participants/i })).toBeVisible();
+    expect(screen.getByRole('complementary', { name: /people/i })).toBeVisible();
   });
 
   it('displays participant names', () => {

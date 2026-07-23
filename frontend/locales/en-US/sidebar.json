@@ -27,5 +27,9 @@
     "start_recording": "Start Recording",
     "import_audio": "Import Audio"
   },
+  "newRecording": "New recording",
+  "rename": "Rename",
+  "delete": "Delete",
+  "moreActions": "More actions",
   "brand": "Meetily"
 }

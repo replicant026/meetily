@@ -881,6 +881,7 @@ pub fn run() {
             get_speaker_recognition_preferences,
             set_speaker_recognition_preferences,
             list_speaker_suggestions,
+            count_pending_speaker_suggestions,
             accept_speaker_suggestion,
             reject_speaker_suggestion,
             assign_meeting_speaker,
@@ -947,6 +948,20 @@ async fn set_speaker_recognition_preferences(
 ) -> Result<(), String> {
     crate::diarization::speaker_preferences::set_preferences(prefs);
     Ok(())
+}
+
+#[tauri::command]
+async fn count_pending_speaker_suggestions(
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<i64, String> {
+    let pool = state.db_manager.pool();
+    let row: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM speaker_match_suggestions WHERE status = 'pending'",
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(row.0)
 }
 
 #[tauri::command]

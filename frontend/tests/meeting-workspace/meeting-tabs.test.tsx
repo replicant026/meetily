@@ -18,9 +18,6 @@ const fixture = {
   meeting: { id: 'm-1', title: 'Test Meeting', created_at: '2025-01-01T10:00:00Z' },
   audio: audioFixture,
   participants: [],
-  segments: [],
-  summary: null,
-  transcripts: [],
   // Add other required props
 };
 
@@ -31,6 +28,6 @@ describe('MeetingWorkspace', () => {
     expect(screen.getByRole('tab', { name: /notes/i })).toBeVisible();
     expect(screen.getByRole('tab', { name: /actions/i })).toBeVisible();
     expect(screen.getByRole('tab', { name: /summary/i })).toBeVisible();
-    expect(screen.getByRole('complementary', { name: /participants/i })).toBeVisible();
+    expect(screen.getByRole('complementary', { name: /people/i })).toBeVisible();
   });
 });

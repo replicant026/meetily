@@ -22,7 +22,6 @@ import { TranscriptRecovery } from '@/components/TranscriptRecovery';
 import { indexedDBService } from '@/services/indexedDBService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '@/components/AppShell/AppShell';
 import { HomeDashboard } from '@/app/_components/HomeDashboard';
 
 export default function Home() {
@@ -196,7 +195,6 @@ export default function Home() {
   const isIdle = !recordingState.isRecording && !isProcessingStop && status !== RecordingStatus.SAVING;
 
   return (
-    <AppShell>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -279,6 +277,5 @@ export default function Home() {
           </div>
         )}
       </motion.div>
-    </AppShell>
   );
 }

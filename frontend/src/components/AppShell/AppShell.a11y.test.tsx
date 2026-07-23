@@ -16,6 +16,13 @@ vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+vi.mock('@/components/ui/tooltip', () => ({
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 // Mock useMeetingDirectory to return empty — no Tauri calls
 vi.mock('@/hooks/useMeetingDirectory', () => ({
   useMeetingDirectory: () => ({

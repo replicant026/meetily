@@ -116,7 +116,7 @@ function MeetingRow({ meeting, isActive, now, onNavigate, onDelete, onRename }: 
           <button
             onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
             className="rounded p-1 hover:bg-[rgb(var(--app-muted))]"
-            aria-label="More actions"
+            aria-label={t('moreActions')}
           >
             <MoreVertical className="h-3.5 w-3.5" />
           </button>
@@ -127,7 +127,7 @@ function MeetingRow({ meeting, isActive, now, onNavigate, onDelete, onRename }: 
                   onClick={(e) => { e.stopPropagation(); onRename(); setShowMenu(false); }}
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-[rgb(var(--app-muted))]"
                 >
-                  <Edit3 className="h-3 w-3" /> Rename
+                  <Edit3 className="h-3 w-3" /> {t('rename')}
                 </button>
               )}
               {onDelete && (
@@ -135,7 +135,7 @@ function MeetingRow({ meeting, isActive, now, onNavigate, onDelete, onRename }: 
                   onClick={(e) => { e.stopPropagation(); onDelete(); setShowMenu(false); }}
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
                 >
-                  <Trash2 className="h-3 w-3" /> Delete
+                  <Trash2 className="h-3 w-3" /> {t('delete')}
                 </button>
               )}
             </div>

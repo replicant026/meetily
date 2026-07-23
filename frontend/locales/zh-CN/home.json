@@ -10,5 +10,8 @@
   "recover": "恢复",
   "processing": "处理中...",
   "meetings_this_week": "本周",
-  "summaries_ready": "摘要"
+  "summaries_ready": "摘要",
+  "importRecording": "导入录音",
+  "importDescription": "导入音频文件以转录和总结",
+  "importFile": "导入文件"
 }

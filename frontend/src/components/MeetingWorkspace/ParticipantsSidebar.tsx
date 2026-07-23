@@ -2,72 +2,59 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Users, Mic, Monitor, UserCircle } from 'lucide-react';
+import { Users, Mic, Monitor, Tag } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
-import { MeetingPeoplePanel } from '@/components/speakers/MeetingPeoplePanel';
 import type { WorkspaceParticipant } from './types';
 
 interface ParticipantsSidebarProps {
   participants: WorkspaceParticipant[];
-  meetingId?: string;
-  transcriptSegments?: Array<{ speaker?: string | null; timestamp: number; endTime?: number }>;
   className?: string;
 }
 
-export function ParticipantsSidebar({ participants, meetingId, transcriptSegments, className }: ParticipantsSidebarProps) {
+export function ParticipantsSidebar({ participants, className }: ParticipantsSidebarProps) {
   const t = useTranslations('meetingWorkspace');
   const [open, setOpen] = useState(false);
 
   const micParticipants = participants.filter(p => p.source === 'microphone');
   const sysParticipants = participants.filter(p => p.source === 'system');
 
-  const hasPeoplePanel = !!meetingId && transcriptSegments != null && transcriptSegments.length > 0;
-
-  const participantList = (
+  const peopleContent = (
     <>
-      <div>
-        <h3 className="text-xs uppercase text-stone-500 font-medium tracking-wider">
-          <Mic className="inline w-3 h-3 mr-1" />
-          {t('microphone')}
+      {participants.length === 0 ? (
+        <p className="text-sm text-stone-400 px-3 py-2">{t('addPerson')}</p>
+      ) : (
+        <>
+          <SourceCard
+            icon={<Mic className="w-3.5 h-3.5" />}
+            label={t('microphone')}
+            participants={micParticipants}
+            emptyLabel={t('unassigned')}
+          />
+          <SourceCard
+            icon={<Monitor className="w-3.5 h-3.5" />}
+            label={t('systemAudio')}
+            participants={sysParticipants}
+            emptyLabel={t('unassigned')}
+          />
+        </>
+      )}
+
+      {/* Tags section */}
+      <div className="rounded-xl bg-[#fbfaf7] border border-stone-200 px-3 py-2">
+        <h3 className="text-[11px] uppercase tracking-wide text-stone-400 font-medium flex items-center gap-1.5 mb-1">
+          <Tag className="w-3 h-3" />
+          {t('tags')}
         </h3>
-        {micParticipants.map(p => (
-          <ParticipantRow key={p.id} participant={p} />
-        ))}
-      </div>
-      <div>
-        <h3 className="text-xs uppercase text-stone-500 font-medium tracking-wider">
-          <Monitor className="inline w-3 h-3 mr-1" />
-          {t('systemAudio')}
-        </h3>
-        {sysParticipants.map(p => (
-          <ParticipantRow key={p.id} participant={p} />
-        ))}
       </div>
     </>
   );
 
-  const peopleSection = hasPeoplePanel ? (
-    <div className="border-t border-stone-200 mt-4 pt-4">
-      <h3 className="text-xs uppercase text-stone-500 font-medium tracking-wider mb-2 px-4">
-        <UserCircle className="inline w-3 h-3 mr-1" />
-        {t('speakers')}
-      </h3>
-      <MeetingPeoplePanel
-        meetingId={meetingId}
-        segments={transcriptSegments}
-      />
-    </div>
-  ) : null;
-
   return (
     <>
-      {/* Desktop: fixed aside in grid */}
-      <aside aria-label={t('participants')} className={`hidden lg:flex lg:flex-col ${className ?? ''}`}>
-        <div className="flex flex-col gap-4">
-          {participantList}
-        </div>
-        {peopleSection}
+      {/* Desktop: contextual complementary aside */}
+      <aside aria-label={t('people')} className={`hidden lg:flex lg:flex-col gap-3 ${className ?? ''}`}>
+        {peopleContent}
       </aside>
 
       {/* Mobile: floating sheet trigger */}
@@ -77,7 +64,7 @@ export function ParticipantsSidebar({ participants, meetingId, transcriptSegment
             <button
               type="button"
               className="flex items-center gap-2 px-3 py-2 bg-white border border-stone-200 rounded-full shadow-lg hover:bg-stone-50 transition-colors"
-              aria-label={t('participants')}
+              aria-label={t('people')}
             >
               <Users size={16} />
               <span className="text-sm">{participants.length}</span>
@@ -85,11 +72,10 @@ export function ParticipantsSidebar({ participants, meetingId, transcriptSegment
           </SheetTrigger>
           <SheetContent side="right" className="w-72">
             <VisuallyHidden>
-              <SheetTitle>{t('participants')}</SheetTitle>
+              <SheetTitle>{t('people')}</SheetTitle>
             </VisuallyHidden>
-            <div className="flex flex-col gap-4 mt-6">
-              {participantList}
-              {peopleSection}
+            <div className="flex flex-col gap-3 mt-6">
+              {peopleContent}
             </div>
           </SheetContent>
         </Sheet>
@@ -98,14 +84,42 @@ export function ParticipantsSidebar({ participants, meetingId, transcriptSegment
   );
 }
 
-function ParticipantRow({ participant }: { participant: WorkspaceParticipant }) {
+function SourceCard({
+  icon,
+  label,
+  participants,
+  emptyLabel,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  participants: WorkspaceParticipant[];
+  emptyLabel: string;
+}) {
   return (
-    <div className="flex items-center gap-2 py-1">
-      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: participant.color }} />
-      <span className="text-sm text-stone-700">{participant.name}</span>
-      <span className="text-xs text-stone-400 ml-auto">
-        {participant.spokenSeconds}s · {Math.round(participant.share * 100)}%
-      </span>
+    <div className="rounded-xl bg-[#fbfaf7] border border-stone-200 px-3 py-2">
+      <h3 className="text-[11px] uppercase tracking-wide text-stone-400 font-medium flex items-center gap-1.5 mb-1">
+        {icon}
+        {label}
+        <span className="ml-auto text-stone-300">{participants.length}</span>
+      </h3>
+      {participants.length === 0 ? (
+        <p className="text-xs text-stone-300 italic">{emptyLabel}</p>
+      ) : (
+        <ul className="space-y-1">
+          {participants.map(p => (
+            <li key={p.id} className="flex items-center gap-2 text-sm">
+              <span
+                className="inline-block w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: p.color }}
+              />
+              <span className="text-stone-700 truncate">{p.name}</span>
+              <span className="ml-auto text-xs text-stone-400 tabular-nums shrink-0">
+                {p.spokenSeconds}s · {Math.round(p.share * 100)}%
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SpeakerDirectory } from './SpeakerDirectory';
 
-const user = userEvent.setup();
+let user: ReturnType<typeof userEvent.setup>;
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -90,6 +90,7 @@ const REFERENCE_PLAYABLE = {
 describe('Speaker flow: create, list, reference playback, delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    user = userEvent.setup();
     mockGetRecognitionPreferences.mockResolvedValue({
       recognitionMode: 'off',
       lockAudioChannels: false,
@@ -149,7 +150,7 @@ describe('Speaker flow: create, list, reference playback, delete', () => {
     // VoiceReferencePlayer calls getReferenceAudioPath for playable refs.
     // This should return a local path, not an external URL.
     await waitFor(() => {
-      expect(mockGetReferenceAudioPath).toHaveBeenCalled();
+      expect(mockGetReferenceAudioPath).toHaveBeenCalledWith({ referenceId: 'ref-1' });
     });
 
     // Every audio path must NOT be an external URL
