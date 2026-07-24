@@ -13,5 +13,6 @@
   "summaries_ready": "要約",
   "importRecording": "録音をインポート",
   "importDescription": "オーディオファイルをインポートして文字起こしと要約を作成",
-  "importFile": "ファイルをインポート"
+  "importFile": "ファイルをインポート",
+  "subtitle": "ミーティングをローカルで文字起こし"
 }

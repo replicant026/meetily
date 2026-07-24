@@ -5,11 +5,10 @@ import { useTranslations } from 'next-intl';
 import { Search, Plus } from 'lucide-react';
 import type { SpeakerPerson } from '@/lib/speaker-types';
 import { listPeople, createPerson } from '@/lib/speaker-api';
-import { SpeakerDetailPanel } from './SpeakerDetailPanel';
+import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 function formatRelativeTime(dateStr: string): string {
   const now = Date.now();
@@ -31,9 +30,9 @@ export function SpeakerDirectory() {
   const [people, setPeople] = useState<SpeakerPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  const router = useRouter();
 
   const loadPeople = useCallback(async () => {
     setLoading(true);
@@ -53,8 +52,6 @@ export function SpeakerDirectory() {
     p.display_name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const selectedPerson = selectedId ? people.find((p) => p.id === selectedId) ?? null : null;
-
   const handleCreate = async () => {
     const name = newName.trim();
     if (!name) return;
@@ -64,15 +61,11 @@ export function SpeakerDirectory() {
       setCreating(false);
       toast.success(t('directory.created'));
       await loadPeople();
-      setSelectedId(id);
+      router.push(`/people/${id}`);
     } catch {
       toast.error(t('directory.create_failed'));
     }
   };
-
-  const handleUpdated = useCallback(() => {
-    loadPeople();
-  }, [loadPeople]);
 
   return (
     <div className="space-y-4">
@@ -114,73 +107,50 @@ export function SpeakerDirectory() {
         </div>
       )}
 
-      {/* Two-pane layout */}
-      <div className="flex gap-4 min-h-[400px]">
-        {/* Left: People list */}
-        <div className="w-72 flex-shrink-0 space-y-1">
-          {loading ? (
-            <div className="text-sm text-muted-foreground py-4">Loading...</div>
-          ) : filtered.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[rgb(var(--app-border))] p-6 text-center">
-              <p className="text-sm text-muted-foreground">{t('directory.empty')}</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">{t('directory.empty_hint')}</p>
-            </div>
-          ) : (
-            filtered.map((person) => (
-              <button
-                key={person.id}
-                type="button"
-                onClick={() => setSelectedId(person.id)}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors',
-                  selectedId === person.id
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-[rgb(var(--app-muted))] text-foreground',
-                )}
+      {/* People list */}
+      <div className="space-y-1">
+        {loading ? (
+          <div className="text-sm text-muted-foreground py-4">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[rgb(var(--app-border))] p-6 text-center">
+            <p className="text-sm text-muted-foreground">{t('directory.empty')}</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">{t('directory.empty_hint')}</p>
+          </div>
+        ) : (
+          filtered.map((person) => (
+            <button
+              key={person.id}
+              type="button"
+              onClick={() => router.push(`/people/${person.id}`)}
+              className="w-full flex items-center gap-2.5 border-b border-[rgb(var(--app-border))] px-2 py-4 text-left last:border-b-0 transition-colors hover:bg-[rgb(var(--app-muted))]"
+            >
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: person.color ?? '#6b7280' }}
               >
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: person.color ?? '#6b7280' }}
-                >
-                  <span className="text-xs font-medium text-white">
-                    {person.display_name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{person.display_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {person.playable_reference_count === 0
-                      ? t('directory.needs_reference')
-                      : `${person.reference_count} ref${person.reference_count !== 1 ? 's' : ''}`}
-                    {' · '}
-                    {person.meeting_count} mtg{person.meeting_count !== 1 ? 's' : ''}
-                    {person.last_seen_at && (
-                      <> · {t('directory.last_seen_ago', { time: formatRelativeTime(person.last_seen_at) })}</>
-                    )}
-                    {!person.last_seen_at && (
-                      <> · {t('directory.never_seen')}</>
-                    )}
-                  </p>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-
-        {/* Right: Detail panel */}
-        <div className="flex-1 border border-[rgb(var(--app-border))] rounded-lg p-4 overflow-y-auto">
-          {selectedPerson ? (
-            <SpeakerDetailPanel
-              person={selectedPerson}
-              allPeople={people}
-              onUpdated={handleUpdated}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground">{t('detail.no_selection')}</p>
-            </div>
-          )}
-        </div>
+                <span className="text-xs font-medium text-white">
+                  {person.display_name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{person.display_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {person.playable_reference_count === 0
+                    ? t('directory.needs_reference')
+                    : `${person.reference_count} ref${person.reference_count !== 1 ? 's' : ''}`}
+                  {' · '}
+                  {person.meeting_count} mtg{person.meeting_count !== 1 ? 's' : ''}
+                  {person.last_seen_at && (
+                    <> · {t('directory.last_seen_ago', { time: formatRelativeTime(person.last_seen_at) })}</>
+                  )}
+                  {!person.last_seen_at && (
+                    <> · {t('directory.never_seen')}</>
+                  )}
+                </p>
+              </div>
+            </button>
+          ))
+        )}
       </div>
     </div>
   );

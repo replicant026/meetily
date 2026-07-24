@@ -18,25 +18,38 @@ export function ParticipantsSidebar({ participants, className }: ParticipantsSid
 
   const micParticipants = participants.filter(p => p.source === 'microphone');
   const sysParticipants = participants.filter(p => p.source === 'system');
+  const unknownParticipants = participants.filter(p => p.source === 'unknown');
+  const onlyUnknownSources = unknownParticipants.length > 0 && micParticipants.length === 0 && sysParticipants.length === 0;
 
   const peopleContent = (
     <>
       <h2 className="text-base font-semibold text-stone-800 px-1 app-display-heading">{t('people')}</h2>
-      <SourceCard
-        icon={<Mic className="w-3.5 h-3.5" />}
-        label={t('microphone')}
-        participants={micParticipants}
-        emptyLabel={t('unassigned')}
-      />
-      <SourceCard
-        icon={<Monitor className="w-3.5 h-3.5" />}
-        label={t('systemAudio')}
-        participants={sysParticipants}
-        emptyLabel={t('unassigned')}
-      />
+      {onlyUnknownSources ? (
+        <SourceCard
+          icon={<Users className="w-3.5 h-3.5" />}
+          label={t('participants')}
+          participants={unknownParticipants}
+          emptyLabel={t('unassigned')}
+        />
+      ) : (
+        <>
+          <SourceCard
+            icon={<Mic className="w-3.5 h-3.5" />}
+            label={t('microphone')}
+            participants={micParticipants}
+            emptyLabel={t('unassigned')}
+          />
+          <SourceCard
+            icon={<Monitor className="w-3.5 h-3.5" />}
+            label={t('systemAudio')}
+            participants={sysParticipants}
+            emptyLabel={t('unassigned')}
+          />
+        </>
+      )}
 
       {/* Tags section */}
-      <div className="rounded-xl bg-[rgb(var(--app-surface))] border border-stone-200 px-3 py-2">
+      <div className="app-surface px-3 py-2">
         <h3 className="text-[11px] uppercase tracking-wide text-stone-400 font-medium flex items-center gap-1.5 mb-1">
           <Tag className="w-3 h-3" />
           {t('tags')}
@@ -55,7 +68,7 @@ export function ParticipantsSidebar({ participants, className }: ParticipantsSid
   return (
     <>
       {/* Desktop: contextual complementary aside */}
-      <aside aria-label={t('people')} className={`hidden lg:flex lg:flex-col gap-3 ${className ?? ''}`}>
+      <aside aria-label={t('people')} className={`hidden lg:flex lg:flex-col gap-3 p-3 overflow-y-auto ${className ?? ''}`}>
         {peopleContent}
       </aside>
 
@@ -98,7 +111,7 @@ function SourceCard({
   emptyLabel: string;
 }) {
   return (
-    <div className="rounded-xl bg-[rgb(var(--app-surface))] border border-stone-200 px-3 py-2">
+    <div className="app-surface px-3 py-2">
       <h3 className="text-[11px] uppercase tracking-wide text-stone-400 font-medium flex items-center gap-1.5 mb-1">
         {icon}
         {label}
@@ -109,12 +122,14 @@ function SourceCard({
       ) : (
         <ul className="space-y-1">
           {participants.map(p => (
-            <li key={p.id} className="flex items-center gap-2 text-sm">
+            <li key={p.id} className="flex items-center gap-2 py-1 text-sm">
               <span
-                className="inline-block w-2 h-2 rounded-full shrink-0"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full shrink-0 text-[10px] font-semibold text-white"
                 style={{ backgroundColor: p.color }}
-              />
-              <span className="text-stone-700 truncate">{p.name}</span>
+              >
+                {p.name.slice(0, 2).toUpperCase()}
+              </span>
+              <span className="truncate font-medium text-stone-800">{p.name}</span>
               <span className="ml-auto text-xs text-stone-400 tabular-nums shrink-0">
                 {p.spokenSeconds}s · {Math.round(p.share * 100)}%
               </span>

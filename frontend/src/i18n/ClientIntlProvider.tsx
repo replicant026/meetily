@@ -9,7 +9,7 @@ export default function ClientIntlProvider({ children }: { children: ReactNode }
   const { locale } = useLocale()
   const messages = loadMessages(locale)
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
+    <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
       {children}
     </NextIntlClientProvider>
   )

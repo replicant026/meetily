@@ -36,4 +36,15 @@ describe('ParticipantsSidebar', () => {
     expect(screen.getByText(/systemAudio/i)).toBeVisible();
     expect(screen.getAllByText(/unassigned/i).length).toBe(2);
   });
+
+  it('keeps imported or otherwise unprovenanced audio in one participants group', () => {
+    render(<ParticipantsSidebar participants={[
+      { id: 'paulo', name: 'Paulo', source: 'unknown', spokenSeconds: 110, share: 0.89, color: '#16a34a' },
+      { id: 'felipe', name: 'Felipe', source: 'unknown', spokenSeconds: 14, share: 0.11, color: '#2563eb' },
+    ]} />);
+
+    expect(screen.getByText(/^participants$/i)).toBeVisible();
+    expect(screen.queryByText(/^microphone$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^systemAudio$/i)).not.toBeInTheDocument();
+  });
 });

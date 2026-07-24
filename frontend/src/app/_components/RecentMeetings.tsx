@@ -44,13 +44,13 @@ export function RecentMeetings({ meetings, maxItems = 6 }: RecentMeetingsProps) 
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <h3 className="text-sm font-semibold text-[rgb(var(--app-fg))]">{t('recent_meetings')}</h3>
       {items.map((meeting) => (
         <button
           key={meeting.id}
           onClick={() => router.push(`/meeting-details?id=${meeting.id}`)}
-          className="flex w-full items-center gap-3 rounded-lg border border-[rgb(var(--app-border))] bg-[rgb(var(--app-surface))] p-3 text-left transition-colors hover:bg-[rgb(var(--app-muted))]"
+          className="w-full border-b border-[rgb(var(--app-border))] px-2 py-4 text-left last:border-b-0 transition-colors hover:bg-[rgb(var(--app-muted))]"
         >
           <div className="flex-1 min-w-0">
             <p className="truncate text-sm font-medium text-[rgb(var(--app-fg))]">{meeting.title}</p>

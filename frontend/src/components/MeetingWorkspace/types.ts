@@ -4,7 +4,8 @@ export interface WorkspaceParticipant {
   id: string;
   name: string;
   color: string;
-  source: 'microphone' | 'system';
+  /** A source is only shown when it comes from captured-audio provenance. */
+  source: 'microphone' | 'system' | 'unknown';
   spokenSeconds: number;
   share: number;
 }

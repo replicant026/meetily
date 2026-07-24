@@ -13,5 +13,6 @@
   "summaries_ready": "Summaries",
   "importRecording": "Import a recording",
   "importDescription": "Import an audio file to transcribe and summarize",
-  "importFile": "Import file"
+  "importFile": "Import file",
+  "subtitle": "Your meetings, transcribed locally"
 }

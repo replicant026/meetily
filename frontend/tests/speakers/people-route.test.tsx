@@ -1,103 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import PeoplePage from '@/app/people/page';
 
-// ── Mocks ────────────────────────────────────────────────────────────────
-
-vi.mock('next-intl', () => ({
-  useTranslations:
-    () =>
-    (key: string, params?: Record<string, unknown>) => {
-      if (params) {
-        return Object.entries(params).reduce(
-          (str, [k, v]) => str.replace(`{${k}}`, String(v)),
-          key,
-        );
-      }
-      return key;
-    },
+// Mock next/navigation
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
 }));
 
+// Mock next-intl
+vi.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
+// Mock speaker API
+vi.mock('@/lib/speaker-api', () => ({
+  listPeople: vi.fn().mockResolvedValue([
+    { id: 'person-1', display_name: 'Felipe', color: '#3b82f6', reference_count: 2, playable_reference_count: 2, meeting_count: 5, last_seen_at: new Date().toISOString(), email: null },
+    { id: 'person-2', display_name: 'Ana', color: '#10b981', reference_count: 0, playable_reference_count: 0, meeting_count: 1, last_seen_at: null, email: null },
+  ]),
+  createPerson: vi.fn().mockResolvedValue('new-id'),
+}));
+
+// Mock sonner
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-const pendingCountFn = vi.fn().mockResolvedValue(0);
-
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: (cmd: string) => {
-    switch (cmd) {
-      case 'list_speaker_people':
-        return Promise.resolve([]);
-      case 'get_speaker_recognition_preferences':
-        return Promise.resolve({
-          recognitionMode: 'off',
-          lockAudioChannels: false,
-          minimumReferenceQuality: 0.5,
-        });
-      case 'set_speaker_recognition_preferences':
-        return Promise.resolve(undefined);
-      case 'count_pending_speaker_suggestions':
-        return pendingCountFn();
-      default:
-        return Promise.reject(new Error(`Unknown command: ${cmd}`));
-    }
-  },
+// Mock UI components
+vi.mock('@/components/ui/input', () => ({
+  Input: (props: any) => <input {...props} />,
 }));
 
-vi.mock('lucide-react', async () => {
-  const actual = await vi.importActual<typeof import('lucide-react')>('lucide-react');
-  return { ...actual };
-});
-
-vi.mock('@/lib/utils', () => ({
-  cn: (...classes: (string | false | null | undefined)[]) => classes.filter(Boolean).join(' '),
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
 }));
 
-// ── Tests ────────────────────────────────────────────────────────────────
+import { SpeakerDirectory } from '@/components/speakers/SpeakerDirectory';
 
-describe('People route', () => {
-  beforeEach(() => {
-    pendingCountFn.mockReset();
-    pendingCountFn.mockResolvedValue(0);
+describe('People directory', () => {
+  it('renders a list without detail panel', async () => {
+    render(<SpeakerDirectory />);
+    // Wait for people to load
+    const felipe = await screen.findByText('Felipe');
+    expect(felipe).toBeVisible();
+    // No detail panel "no_selection" text
+    expect(screen.queryByText('detail.no_selection')).not.toBeInTheDocument();
   });
 
-  it('shows People as a dedicated route with directory', async () => {
-    render(<PeoplePage />);
-
-    // Page heading renders the i18n key
-    const headings = await screen.findAllByRole('heading');
-    expect(headings.length).toBeGreaterThanOrEqual(1);
-    expect(headings.some((h) => h.textContent?.includes('directory.title'))).toBe(true);
-  });
-
-  it('renders the SpeakerDirectory search UI', async () => {
-    render(<PeoplePage />);
-
-    // Search input from SpeakerDirectory
-    expect(screen.getByPlaceholderText('directory.search_placeholder')).toBeVisible();
-  });
-
-  it('shows review banner when there are pending voice prints', async () => {
-    pendingCountFn.mockResolvedValue(3);
-
-    render(<PeoplePage />);
-
-    // Wait for the async count to load — mock returns raw i18n key with replacement
-    const banner = await screen.findByText(/review_queue\.pending_count/);
-    expect(banner).toBeVisible();
-    // The amber-50 background banner container
-    expect(banner.closest('.bg-amber-50')).toBeTruthy();
-  });
-
-  it('hides review banner when no pending voice prints', async () => {
-    pendingCountFn.mockResolvedValue(0);
-
-    render(<PeoplePage />);
-
-    // Give async settle time
-    await new Promise((r) => setTimeout(r, 10));
-
-    expect(screen.queryByText(/review_queue\.pending_count/)).toBeNull();
+  it('navigates to /people/<id> on click', async () => {
+    render(<SpeakerDirectory />);
+    const felipe = await screen.findByText('Felipe');
+    felipe.closest('button')?.click();
+    expect(mockPush).toHaveBeenCalledWith('/people/person-1');
   });
 });

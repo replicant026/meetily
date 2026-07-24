@@ -27,11 +27,11 @@ export function MeetingTabs({
       onValueChange={(v) => setActiveTab(v as MeetingWorkspaceTab)}
       className="flex flex-col h-full"
     >
-      <TabsList className="mx-4 mt-3">
-        <TabsTrigger value="transcript">{t('transcript')}</TabsTrigger>
-        <TabsTrigger value="notes">{t('notes')}</TabsTrigger>
-        <TabsTrigger value="actions">{t('actions')}</TabsTrigger>
-        <TabsTrigger value="summary">{t('summary')}</TabsTrigger>
+      <TabsList className="mx-6 mt-4 h-10 w-fit rounded-lg border border-[rgb(var(--app-border))] bg-[rgb(var(--app-surface))] p-1">
+        <TabsTrigger className="px-4 text-sm font-medium text-stone-600 data-[state=active]:bg-[rgb(var(--app-bg))] data-[state=active]:text-stone-900 data-[state=active]:shadow-sm" value="transcript">{t('transcript')}</TabsTrigger>
+        <TabsTrigger className="px-4 text-sm font-medium text-stone-600 data-[state=active]:bg-[rgb(var(--app-bg))] data-[state=active]:text-stone-900 data-[state=active]:shadow-sm" value="notes">{t('notes')}</TabsTrigger>
+        <TabsTrigger className="px-4 text-sm font-medium text-stone-600 data-[state=active]:bg-[rgb(var(--app-bg))] data-[state=active]:text-stone-900 data-[state=active]:shadow-sm" value="actions">{t('actions')}</TabsTrigger>
+        <TabsTrigger className="px-4 text-sm font-medium text-stone-600 data-[state=active]:bg-[rgb(var(--app-bg))] data-[state=active]:text-stone-900 data-[state=active]:shadow-sm" value="summary">{t('summary')}</TabsTrigger>
       </TabsList>
 
       <div className="flex-1 min-h-0 overflow-auto">

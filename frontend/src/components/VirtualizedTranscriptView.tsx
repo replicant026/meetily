@@ -158,7 +158,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
             className={
                 "text-xs flex-shrink-0 min-w-[50px] text-right " +
                 (onTimestampClick
-                    ? "text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    ? "text-stone-500 hover:text-stone-900 hover:underline cursor-pointer"
                     : "text-gray-400 cursor-default")
             }
             aria-label={t('jump_to', { time: formatRecordingTime(timestamp) })}
@@ -183,10 +183,13 @@ const TranscriptSegment = memo(function TranscriptSegment({
                                         openRename(e);
                                     }
                                 }}
-                                className={`text-xs font-medium px-2 py-0.5 rounded cursor-pointer ${speakerColor?.bg ?? 'bg-blue-50'} ${speakerColor?.text ?? 'text-blue-700'} hover:opacity-80`}
+                                className="inline-flex items-center gap-2 text-sm font-medium text-stone-800 cursor-pointer hover:text-stone-950"
                                 title={onSpeakerClick ? t('speaker_assign_tooltip', { default: 'Click to assign this speaker to a person' }) : t('speaker_rename_placeholder')}
                             >
-                                {customName ?? speaker}
+                                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold ${speakerColor?.bg ?? 'bg-stone-200'} ${speakerColor?.text ?? 'text-stone-700'}`}>
+                                    {(customName ?? speaker).slice(0, 2).toUpperCase()}
+                                </span>
+                                <span className="max-w-28 truncate">{customName ?? speaker}</span>
                             </button>
                             {onSpeakerRename && (
                                 <button
@@ -242,10 +245,10 @@ const TranscriptSegment = memo(function TranscriptSegment({
                 <div className="min-w-0">
                     {isStreaming ? (
                         <div className="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
-                            <p className="text-base text-gray-800 leading-relaxed" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
+                            <p className="text-[19px] text-stone-900 leading-8" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
                         </div>
                     ) : (
-                        <p className="text-base text-gray-800 leading-relaxed" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
+                        <p className="text-[19px] text-stone-900 leading-8" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
                     )}
                 </div>
 

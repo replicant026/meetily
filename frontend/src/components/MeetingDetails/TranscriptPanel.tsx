@@ -110,8 +110,8 @@ export function TranscriptPanel({
   const hasSeek = !!onSeekToTimestamp;
 
   return (
-    <div className="flex min-w-0 flex-col relative" data-testid="workspace-transcript">
-      <div className="p-4 border-b border-gray-200">
+    <div className="flex min-w-0 flex-col relative bg-[rgb(var(--app-bg))]" data-testid="workspace-transcript">
+      <div className="p-4 border-b border-[rgb(var(--app-border))]">
         <TranscriptButtonGroup
           transcriptCount={usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0)}
           onCopyTranscript={onCopyTranscript}
@@ -149,10 +149,10 @@ export function TranscriptPanel({
       </div>
 
       {!isRecording && convertedSegments.length > 0 && (
-        <div className="p-1 border-t border-gray-200">
+        <div className="p-1 border-t border-[rgb(var(--app-border))]">
           <textarea
             placeholder={tSummary("meeting.custom_prompt_placeholder")}
-            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm min-h-[80px] resize-y"
+            className="w-full px-3 py-2 border border-[rgb(var(--app-border))] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-stone-400 focus:border-stone-400 bg-[rgb(var(--app-surface))] shadow-sm min-h-[80px] resize-y"
             value={customPrompt}
             onChange={(e) => onPromptChange(e.target.value)}
           />

@@ -13,5 +13,6 @@
   "summaries_ready": "Resumos",
   "importRecording": "Importar uma gravação",
   "importDescription": "Importe um arquivo de áudio para transcrever e resumir",
-  "importFile": "Importar arquivo"
+  "importFile": "Importar arquivo",
+  "subtitle": "Suas reuniões, transcritas localmente"
 }

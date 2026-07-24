@@ -28,7 +28,7 @@ export function AppShell({ children }: AppShellProps) {
   }, [handleKeyDown]);
 
   return (
-    <div className="flex h-screen bg-[rgb(var(--app-bg))]">
+    <div className="flex h-dvh overflow-hidden bg-[rgb(var(--app-bg))]">
       {/* Left sidebar rail — compact 64px icon rail */}
       <aside className="flex w-16 shrink-0 flex-col items-center border-r border-[rgb(var(--app-border))] bg-[rgb(var(--app-surface))]">
         {/* Navigation links */}
@@ -49,7 +49,7 @@ export function AppShell({ children }: AppShellProps) {
       <SidebarSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Main content area */}
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <main className="flex-1 min-w-0 overflow-y-auto">{children}</main>
     </div>
   );
 }

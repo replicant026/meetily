@@ -77,6 +77,8 @@ import homePtBR from "../../locales/pt-BR/home.json";
  * (first launch) or the stored value is not a supported locale.
  */
 export async function getStoredLocale(): Promise<Locale> {
+  if (typeof window === "undefined") return DEFAULT_LOCALE;
+
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     const stored = await invoke<string | null>("get_ui_language");

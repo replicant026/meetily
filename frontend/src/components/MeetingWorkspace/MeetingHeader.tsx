@@ -26,11 +26,11 @@ export function MeetingHeader({ meeting, audio }: MeetingHeaderProps) {
   });
 
   return (
-    <header className="border-b border-stone-200 px-6 py-4 bg-white">
+    <header className="border-b border-[rgb(var(--app-border))] px-8 py-5 bg-[rgb(var(--app-bg))]">
       <p className="text-[11px] font-medium tracking-widest uppercase text-stone-400 mb-1">
         {dateStr}
       </p>
-      <h1 className="text-2xl font-semibold text-stone-900 leading-tight app-display-heading">
+      <h1 className="text-4xl font-medium text-stone-900 leading-tight app-display-heading">
         {meeting.title}
       </h1>
 

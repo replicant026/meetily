@@ -9,7 +9,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 
 const NAV_ITEMS = [
   { id: 'home', href: '/', icon: Home, labelKey: 'common.nav.home', exact: true },
-  { id: 'meetings', href: '/', icon: ListVideo, labelKey: 'common.nav.meetings', exact: true },
+  { id: 'meetings', href: '/meetings', icon: ListVideo, labelKey: 'common.nav.meetings', exact: true },
   { id: 'people', href: '/people', icon: Users, labelKey: 'speakers.directory.title', exact: false },
   { id: 'settings', href: '/settings', icon: Settings, labelKey: 'common.nav.settings', exact: false },
 ] as const;

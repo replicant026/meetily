@@ -15,7 +15,7 @@ export function SidebarActions({ meetingsCount }: SidebarActionsProps) {
   const t = useTranslations('sidebar');
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-2 pb-2">
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <button

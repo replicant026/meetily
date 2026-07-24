@@ -34,13 +34,13 @@ export function MeetingWorkspace({
 }: MeetingWorkspaceProps) {
   const t = useTranslations('meetingWorkspace');
   return (
-    <div className="min-h-screen bg-[rgb(var(--app-bg))] text-stone-900">
+    <div className="min-h-0 h-full bg-[rgb(var(--app-bg))] text-stone-900">
       <MeetingHeader meeting={meeting} audio={audio} />
       <MeetingTimeline audio={audio} peaks={peaks} />
-      <div className="grid min-h-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div data-testid="meeting-workspace-grid" className="grid min-h-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section
           aria-label={t('meetingContent')}
-          className="min-w-0 border-r border-stone-200 bg-white"
+          className="min-w-0 border-r border-[rgb(var(--app-border))] bg-[rgb(var(--app-bg))]"
         >
           <MeetingTabs
             transcriptContent={transcriptContent}

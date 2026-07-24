@@ -33,6 +33,7 @@ export function HomeDashboard({
   onRecover,
 }: HomeDashboardProps) {
   const t = useTranslations('common');
+  const tHome = useTranslations('home');
   const { meetings, isLoading, error } = useMeetingDirectory();
 
   if (isLoading) {
@@ -61,14 +62,14 @@ export function HomeDashboard({
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-6 space-y-6">
+    <div className="app-page space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[rgb(var(--app-fg))]">
+        <h1 className="app-display-heading text-4xl text-[rgb(var(--app-fg))]">
           {t('nav.home')}
         </h1>
         <p className="mt-1 text-sm text-[rgb(var(--app-muted-fg))]">
-          Your meetings, transcribed locally
+          {tHome('subtitle')}
         </p>
       </div>
 

@@ -27,8 +27,8 @@ export default function MeetingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-6 space-y-6">
-      <h1 className="app-display-heading text-2xl text-[rgb(var(--app-fg))]">
+    <div className="app-page space-y-8">
+      <h1 className="app-display-heading text-4xl text-[rgb(var(--app-fg))]">
         {tHome('recent_meetings')}
       </h1>
       <RecentMeetings meetings={meetings} maxItems={100} />

@@ -741,6 +741,13 @@ pub fn run() {
             get_diarization_status,
             set_diarization_config,
             // Speaker profile commands
+            list_speaker_people,
+            get_speaker_person,
+            create_speaker_person,
+            rename_speaker_person,
+            delete_speaker_person,
+            merge_speaker_people,
+            list_speaker_voice_references,
             update_speaker_person_email,
             update_speaker_person_color,
             list_speaker_profiles,
@@ -1071,6 +1078,108 @@ async fn assign_meeting_speaker(
 }
 
 // ── Speaker profile commands ──────────────────────────────────────────────
+
+#[tauri::command]
+async fn list_speaker_people(
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<Vec<crate::database::repositories::speaker::SpeakerPersonDto>, String> {
+    crate::database::repositories::speaker::SpeakerRepository::list_people(state.db_manager.pool())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_speaker_person(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+) -> Result<crate::database::repositories::speaker::SpeakerPersonDto, String> {
+    crate::database::repositories::speaker::SpeakerRepository::get_person(state.db_manager.pool(), &id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("speaker person {} not found", id))
+}
+
+#[tauri::command]
+async fn create_speaker_person(
+    state: tauri::State<'_, crate::state::AppState>,
+    display_name: String,
+    email: Option<String>,
+    color: Option<String>,
+) -> Result<String, String> {
+    let display_name = display_name.trim();
+    if display_name.is_empty() {
+        return Err("display name cannot be empty".into());
+    }
+
+    crate::database::repositories::speaker::SpeakerRepository::create_person(
+        state.db_manager.pool(),
+        display_name,
+        email.as_deref(),
+        color.as_deref(),
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn rename_speaker_person(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+    new_name: String,
+) -> Result<(), String> {
+    let new_name = new_name.trim();
+    if new_name.is_empty() {
+        return Err("display name cannot be empty".into());
+    }
+
+    crate::database::repositories::speaker::SpeakerRepository::rename_person(
+        state.db_manager.pool(),
+        &id,
+        new_name,
+    )
+    .await
+    .map(|_| ())
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_speaker_person(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+) -> Result<(), String> {
+    crate::database::repositories::speaker::SpeakerRepository::delete_person(state.db_manager.pool(), &id)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn merge_speaker_people(
+    state: tauri::State<'_, crate::state::AppState>,
+    source_id: String,
+    target_id: String,
+) -> Result<(), String> {
+    crate::database::repositories::speaker::SpeakerRepository::merge_people(
+        state.db_manager.pool(),
+        &source_id,
+        &target_id,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn list_speaker_voice_references(
+    state: tauri::State<'_, crate::state::AppState>,
+    person_id: String,
+) -> Result<Vec<crate::database::repositories::voice_reference::VoiceReferenceDto>, String> {
+    crate::database::repositories::voice_reference::VoiceReferenceRepository::list_for_person(
+        state.db_manager.pool(),
+        &person_id,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 async fn update_speaker_person_email(

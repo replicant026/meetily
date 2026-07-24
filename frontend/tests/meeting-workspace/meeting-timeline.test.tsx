@@ -19,6 +19,25 @@ const segments = [
 ];
 
 describe('MeetingTimeline', () => {
+  it('draws waveform bars upward from a bottom baseline', () => {
+    const fillRect = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      scale: vi.fn(),
+      clearRect: vi.fn(),
+      fillRect,
+      fillStyle: '',
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 200,
+      height: 64,
+    } as DOMRect);
+
+    render(<MeetingTimeline audio={audioFixture} peaks={new Float32Array([0.5])} />);
+
+    const [, y, , height] = fillRect.mock.calls[0];
+    expect(y + height).toBe(61);
+  });
+
   it('seeks shared audio when the waveform is clicked', async () => {
     const seek = vi.fn();
     const user = userEvent.setup();

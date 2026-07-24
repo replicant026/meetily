@@ -33,14 +33,14 @@ export function MeetingTimeline({ audio, peaks }: MeetingTimelineProps) {
 
     const w = rect.width;
     const h = rect.height;
-    const mid = h / 2;
+    const baseline = h - 3;
 
     ctx.clearRect(0, 0, w, h);
 
     if (!peaks || peaks.length === 0) {
       // Disabled neutral bar
       ctx.fillStyle = DISABLED_COLOR;
-      ctx.fillRect(0, mid - 2, w, 4);
+      ctx.fillRect(0, baseline, w, 1);
       return;
     }
 
@@ -49,12 +49,11 @@ export function MeetingTimeline({ audio, peaks }: MeetingTimelineProps) {
 
     for (let i = 0; i < peaks.length; i++) {
       const x = i * barWidth;
-      const barH = Math.max(2, peaks[i] * mid);
+      const barH = Math.max(2, peaks[i] * (h - 6));
       const ratio = (i + 0.5) / peaks.length;
 
       ctx.fillStyle = ratio <= progress ? ELAPSED_COLOR : BAR_COLOR;
-      // Draw bars symmetrically from center
-      ctx.fillRect(x, mid - barH, Math.max(1, barWidth - 1), barH * 2);
+      ctx.fillRect(x, baseline - barH, Math.max(1, barWidth - 1), barH);
     }
   }, [peaks, audio.currentTime, audio.duration]);
 
