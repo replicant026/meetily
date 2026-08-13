@@ -152,8 +152,9 @@ pub fn start_transcription_task<R: Runtime>(
                             let diarization_samples = chunk.data.clone();
                             let diarization_sample_rate = chunk.sample_rate;
 
-                            // Transcribe with provider-agnostic approach
-                            match transcribe_chunk_with_provider(
+                            // Transcribe — returns sub-segments for Whisper (one per sentence),
+                            // single segment for Parakeet/Provider.
+                            match transcribe_chunk_segments(
                                 &engine_clone,
                                 chunk,
                                 &app_clone,
@@ -161,62 +162,28 @@ pub fn start_transcription_task<R: Runtime>(
                             )
                             .await
                             {
-                                Ok((transcript, confidence_opt, is_partial)) => {
+                                Ok(segments) => {
                                     // Provider-aware confidence threshold
                                     let confidence_threshold = match &engine_clone {
                                         TranscriptionEngine::Whisper(_) | TranscriptionEngine::Provider(_) => 0.3,
-                                        TranscriptionEngine::Parakeet(_) => 0.0, // Parakeet has no confidence, accept all
+                                        TranscriptionEngine::Parakeet(_) => 0.0,
                                     };
 
-                                    let confidence_str = match confidence_opt {
-                                        Some(c) => format!("{:.2}", c),
-                                        None => "N/A".to_string(),
-                                    };
-
-                                    info!("🔍 Worker {} transcription result: text='{}', confidence={}, partial={}, threshold={:.2}",
-                                          worker_id, transcript, confidence_str, is_partial, confidence_threshold);
-
-                                    // Check confidence threshold (or accept if no confidence provided)
-                                    let meets_threshold = confidence_opt.map_or(true, |c| c >= confidence_threshold);
-
-                                    if !transcript.trim().is_empty() && meets_threshold {
-                                        // PERFORMANCE: Only log transcription results, not every processing step
-                                        info!("✅ Worker {} transcribed: {} (confidence: {}, partial: {})",
-                                              worker_id, transcript, confidence_str, is_partial);
-
-                                        // Emit speech-detected event for frontend UX (only on first detection per session)
-                                        // This is lightweight and provides better user feedback
+                                    if segments.is_empty() {
+                                        if should_log_this_chunk {
+                                            info!("Worker {}: empty transcription", worker_id);
+                                        }
+                                    } else {
+                                        // Emit speech-detected event once per session
                                         let current_flag = SPEECH_DETECTED_EMITTED.load(Ordering::SeqCst);
-                                        info!("🔍 Checking speech-detected flag: current={}, will_emit={}", current_flag, !current_flag);
-
                                         if !current_flag {
                                             SPEECH_DETECTED_EMITTED.store(true, Ordering::SeqCst);
-                                            match app_clone.emit("speech-detected", serde_json::json!({
+                                            let _ = app_clone.emit("speech-detected", serde_json::json!({
                                                 "message": "Speech activity detected"
-                                            })) {
-                                                Ok(_) => info!("🎤 ✅ First speech detected - successfully emitted speech-detected event"),
-                                                Err(e) => error!("🎤 ❌ Failed to emit speech-detected event: {}", e),
-                                            }
-                                        } else {
-                                            info!("🔍 Speech already detected in this session, not re-emitting");
+                                            }));
                                         }
 
-                                        // Generate sequence ID and calculate timestamps FIRST
-                                        let sequence_id = SEQUENCE_COUNTER.fetch_add(1, Ordering::SeqCst);
-                                        let audio_start_time = chunk_timestamp; // Already in seconds from recording start
-                                        let audio_end_time = chunk_timestamp + chunk_duration;
-
-                                        // Save structured transcript segment to recording manager (only final results)
-                                        // Save ALL segments (partial and final) to ensure complete JSON
-                                        // Create structured segment with full timestamp data
-                                        // NOTE: This is now handled via the transcript-update event emission below
-                                        // The recording_commands module listens to these events and saves them
-                                        // This decouples the transcription worker from direct RECORDING_MANAGER access
-
-                                        // Emit transcript update with NEW recording-relative timestamps
-
-                                        // PR-44a: realtime speaker hint. Failures are non-fatal
-                                        // (transient_speaker simply stays None) so transcription never blocks.
+                                        // PR-44a: realtime speaker hint for the whole chunk
                                         let transient_speaker: Option<String> = {
                                             let buf = crate::audio::recording_commands::current_diarization_buffer();
                                             if crate::diarization::embedding::push_window(
@@ -232,34 +199,51 @@ pub fn start_transcription_task<R: Runtime>(
                                             }
                                         };
 
-                                        let update = TranscriptUpdate {
-                                            transient_speaker,
-                                            text: transcript,
-                                            timestamp: format_current_timestamp(), // Wall-clock for reference
-                                            source: "Audio".to_string(),
-                                            sequence_id,
-                                            chunk_start_time: chunk_timestamp, // Legacy compatibility
-                                            is_partial,
-                                            confidence: confidence_opt.unwrap_or(0.85), // Default for providers without confidence
-                                            // NEW: Recording-relative timestamps for sync
-                                            audio_start_time,
-                                            audio_end_time,
-                                            duration: chunk_duration,
-                                        };
+                                        // Emit one TranscriptUpdate per sub-segment.
+                                        // Whisper sub-segments carry centisecond timestamps → map to recording-relative seconds.
+                                        for seg in &segments {
+                                            let meets_threshold = seg.confidence.map_or(true, |c| c >= confidence_threshold);
+                                            if seg.text.trim().is_empty() || !meets_threshold {
+                                                continue;
+                                            }
 
-                                        if let Err(e) = app_clone.emit("transcript-update", &update)
-                                        {
-                                            error!(
-                                                "Worker {}: Failed to emit transcript update: {}",
-                                                worker_id, e
-                                            );
+                                            let sequence_id = SEQUENCE_COUNTER.fetch_add(1, Ordering::SeqCst);
+
+                                            // Use whisper centisecond timestamps when available,
+                                            // fall back to chunk-level timestamps for Parakeet/Provider.
+                                            let (audio_start_time, audio_end_time, dur) =
+                                                if let (Some(start_cs), Some(end_cs)) = (seg.start_cs, seg.end_cs) {
+                                                    let s = chunk_timestamp + (start_cs as f64 * 0.01);
+                                                    let e = chunk_timestamp + (end_cs as f64 * 0.01);
+                                                    (s, e, e - s)
+                                                } else {
+                                                    (chunk_timestamp, chunk_timestamp + chunk_duration, chunk_duration)
+                                                };
+
+                                            let update = TranscriptUpdate {
+                                                transient_speaker: transient_speaker.clone(),
+                                                text: seg.text.clone(),
+                                                timestamp: format_current_timestamp(),
+                                                source: "Audio".to_string(),
+                                                sequence_id,
+                                                chunk_start_time: chunk_timestamp,
+                                                is_partial: seg.is_partial,
+                                                confidence: seg.confidence.unwrap_or(0.85),
+                                                audio_start_time,
+                                                audio_end_time,
+                                                duration: dur,
+                                            };
+
+                                            if let Err(e) = app_clone.emit("transcript-update", &update) {
+                                                error!("Worker {}: Failed to emit transcript update: {}", worker_id, e);
+                                            }
                                         }
-                                        // PERFORMANCE: Removed verbose logging of every emission
-                                    } else if !transcript.trim().is_empty() && should_log_this_chunk
-                                    {
-                                        // PERFORMANCE: Only log low-confidence results occasionally
-                                        if let Some(c) = confidence_opt {
-                                            info!("Worker {} low-confidence transcription (confidence: {:.2}), skipping", worker_id, c);
+
+                                        if should_log_this_chunk {
+                                            let total_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" | ");
+                                            let preview = if total_text.len() > 100 { &total_text[..100] } else { &total_text };
+                                            info!("Worker {} emitted {} sub-segments: '{}'",
+                                                  worker_id, segments.len(), preview);
                                         }
                                     }
                                 }
@@ -599,6 +583,341 @@ async fn transcribe_chunk_with_provider<R: Runtime>(
             }
         }
     }
+}
+
+/// A single transcription segment with its own text and confidence.
+/// Used by `transcribe_chunk_segments` to return sub-segments from Whisper.
+pub struct TranscriptionSegment {
+    pub text: String,
+    pub confidence: Option<f32>,
+    pub is_partial: bool,
+    /// Optional centisecond timestamps from whisper.cpp (start/end).
+    /// When present, the worker maps these to recording-relative seconds.
+    pub start_cs: Option<i64>,
+    pub end_cs: Option<i64>,
+}
+
+/// Transcribe audio chunk and return sub-segments (one per Whisper internal segment).
+/// For Whisper: splits long chunks into sentence-level sub-segments using timestamps.
+/// For Parakeet/Provider: returns a single segment (no sub-segmentation).
+async fn transcribe_chunk_segments<R: Runtime>(
+    engine: &TranscriptionEngine,
+    chunk: AudioChunk,
+    app: &AppHandle<R>,
+    initial_prompt: Option<String>,
+) -> std::result::Result<Vec<TranscriptionSegment>, TranscriptionError> {
+    // Compute duration before data is moved by resampling
+    let chunk_duration = chunk.data.len() as f64 / chunk.sample_rate as f64;
+
+    // Convert to 16kHz mono
+    let speech_samples = if chunk.sample_rate != 16000 {
+        crate::audio::audio_processing::resample_audio(&chunk.data, chunk.sample_rate, 16000)
+    } else {
+        chunk.data
+    };
+
+    if speech_samples.is_empty() {
+        return Err(TranscriptionError::AudioTooShort { samples: 0, minimum: 1600 });
+    }
+
+    // Keep a copy for silence-based splitting (engines take ownership of speech_samples)
+    let audio_for_split = speech_samples.clone();
+
+    match engine {
+        TranscriptionEngine::Whisper(whisper_engine) => {
+            let language = crate::get_language_preference_internal();
+
+            match whisper_engine
+                .transcribe_audio_with_segments(speech_samples, language, initial_prompt)
+                .await
+            {
+                Ok((ws_segments, avg_confidence)) => {
+                    if ws_segments.is_empty() {
+                        return Ok(vec![]);
+                    }
+
+                    let segments: Vec<TranscriptionSegment> = ws_segments
+                        .into_iter()
+                        .map(|ws| {
+                            let is_partial = ws.text.len() < 50;
+                            TranscriptionSegment {
+                                text: ws.text,
+                                confidence: Some(avg_confidence),
+                                is_partial,
+                                start_cs: Some(ws.start_cs),
+                                end_cs: Some(ws.end_cs),
+                            }
+                        })
+                        .collect();
+
+                    info!(
+                        "Whisper produced {} sub-segments for chunk {}",
+                        segments.len(), chunk.chunk_id
+                    );
+
+                    Ok(segments)
+                }
+                Err(e) => {
+                    error!("Whisper transcription failed for chunk {}: {}", chunk.chunk_id, e);
+                    let transcription_error = TranscriptionError::EngineFailed(e.to_string());
+                    let _ = app.emit(
+                        "transcription-error",
+                        &serde_json::json!({
+                            "error": transcription_error.to_string(),
+                            "userMessage": format!("Transcription failed: {}", transcription_error),
+                            "actionable": false
+                        }),
+                    );
+                    Err(transcription_error)
+                }
+            }
+        }
+        TranscriptionEngine::Parakeet(parakeet_engine) => {
+            match parakeet_engine.transcribe_audio(speech_samples).await {
+                Ok(text) => {
+                    let cleaned = text.trim().to_string();
+                    if cleaned.is_empty() {
+                        return Ok(vec![]);
+                    }
+                    Ok(split_at_silence(&cleaned, &audio_for_split, 16000))
+                }
+                Err(e) => {
+                    error!("Parakeet transcription failed for chunk {}: {}", chunk.chunk_id, e);
+                    let err = TranscriptionError::EngineFailed(e.to_string());
+                    let _ = app.emit("transcription-error", &serde_json::json!({
+                        "error": err.to_string(),
+                        "userMessage": format!("Transcription failed: {}", err),
+                        "actionable": false
+                    }));
+                    Err(err)
+                }
+            }
+        }
+        TranscriptionEngine::Provider(provider) => {
+            let language = crate::get_language_preference_internal();
+            match provider.transcribe(speech_samples, language).await {
+                Ok(result) => {
+                    let cleaned = result.text.trim().to_string();
+                    if cleaned.is_empty() {
+                        return Ok(vec![]);
+                    }
+                    let mut segs = split_at_silence(&cleaned, &audio_for_split, 16000);
+                    // Preserve confidence/partial from provider on first segment
+                    if let Some(first) = segs.first_mut() {
+                        first.confidence = result.confidence;
+                        first.is_partial = result.is_partial;
+                    }
+                    Ok(segs)
+                }
+                Err(e) => {
+                    error!("{} transcription failed for chunk {}: {}", provider.provider_name(), chunk.chunk_id, e);
+                    let _ = app.emit("transcription-error", &serde_json::json!({
+                        "error": e.to_string(),
+                        "userMessage": format!("Transcription failed: {}", e),
+                        "actionable": false
+                    }));
+                    Err(e)
+                }
+            }
+        }
+    }
+}
+
+/// Split long text at actual silence gaps in the audio.
+///
+/// Scans the raw 16kHz audio for energy dips (silence windows ≥ 150ms) and
+/// uses those as split points. This is more accurate than punctuation-based
+/// splitting because it reflects real pauses in speech.
+///
+/// Falls back to punctuation splitting if no audio is provided.
+fn split_at_silence(text: &str, audio: &[f32], sample_rate: u32) -> Vec<TranscriptionSegment> {
+    if text.len() < 100 || audio.len() < sample_rate as usize / 2 {
+        return vec![TranscriptionSegment {
+            text: text.to_string(),
+            confidence: None,
+            is_partial: false,
+            start_cs: None,
+            end_cs: None,
+        }];
+    }
+
+    let chunk_duration = audio.len() as f64 / sample_rate as f64;
+
+    // Scan for silence windows: 150ms windows with RMS energy below threshold
+    const WINDOW_MS: usize = 150;
+    const WINDOW_SAMPLES: usize = (16000 * WINDOW_MS) / 1000; // 2400 samples at 16kHz
+    const SILENCE_RMS_THRESHOLD: f32 = 0.015; // empirically tuned for speech
+    const MIN_GAP_MS: usize = 200; // ignore gaps shorter than 200ms
+
+    let mut silence_windows: Vec<(usize, usize)> = Vec::new(); // (start_sample, end_sample)
+    let mut i = 0;
+    while i + WINDOW_SAMPLES <= audio.len() {
+        let window = &audio[i..i + WINDOW_SAMPLES];
+        let rms = (window.iter().map(|&x| x * x).sum::<f32>() / WINDOW_SAMPLES as f32).sqrt();
+
+        if rms < SILENCE_RMS_THRESHOLD {
+            // Extend existing window or start new one
+            if let Some(last) = silence_windows.last_mut() {
+                if i <= last.1 + WINDOW_SAMPLES {
+                    last.1 = i + WINDOW_SAMPLES;
+                } else {
+                    silence_windows.push((i, i + WINDOW_SAMPLES));
+                }
+            } else {
+                silence_windows.push((i, i + WINDOW_SAMPLES));
+            }
+        }
+        i += WINDOW_SAMPLES / 2; // 50% overlap for smoother detection
+    }
+
+    // Filter: keep only gaps ≥ MIN_GAP_MS
+    let min_gap_samples = (sample_rate as usize * MIN_GAP_MS) / 1000;
+    let split_points: Vec<f64> = silence_windows
+        .iter()
+        .filter(|(start, end)| end - start >= min_gap_samples)
+        .map(|(start, _)| *start as f64 / sample_rate as f64) // convert to seconds
+        .collect();
+
+    if split_points.is_empty() {
+        // No significant silence found — fall back to punctuation splitting
+        return split_by_punctuation(text, chunk_duration);
+    }
+
+    // Map split points to character positions proportionally
+    let total_chars = text.len() as f64;
+    let total_dur = chunk_duration;
+    let mut segments: Vec<TranscriptionSegment> = Vec::new();
+    let mut prev_time = 0.0f64;
+
+    for (idx, &split_time) in split_points.iter().enumerate() {
+        // Estimate character position from time proportion
+        let char_pos = ((split_time / total_dur) * total_chars) as usize;
+        let char_pos = char_pos.min(text.len());
+
+        // Find nearest sentence boundary near char_pos (±30 chars)
+        let search_start = char_pos.saturating_sub(30);
+        let search_end = (char_pos + 30).min(text.len());
+        let region = &text[search_start..search_end];
+
+        // Look for punctuation boundary in search region
+        let mut best_boundary = char_pos;
+        let mut found_boundary = false;
+        for (j, ch) in region.char_indices() {
+            if matches!(ch, '.' | '!' | '?') {
+                let abs_pos = search_start + j + 1; // after the punctuation
+                if abs_pos > search_start && abs_pos < text.len() {
+                    best_boundary = abs_pos;
+                    found_boundary = true;
+                    break;
+                }
+            }
+        }
+
+        if !found_boundary {
+            // No punctuation nearby — split at estimated position (on whitespace)
+            let region_bytes = text[search_start..search_end].as_bytes();
+            for j in 0..region_bytes.len() {
+                if region_bytes[j] == b' ' || region_bytes[j] == b'\n' {
+                    best_boundary = search_start + j + 1;
+                    break;
+                }
+            }
+        }
+
+        let segment_text = text[prev_time as usize * text.len() / text.len()..].to_string();
+        // Actually just slice from previous boundary
+        let _ = segment_text; // discard
+
+        let start_char = (prev_time / total_dur * total_chars) as usize;
+        let end_char = best_boundary.min(text.len());
+
+        if end_char > start_char {
+            let seg_text = text[start_char..end_char].trim().to_string();
+            if !seg_text.is_empty() {
+                segments.push(TranscriptionSegment {
+                    text: seg_text,
+                    confidence: None,
+                    is_partial: false,
+                    start_cs: None,
+                    end_cs: None,
+                });
+            }
+        }
+        prev_time = split_time;
+    }
+
+    // Remaining text after last split
+    let last_start_char = (prev_time / total_dur * total_chars) as usize;
+    if last_start_char < text.len() {
+        let seg_text = text[last_start_char..].trim().to_string();
+        if !seg_text.is_empty() {
+            segments.push(TranscriptionSegment {
+                text: seg_text,
+                confidence: None,
+                is_partial: false,
+                start_cs: None,
+                end_cs: None,
+            });
+        }
+    }
+
+    if segments.len() < 2 {
+        // Splitting produced too few segments — fall back to punctuation
+        return split_by_punctuation(text, chunk_duration);
+    }
+
+    segments
+}
+
+/// Fallback: split at sentence punctuation (. ! ? followed by whitespace).
+fn split_by_punctuation(text: &str, chunk_duration: f64) -> Vec<TranscriptionSegment> {
+    let mut sentences: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let chars: Vec<char> = text.chars().collect();
+
+    for i in 0..chars.len() {
+        current.push(chars[i]);
+        let is_sentence_end = matches!(chars[i], '.' | '!' | '?');
+        let next_is_space_or_end = i + 1 >= chars.len() || chars[i + 1].is_whitespace();
+
+        if is_sentence_end && next_is_space_or_end && !current.trim().is_empty() {
+            sentences.push(current.trim().to_string());
+            current = String::new();
+        }
+    }
+    if !current.trim().is_empty() {
+        sentences.push(current.trim().to_string());
+    }
+
+    if sentences.len() < 2 {
+        return vec![TranscriptionSegment {
+            text: text.to_string(),
+            confidence: None,
+            is_partial: false,
+            start_cs: None,
+            end_cs: None,
+        }];
+    }
+
+    let total_chars: f64 = sentences.iter().map(|s| s.len() as f64).sum();
+    let mut elapsed = 0.0f64;
+
+    sentences
+        .into_iter()
+        .map(|s| {
+            let fraction = s.len() as f64 / total_chars;
+            let dur = chunk_duration * fraction;
+            let start = elapsed;
+            elapsed += dur;
+            TranscriptionSegment {
+                text: s,
+                confidence: None,
+                is_partial: false,
+                start_cs: None,
+                end_cs: None,
+            }
+        })
+        .collect()
 }
 
 /// Format current timestamp (wall-clock time)

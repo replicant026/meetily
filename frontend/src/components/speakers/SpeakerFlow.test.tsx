@@ -135,7 +135,7 @@ describe('Speaker flow: create, list, navigate', () => {
     });
   });
 
-  it('navigates to /people/<id> when a person is clicked', async () => {
+  it('navigates to the static person detail route when a person is clicked', async () => {
     mockListPeople.mockResolvedValue([PERSON_ALICE]);
 
     render(<SpeakerDirectory />);
@@ -150,8 +150,7 @@ describe('Speaker flow: create, list, navigate', () => {
     expect(aliceButton).toBeDefined();
     await user.click(aliceButton!);
 
-    // Should navigate to the person's detail route
-    expect(mockPush).toHaveBeenCalledWith('/people/person-1');
+    expect(mockPush).toHaveBeenCalledWith('/people/detail?id=person-1');
   });
 
   it('renders empty state when no people exist', async () => {

@@ -277,6 +277,17 @@ html {
     max-width: none !important;
   }
 
+  /* The meeting workspace owns the canvas color. BlockNote defaults to white. */
+  .summary-editor {
+    background: rgb(var(--app-bg));
+  }
+
+  .summary-editor .bn-container,
+  .summary-editor .bn-editor,
+  .summary-editor .ProseMirror {
+    background: transparent !important;
+  }
+
   /* Disable scrolling on any BlockNote wrapper elements */
   [data-node-type] {
     overflow: visible !important;

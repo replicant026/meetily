@@ -222,14 +222,16 @@ export const BlockNoteSummaryView = forwardRef<BlockNoteSummaryViewRef, BlockNot
   if (format === 'legacy') {
     console.log('🎨 Rendering LEGACY format');
     return (
-      <AISummary
-        summary={summaryData as Summary}
-        status={status}
-        error={error}
-        onSummaryChange={onSummaryChange || (() => { })}
-        onRegenerateSummary={onRegenerateSummary || (() => { })}
-        meeting={meeting}
-      />
+      <div className="summary-editor w-full">
+        <AISummary
+          summary={summaryData as Summary}
+          status={status}
+          error={error}
+          onSummaryChange={onSummaryChange || (() => { })}
+          onRegenerateSummary={onRegenerateSummary || (() => { })}
+          meeting={meeting}
+        />
+      </div>
     );
   }
 
@@ -237,7 +239,7 @@ export const BlockNoteSummaryView = forwardRef<BlockNoteSummaryViewRef, BlockNot
   if (format === 'blocknote') {
     console.log('🎨 Rendering BLOCKNOTE format (direct)');
     return (
-      <div className="flex flex-col w-full">
+      <div className="summary-editor flex w-full flex-col">
         <div className="w-full">
           <Editor
             initialContent={data.summary_json}
@@ -256,7 +258,7 @@ export const BlockNoteSummaryView = forwardRef<BlockNoteSummaryViewRef, BlockNot
   if (format === 'markdown') {
     console.log('🎨 Rendering MARKDOWN format (parsed to BlockNote)');
     return (
-      <div className="flex flex-col w-full">
+      <div className="summary-editor flex w-full flex-col">
         <div className="w-full">
           <BlockNoteView
             editor={editor}

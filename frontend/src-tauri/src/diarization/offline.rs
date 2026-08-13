@@ -301,8 +301,8 @@ async fn commit_speaker_labels_inner(
     meeting_id: &str,
     audio_wav: Option<&Path>,
     realtime_windows: Vec<WindowedEmbedding>,
-    _min_speakers: usize,
-    _max_speakers: usize,
+    requested_min_speakers: usize,
+    requested_max_speakers: usize,
     progress: Option<&(dyn Fn(u32, &str) + Send + Sync)>,
 ) -> Result<usize> {
     let emit = |pct: u32, msg: &str| {
@@ -316,8 +316,18 @@ async fn commit_speaker_labels_inner(
         log::info!("diarization offline: disabled in settings; skipping");
         return Ok(0);
     }
-    let min_speakers = status.min_speakers.max(2);
-    let max_speakers = status.max_speakers.max(min_speakers);
+    // An imported file can specify an exact participant count. Zero retains
+    // the user's global diarization preference.
+    let min_speakers = if requested_min_speakers > 0 {
+        requested_min_speakers
+    } else {
+        status.min_speakers.max(2)
+    };
+    let max_speakers = if requested_max_speakers > 0 {
+        requested_max_speakers.max(min_speakers)
+    } else {
+        status.max_speakers.max(min_speakers)
+    };
 
     emit(91, "Separando os falantes…");
 

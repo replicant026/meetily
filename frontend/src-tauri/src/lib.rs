@@ -1051,7 +1051,7 @@ async fn assign_meeting_speaker(
     meeting_id: String,
     speaker_id: String,
     segment_ids: Vec<String>,
-) -> Result<(), String> {
+) -> Result<serde_json::Value, String> {
     use crate::database::repositories::speaker::SpeakerRepository;
 
     let pool = state.db_manager.pool();
@@ -1074,7 +1074,43 @@ async fn assign_meeting_speaker(
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(())
+    // A manual assignment is also a confirmed voice example.  The People
+    // directory derives its meeting/reference counts from these rows, so only
+    // changing the display label made assigned people look unused.
+    let reference_result = if segment_ids.is_empty() {
+        Ok(None)
+    } else {
+        crate::diarization::voice_references::create_voice_reference_from_segments(
+            pool,
+            &speaker_id,
+            &meeting_id,
+            &segment_ids,
+            None,
+        )
+        .await
+        .map(Some)
+    };
+
+    let (reference_created, reference_id, reference_error) = match reference_result {
+        Ok(reference_id) => (reference_id.is_some(), reference_id, None),
+        Err(error) => {
+            log::warn!(
+                "Assigned speaker {} to meeting {} but could not save a voice reference: {}",
+                speaker_id,
+                meeting_id,
+                error
+            );
+            (false, None, Some(error.to_string()))
+        }
+    };
+
+    Ok(serde_json::json!({
+        "speakerId": speaker_id,
+        "segmentIds": segment_ids,
+        "referenceCreated": reference_created,
+        "referenceId": reference_id,
+        "referenceError": reference_error,
+    }))
 }
 
 // ── Speaker profile commands ──────────────────────────────────────────────

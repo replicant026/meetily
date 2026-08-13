@@ -73,6 +73,12 @@ export async function assignMeetingSpeaker(
   meetingId: string,
   speakerId: string,
   segmentIds: string[]
-): Promise<{ speakerId: string; segmentIds: string[]; referenceCreated: boolean }> {
+): Promise<{
+  speakerId: string;
+  segmentIds: string[];
+  referenceCreated: boolean;
+  referenceId?: string | null;
+  referenceError?: string | null;
+}> {
   return invoke('assign_meeting_speaker', { meetingId, speakerId, segmentIds });
 }

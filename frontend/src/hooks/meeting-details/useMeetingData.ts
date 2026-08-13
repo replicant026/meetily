@@ -145,6 +145,14 @@ export function useMeetingData({ meeting, summaryData, onMeetingUpdated }: UseMe
   const updateMeetingTitle = useCallback((newTitle: string) => {
     console.log('📝 Updating meeting title to:', newTitle);
     setMeetingTitle(newTitle);
+    // AI-generated titles must be persisted immediately; otherwise a refetch
+    // replaces the visible title with the old database value.
+    void invokeTauri('api_save_meeting_title', {
+      meetingId: meeting.id,
+      title: newTitle,
+    }).catch((error) => {
+      console.error('Failed to persist AI-generated meeting title:', error);
+    });
     const updatedMeetings = sidebarMeetings.map((m: CurrentMeeting) =>
       m.id === meeting.id ? { id: m.id, title: newTitle } : m
     );

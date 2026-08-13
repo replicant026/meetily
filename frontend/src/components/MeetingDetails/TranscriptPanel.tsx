@@ -2,7 +2,6 @@
 
 import { Transcript, TranscriptSegmentData } from '@/types';
 import { VirtualizedTranscriptView } from '@/components/VirtualizedTranscriptView';
-import { TranscriptButtonGroup } from './TranscriptButtonGroup';
 import { AssignSpeakerDialog } from '@/components/speakers/AssignSpeakerDialog';
 import { useMemo, useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -38,6 +37,8 @@ interface TranscriptPanelProps {
   // Audio seek callback: enables transcript timestamp click-to-jump
   // without duplicating the header transport (single audio surface).
   onSeekToTimestamp?: (seconds: number) => void;
+  onPlayFromTimestamp?: (seconds: number) => void;
+  currentAudioTime?: number;
 
   // Speaker assignment callback (optimistic update in parent)
   onSpeakerAssigned?: (speakerId: string, segmentIds: string[]) => void;
@@ -63,6 +64,8 @@ export function TranscriptPanel({
   meetingFolderPath,
   onRefetchTranscripts,
   onSeekToTimestamp,
+  onPlayFromTimestamp,
+  currentAudioTime,
   width,
   onSpeakerAssigned,
 }: TranscriptPanelProps) {
@@ -111,22 +114,12 @@ export function TranscriptPanel({
 
   return (
     <div className="flex min-w-0 flex-col relative bg-[rgb(var(--app-bg))]" data-testid="workspace-transcript">
-      <div className="p-4 border-b border-[rgb(var(--app-border))]">
-        <TranscriptButtonGroup
-          transcriptCount={usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0)}
-          onCopyTranscript={onCopyTranscript}
-          onExportTranscript={onExportTranscript}
-          onOpenMeetingFolder={onOpenMeetingFolder}
-          meetingId={meetingId}
-          meetingFolderPath={meetingFolderPath}
-          onRefetchTranscripts={onRefetchTranscripts}
-        />
-      </div>
-
       <div className="flex-1 overflow-hidden pb-4">
         <VirtualizedTranscriptView
           segments={convertedSegments}
           onTimestampClick={hasSeek ? handleTimestampClick : undefined}
+          onPlayFromTimestamp={onPlayFromTimestamp}
+          currentAudioTime={currentAudioTime}
           isRecording={isRecording}
           isPaused={false}
           isProcessing={false}

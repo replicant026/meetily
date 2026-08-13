@@ -76,6 +76,7 @@ pub struct ImportProgress {
     pub stage: String, // "copying", "decoding", "vad", "transcribing", "saving"
     pub progress_percentage: u32,
     pub message: String,
+    pub latest_transcript: Option<String>,
 }
 
 /// Result of import
@@ -258,6 +259,7 @@ pub async fn start_import<R: Runtime>(
     language: Option<String>,
     model: Option<String>,
     provider: Option<String>,
+    participant_count: Option<usize>,
     initial_prompt: Option<String>,
 ) -> Result<ImportResult> {
     // Acquire guard - ensures flag is cleared even on panic/early return
@@ -274,6 +276,7 @@ pub async fn start_import<R: Runtime>(
         language,
         model,
         provider,
+        participant_count,
         initial_prompt,
     )
     .await;
@@ -307,6 +310,7 @@ async fn run_import<R: Runtime>(
     language: Option<String>,
     model: Option<String>,
     provider: Option<String>,
+    participant_count: Option<usize>,
     initial_prompt: Option<String>,
 ) -> Result<ImportResult> {
     let source = PathBuf::from(&source_path);
@@ -587,38 +591,68 @@ async fn run_import<R: Runtime>(
             continue;
         }
 
-        // Transcribe
-        let (text, conf) = if use_parakeet {
+        // Transcribe — Parakeet produces one result per segment;
+        // Whisper produces sub-segments with timestamps that we map individually.
+        if use_parakeet {
             let engine = parakeet_engine.as_ref().unwrap();
             let text = engine
                 .transcribe_audio(segment.samples.clone())
                 .await
                 .map_err(|e| anyhow!("Parakeet transcription failed on segment {}: {}", i, e))?;
-            (text, 0.9f32)
+            let trimmed = text.trim();
+            if !trimmed.is_empty() {
+                // Split at silence gaps for better granularity
+                let silence_splits = crate::audio::common::find_silence_splits(
+                    &segment.samples, 16000, 200, 0.015,
+                );
+                let sub_segs = crate::audio::common::split_text_at_silence(
+                    trimmed, &silence_splits, segment_duration_sec,
+                );
+                for (seg_text, rel_start, rel_end) in &sub_segs {
+                    let abs_start = segment.start_timestamp_ms + rel_start * 1000.0;
+                    let abs_end = segment.start_timestamp_ms + rel_end * 1000.0;
+                    debug!("Segment {}/{} sub: [{:.0}ms-{:.0}ms], text='{}'",
+                        i + 1, processable_count, abs_start, abs_end,
+                        if seg_text.len() > 80 { let mut end = 80; while !seg_text.is_char_boundary(end) { end -= 1; } &seg_text[..end] } else { seg_text });
+                    all_transcripts.push((seg_text.clone(), abs_start, abs_end));
+                }
+                let preview = if trimmed.len() > 80 { let mut end = 80; while !trimmed.is_char_boundary(end) { end -= 1; } &trimmed[..end] } else { trimmed };
+                emit_progress_with_latest_transcript(&app, "transcribing", progress,
+                    &format!("Transcribing segment {} of {} ({} sub-segments)", i + 1, processable_count, sub_segs.len()),
+                    Some(preview));
+                total_confidence += 0.9;
+            }
         } else {
             let engine = whisper_engine.as_ref().unwrap();
-            let (text, conf, _) = engine
-                .transcribe_audio_with_confidence(
+            let (ws_segments, conf) = engine
+                .transcribe_audio_with_segments(
                     segment.samples.clone(),
                     language.clone(),
                     initial_prompt.clone(),
                 )
                 .await
                 .map_err(|e| anyhow!("Whisper transcription failed on segment {}: {}", i, e))?;
-            (text, conf)
-        };
 
-        let trimmed = text.trim();
-        if !trimmed.is_empty() {
-            debug!(
-                "Segment {}/{}: {:.1}s, conf={:.2}, text='{}'",
-                i + 1, processable_count, segment_duration_sec, conf,
-                if trimmed.len() > 80 { let mut end = 80; while !trimmed.is_char_boundary(end) { end -= 1; } &trimmed[..end] } else { trimmed }
-            );
-            all_transcripts.push((text, segment.start_timestamp_ms, segment.end_timestamp_ms));
-            total_confidence += conf;
-        } else {
-            debug!("Segment {}/{}: {:.1}s — empty transcription", i + 1, processable_count, segment_duration_sec);
+            for ws in &ws_segments {
+                // Map centisecond timestamps to absolute ms relative to VAD segment start
+                let start_ms = segment.start_timestamp_ms + (ws.start_cs as f64 * 10.0);
+                let end_ms = segment.start_timestamp_ms + (ws.end_cs as f64 * 10.0);
+                debug!("Segment {}/{} sub: conf={:.2}, [{:.0}ms-{:.0}ms], text='{}'",
+                    i + 1, processable_count, conf, start_ms, end_ms,
+                    if ws.text.len() > 80 { let mut end = 80; while !ws.text.is_char_boundary(end) { end -= 1; } &ws.text[..end] } else { &ws.text });
+                all_transcripts.push((ws.text.clone(), start_ms, end_ms));
+            }
+
+            if !ws_segments.is_empty() {
+                let preview = &ws_segments[0].text;
+                let preview_trunc = if preview.len() > 80 { let mut end = 80; while !preview.is_char_boundary(end) { end -= 1; } &preview[..end] } else { preview };
+                emit_progress_with_latest_transcript(&app, "transcribing", progress,
+                    &format!("Transcribing segment {} of {} ({} sub-segments)", i + 1, processable_count, ws_segments.len()),
+                    Some(preview_trunc));
+                total_confidence += conf;
+            } else {
+                debug!("Segment {}/{}: {:.1}s — empty transcription", i + 1, processable_count, segment_duration_sec);
+            }
         }
     }
 
@@ -641,6 +675,13 @@ async fn run_import<R: Runtime>(
     }
 
     emit_progress(&app, "saving", 85, "Creating meeting...");
+
+    // Remove overlapping text between consecutive segments (e.g. from Whisper window overlap)
+    crate::audio::common::remove_overlapping_text(&mut all_transcripts);
+    info!("After overlap removal: {} segments", all_transcripts.len());
+
+    // Restore missing punctuation on segments
+    crate::audio::common::restore_punctuation_batch(&mut all_transcripts);
 
     // Create transcript segments
     let segments = create_transcript_segments(&all_transcripts);
@@ -692,8 +733,8 @@ async fn run_import<R: Runtime>(
             &meeting_for_diar,
             Some(wav_for_diar.as_path()),
             Vec::new(),
-            0,
-            0,
+            participant_count.unwrap_or(0),
+            participant_count.unwrap_or(0),
             |pct, msg| {
                 emit_progress(&app_for_diar, "diarization", pct, msg);
             },
@@ -764,12 +805,23 @@ pub(crate) fn f32_samples_to_wav(samples: &[f32], sample_rate: u32) -> Vec<u8> {
 
 /// Emit progress event
 fn emit_progress<R: Runtime>(app: &AppHandle<R>, stage: &str, progress: u32, message: &str) {
+    emit_progress_with_latest_transcript(app, stage, progress, message, None);
+}
+
+fn emit_progress_with_latest_transcript<R: Runtime>(
+    app: &AppHandle<R>,
+    stage: &str,
+    progress: u32,
+    message: &str,
+    latest_transcript: Option<&str>,
+) {
     let _ = app.emit(
         "import-progress",
         ImportProgress {
             stage: stage.to_string(),
             progress_percentage: progress,
             message: message.to_string(),
+            latest_transcript: latest_transcript.map(str::to_owned),
         },
     );
 }
@@ -1057,6 +1109,7 @@ pub async fn start_import_audio_command<R: Runtime>(
     language: Option<String>,
     model: Option<String>,
     provider: Option<String>,
+    participant_count: Option<usize>,
 ) -> Result<ImportStarted, String> {
     // Check if import is already in progress (guard will be acquired in start_import)
     if IMPORT_IN_PROGRESS.load(Ordering::SeqCst) {
@@ -1076,6 +1129,7 @@ pub async fn start_import_audio_command<R: Runtime>(
             language,
             model,
             provider,
+            participant_count,
             initial_prompt,
         )
         .await;

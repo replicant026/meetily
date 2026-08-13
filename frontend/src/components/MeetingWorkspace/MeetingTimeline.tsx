@@ -8,14 +8,14 @@ import { secondsFromPointer } from './waveform';
 export interface MeetingTimelineProps {
   audio: AudioController;
   peaks: Float32Array | null;
-  segments?: Array<{ id: string; speaker?: string; start_time: number; end_time: number }>;
+  chapters?: Array<{ segmentId: string; title: string; startTime: number }>;
 }
 
 const BAR_COLOR = '#a8a29e'; // stone-400
 const ELAPSED_COLOR = '#c026d3'; // magenta-600 (matches header progress bar)
 const DISABLED_COLOR = '#e7e5e4'; // stone-200
 
-export function MeetingTimeline({ audio, peaks }: MeetingTimelineProps) {
+export function MeetingTimeline({ audio, peaks, chapters = [] }: MeetingTimelineProps) {
   const t = useTranslations('meetingWorkspace');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -81,14 +81,43 @@ export function MeetingTimeline({ audio, peaks }: MeetingTimelineProps) {
     audio.seek(seconds);
   };
 
+  const visibleChapters = audio.duration > 0
+    ? chapters.filter((chapter) => chapter.startTime >= 0 && chapter.startTime <= audio.duration)
+    : [];
+
   return (
-    <button
-      type="button"
-      aria-label={t('audioTimeline')}
-      onClick={handleClick}
-      className="w-full h-16 px-0 py-1 bg-transparent border-0 cursor-pointer block"
-    >
-      <canvas ref={canvasRef} className="w-full h-full block" />
-    </button>
+    <div className="relative w-full h-16 px-0 py-1">
+      <button
+        type="button"
+        aria-label={t('audioTimeline')}
+        onClick={handleClick}
+        className="w-full h-full bg-transparent border-0 cursor-pointer block"
+      >
+        <canvas ref={canvasRef} className="w-full h-full block" />
+      </button>
+      {visibleChapters.map((chapter, index) => {
+        const left = `${(chapter.startTime / audio.duration) * 100}%`;
+        return (
+          <button
+            key={chapter.segmentId}
+            type="button"
+            title={chapter.title}
+            aria-label={`Play chapter: ${chapter.title}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              audio.seek(chapter.startTime);
+              if (!audio.isPlaying) audio.toggle();
+            }}
+            className="group absolute bottom-1 z-10 h-7 w-2 -translate-x-1/2 cursor-pointer border-0 bg-transparent p-0"
+            style={{ left }}
+          >
+            <span className="block h-full w-0.5 rounded-full bg-stone-900 transition-colors group-hover:bg-fuchsia-600" />
+            <span className={`pointer-events-none absolute bottom-7 left-1/2 hidden w-max max-w-44 -translate-x-1/2 rounded-md border border-stone-200 bg-white px-2 py-1 text-xs font-medium text-stone-700 shadow-sm group-hover:block ${index % 2 ? 'mb-5' : ''}`}>
+              {chapter.title}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

@@ -1,11 +1,13 @@
 use crate::database::repositories::{
     meeting::MeetingsRepository, setting::SettingsRepository, summary::SummaryProcessesRepository,
+    transcript::TranscriptsRepository,
 };
 use crate::summary::llm_client::{LLMError, LLMProvider};
 use crate::summary::language_detection::detect_summary_language;
 use crate::summary::metadata::read_detected_summary_language_from_metadata;
 use crate::summary::processor::{
-    extract_meeting_name_from_markdown, generate_meeting_summary, language_name_from_code,
+    extract_meeting_name_from_markdown, generate_grounded_chapters, generate_meeting_summary,
+    language_name_from_code, SummaryChapter,
 };
 use crate::summary::templates::{self, Template};
 use crate::ollama::metadata::ModelMetadataCache;
@@ -139,9 +141,11 @@ fn build_summary_result_json(
     english_markdown: &str,
     source: SummaryCacheSource,
     output_language: Option<&str>,
+    chapters: Vec<SummaryChapter>,
 ) -> serde_json::Value {
     serde_json::json!({
         "markdown": strip_title_if_present(final_markdown),
+        "chapters": chapters,
         ENGLISH_CACHE_FIELD: EnglishSummaryCache {
             markdown: english_markdown.to_string(),
             source,
@@ -554,11 +558,45 @@ impl SummaryService {
                     }
                 }
 
+                let chapters = match TranscriptsRepository::fetch_timed_segments_for_chapters(&pool, &meeting_id).await {
+                    Ok(segments) => match generate_grounded_chapters(
+                        &client,
+                        &provider,
+                        &model_name,
+                        &final_api_key,
+                        &segments,
+                        ollama_endpoint.as_deref(),
+                        custom_openai_endpoint.as_deref(),
+                        custom_openai_max_tokens,
+                        custom_openai_temperature,
+                        custom_openai_top_p,
+                        app_data_dir.as_ref(),
+                        Some(&cancellation_token),
+                    ).await {
+                        Ok(chapters) => chapters,
+                        Err(LLMError::Cancelled) => {
+                            if let Err(error) = SummaryProcessesRepository::update_process_cancelled(&pool, &meeting_id).await {
+                                error!("Failed to update DB status to cancelled for {}: {}", meeting_id, error);
+                            }
+                            return;
+                        }
+                        Err(error) => {
+                            warn!("Chapter generation failed for meeting_id={}: {}", meeting_id, error);
+                            Vec::new()
+                        }
+                    },
+                    Err(error) => {
+                        warn!("Could not load timed segments for chapters (meeting_id={}): {}", meeting_id, error);
+                        Vec::new()
+                    }
+                };
+
                 let result_json = build_summary_result_json(
                     &final_markdown,
                     &english_markdown,
                     cache_source,
                     summary_language.as_deref(),
+                    chapters,
                 );
 
                 // Update database with completed status
@@ -764,6 +802,7 @@ mod tests {
             "# Meeting\n## Points\nHello",
             source.clone(),
             Some("fr"),
+            Vec::new(),
         )
         .to_string();
 
@@ -781,6 +820,7 @@ mod tests {
             "# Meeting\n## Points\nHello",
             source.clone(),
             Some("fr"),
+            Vec::new(),
         )
         .to_string();
 
@@ -799,6 +839,7 @@ mod tests {
             "# Meeting\n## Points\nHello",
             source,
             Some("fr"),
+            Vec::new(),
         )
         .to_string();
 
@@ -919,6 +960,7 @@ mod tests {
             "# Meeting\n## Points\nHello",
             source.clone(),
             Some("fr"),
+            Vec::new(),
         )
         .to_string();
 
@@ -941,6 +983,7 @@ mod tests {
             "# Meeting\n## Points\nHello",
             source.clone(),
             Some("fr"),
+            Vec::new(),
         )
         .to_string();
 
@@ -962,6 +1005,7 @@ mod tests {
             "# English Title\n## Decisions\nDone",
             sample_cache_source(),
             Some("fr"),
+            Vec::new(),
         );
 
         assert_eq!(result["markdown"], "## Decisions\nDone");

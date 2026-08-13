@@ -7,6 +7,8 @@ import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { TranscriptPanel } from '@/components/MeetingDetails/TranscriptPanel';
+import { TranscriptButtonGroup } from '@/components/MeetingDetails/TranscriptButtonGroup';
+import { SummaryGeneratorButtonGroup } from '@/components/MeetingDetails/SummaryGeneratorButtonGroup';
 import { MeetingWorkspace } from '@/components/MeetingWorkspace/MeetingWorkspace';
 import { MeetingNotesTab } from '@/components/MeetingWorkspace/MeetingNotesTab';
 import { MeetingActionsTab } from '@/components/MeetingWorkspace/MeetingActionsTab';
@@ -191,8 +193,25 @@ export default function PageContent({
   // Derive participants from transcript speaker data
   const participants = useMeetingWorkspace(meetingData.transcripts);
 
+  const chapters = Array.isArray((meetingData.aiSummary as unknown as { chapters?: unknown })?.chapters)
+    ? (meetingData.aiSummary as unknown as { chapters: Array<{ segment_id?: unknown; title?: unknown; start_time?: unknown }> }).chapters
+      .filter((chapter) => (
+        typeof chapter.segment_id === 'string'
+        && typeof chapter.title === 'string'
+        && typeof chapter.start_time === 'number'
+        && Number.isFinite(chapter.start_time)
+      ))
+      .map((chapter) => ({
+        segmentId: chapter.segment_id as string,
+        title: chapter.title as string,
+        startTime: chapter.start_time as number,
+      }))
+    : [];
+
   // Persisted action completion states
   const [completedActionIds, setCompletedActionIds] = useState<Set<string>>(new Set());
+  const [manualActions, setManualActions] = useState<WorkspaceAction[]>([]);
+  const [manualActionsLoadedFor, setManualActionsLoadedFor] = useState<string | null>(null);
   useEffect(() => {
     if (!meeting.id) return;
     getMeetingActionStates(meeting.id).then((states) => {
@@ -203,6 +222,22 @@ export default function PageContent({
       ));
     }).catch(() => {});
   }, [meeting.id, summaryData]);
+
+  useEffect(() => {
+    const storageKey = `meetily:manual-actions:${meeting.id}`;
+    setManualActionsLoadedFor(null);
+    try {
+      setManualActions(JSON.parse(localStorage.getItem(storageKey) ?? '[]'));
+    } catch {
+      setManualActions([]);
+    }
+    setManualActionsLoadedFor(meeting.id);
+  }, [meeting.id]);
+
+  useEffect(() => {
+    if (manualActionsLoadedFor !== meeting.id) return;
+    localStorage.setItem(`meetily:manual-actions:${meeting.id}`, JSON.stringify(manualActions));
+  }, [manualActions, manualActionsLoadedFor, meeting.id]);
 
   const transcriptPanel = (
     <TranscriptPanel
@@ -229,19 +264,69 @@ export default function PageContent({
       onRefetchTranscripts={onRefetchTranscripts}
       // Audio jump props (Wave 14 PR-44d): seek callback for timestamp click-to-jump
       onSeekToTimestamp={audioPlayer.seek}
+      onPlayFromTimestamp={(seconds) => {
+        audioPlayer.seek(seconds);
+        void audioPlayer.play();
+      }}
+      currentAudioTime={audioPlayer.currentTime}
     />
   );
 
-  const actionItems: WorkspaceAction[] =
-    summaryData?.action_items?.blocks?.map((block, i) => ({
+  const actionItems: WorkspaceAction[] = [
+    ...(meetingData.aiSummary?.action_items?.blocks?.map((block, i) => ({
       id: `summary:action_items:${i}`,
       text: block.content,
       assigneeId: null,
       completed: completedActionIds.has(`summary:action_items:${i}`),
-    })) ?? [];
+    })) ?? []),
+    ...manualActions,
+  ];
 
   const notesPanel = <MeetingNotesTab meetingId={meeting.id} />;
-  const actionsPanel = <MeetingActionsTab meetingId={meeting.id} actions={actionItems} />;
+  const actionsPanel = (
+    <MeetingActionsTab
+      meetingId={meeting.id}
+      actions={actionItems}
+      onCreateAction={(text) => {
+        setManualActions((current) => [
+          ...current,
+          { id: `manual:${crypto.randomUUID()}`, text, assigneeId: null, completed: false },
+        ]);
+      }}
+      onDeleteAction={(actionId) => setManualActions((current) => current.filter((action) => action.id !== actionId))}
+    />
+  );
+
+  const transcriptToolbar = (
+    <TranscriptButtonGroup
+      transcriptCount={totalCount ?? segments?.length ?? meetingData.transcripts.length}
+      onCopyTranscript={copyOperations.handleCopyTranscript}
+      onExportTranscript={copyOperations.handleExportTranscript}
+      onOpenMeetingFolder={meetingOperations.handleOpenMeetingFolder}
+      meetingId={meeting.id}
+      meetingFolderPath={meeting.folder_path}
+      onRefetchTranscripts={onRefetchTranscripts}
+    />
+  );
+
+  const summaryToolbar = (
+    <SummaryGeneratorButtonGroup
+      modelConfig={modelConfig}
+      setModelConfig={setModelConfig}
+      onSaveModelConfig={handleSaveModelConfig}
+      onGenerateSummary={summaryGeneration.handleGenerateSummary}
+      onStopGeneration={summaryGeneration.handleStopGeneration}
+      customPrompt={customPrompt}
+      summaryStatus={summaryGeneration.summaryStatus}
+      availableTemplates={templates.availableTemplates}
+      selectedTemplate={templates.selectedTemplate}
+      onTemplateSelect={templates.handleTemplateSelection}
+      hasTranscripts={Boolean((segments?.length ?? 0) || meetingData.transcripts.length)}
+      hasSummary={Boolean(meetingData.aiSummary)}
+      isModelConfigLoading={false}
+      onOpenModelSettings={handleRegisterModalOpen}
+    />
+  );
 
   return (
     <motion.div
@@ -255,6 +340,9 @@ export default function PageContent({
         audio={audioController}
         participants={participants}
         peaks={peaks}
+        chapters={chapters}
+        transcriptToolbar={transcriptToolbar}
+        summaryToolbar={summaryToolbar}
         transcriptContent={transcriptPanel}
         summaryProps={{
           meeting,
@@ -283,6 +371,7 @@ export default function PageContent({
           onSummaryChange: meetingData.handleSummaryChange,
           onDirtyChange: meetingData.setIsSummaryDirty,
           summaryError: summaryGeneration.summaryError,
+          showToolbar: false,
           onRegenerateSummary: summaryGeneration.handleRegenerateSummary,
           getSummaryStatusMessage: summaryGeneration.getSummaryStatusMessage,
           availableTemplates: templates.availableTemplates,

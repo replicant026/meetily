@@ -211,6 +211,254 @@ pub(crate) fn split_segment_at_silence(
     result
 }
 
+/// Remove overlapping text between consecutive transcript segments.
+///
+/// When Whisper (or other engines) process overlapping audio windows, the same
+/// words may appear at the end of one segment and the start of the next.
+/// This function detects and trims such overlaps using longest-common-word-substring.
+///
+/// Inspired by screenpipe's overlap detection approach.
+pub(crate) fn remove_overlapping_text(segments: &mut Vec<(String, f64, f64)>) {
+    if segments.len() < 2 {
+        return;
+    }
+
+    for i in 0..segments.len() - 1 {
+        let (prev_words, prev_end) = {
+            let (text, _, end) = &segments[i];
+            (split_into_words(text), *end)
+        };
+        let (next_words, next_start) = {
+            let (text, start, _) = &segments[i + 1];
+            (split_into_words(text), *start)
+        };
+
+        // Only check overlap if segments are temporally close (< 2s gap or overlapping)
+        if next_start - prev_end > 2.0 {
+            continue;
+        }
+
+        // Find longest common word subsequence between tail of prev and head of next
+        let max_check = prev_words.len().min(next_words.len()).min(30); // check up to 30 words
+        if max_check < 2 {
+            continue;
+        }
+
+        let mut best_overlap = 0usize;
+        // Try overlap lengths from max down to 2
+        for overlap_len in (2..=max_check).rev() {
+            let prev_tail = &prev_words[prev_words.len() - overlap_len..];
+            let next_head = &next_words[..overlap_len];
+
+            // Compare normalized (lowercase, no punctuation)
+            let matches = prev_tail.iter().zip(next_head.iter()).filter(|(a, b)| {
+                normalize_word(a) == normalize_word(b)
+            }).count();
+
+            // Require > 60% of words to match for overlap detection
+            if matches * 100 > overlap_len * 60 {
+                best_overlap = overlap_len;
+                break;
+            }
+        }
+
+        if best_overlap > 0 {
+            // Trim overlapping words from start of next segment
+            let trimmed: String = next_words[best_overlap..].join(" ");
+            if !trimmed.is_empty() {
+                segments[i + 1].0 = trimmed;
+            } else {
+                // Entire next segment was overlap — mark for removal
+                segments[i + 1].0 = String::new();
+            }
+        }
+    }
+
+    // Remove empty segments
+    segments.retain(|(text, _, _)| !text.trim().is_empty());
+}
+
+/// Split text into words, preserving punctuation attached to words.
+fn split_into_words(text: &str) -> Vec<&str> {
+    text.split_whitespace().collect()
+}
+
+/// Normalize a word for comparison: lowercase, strip punctuation.
+fn normalize_word(word: &str) -> String {
+    word.chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect::<String>()
+        .to_lowercase()
+}
+
+/// Find silence split points in 16kHz mono audio for transcript segmentation.
+/// Simple punctuation restoration for Whisper output.
+///
+/// Whisper often drops sentence-ending punctuation in the middle of output.
+/// This function adds periods to segments that don't end with punctuation,
+/// which improves downstream sentence splitting and display formatting.
+///
+/// This is a lightweight heuristic — for full punctuation restoration,
+/// a dedicated model (like deepmultilingualpunctuation) would be needed.
+pub(crate) fn restore_punctuation(text: &str) -> String {
+    if text.is_empty() {
+        return text.to_string();
+    }
+
+    let trimmed = text.trim();
+
+    // Already has sentence-ending punctuation
+    if trimmed.ends_with('.') || trimmed.ends_with('!') || trimmed.ends_with('?')
+        || trimmed.ends_with('。') || trimmed.ends_with('！') || trimmed.ends_with('？')
+        || trimmed.ends_with(':') || trimmed.ends_with(';')
+    {
+        return trimmed.to_string();
+    }
+
+    // Check if it looks like a complete sentence (starts with capital, has verb-like structure)
+    // If so, add a period
+    let last_char = trimmed.chars().last().unwrap_or(' ');
+    if last_char.is_alphabetic() || last_char == '"' || last_char == '\'' || last_char == ')' {
+        // Looks like a sentence that's missing its period
+        format!("{}.", trimmed)
+    } else {
+        trimmed.to_string()
+    }
+}
+
+/// Restore punctuation on a list of transcript segments.
+pub(crate) fn restore_punctuation_batch(segments: &mut [(String, f64, f64)]) {
+    for (text, _, _) in segments.iter_mut() {
+        *text = restore_punctuation(text);
+    }
+}
+
+///
+/// Scans for windows of low energy (silence) that indicate natural pauses in speech.
+/// Returns a list of split points in seconds, sorted ascending.
+///
+/// Parameters:
+/// - `audio`: 16kHz mono f32 samples
+/// - `min_gap_ms`: minimum silence duration to count as a split point (default 200ms)
+/// - `rms_threshold`: RMS energy below which a window is "silent" (default 0.015)
+pub(crate) fn find_silence_splits(
+    audio: &[f32],
+    sample_rate: u32,
+    min_gap_ms: usize,
+    rms_threshold: f32,
+) -> Vec<f64> {
+    if audio.is_empty() {
+        return Vec::new();
+    }
+
+    const WINDOW_MS: usize = 150;
+    let window_samples = (sample_rate as usize * WINDOW_MS) / 1000;
+    let min_gap_samples = (sample_rate as usize * min_gap_ms) / 1000;
+
+    // Find contiguous silence windows
+    let mut silence_ranges: Vec<(usize, usize)> = Vec::new();
+    let mut i = 0;
+    while i + window_samples <= audio.len() {
+        let window = &audio[i..i + window_samples];
+        let rms = (window.iter().map(|&x| x * x).sum::<f32>() / window_samples as f32).sqrt();
+
+        if rms < rms_threshold {
+            if let Some(last) = silence_ranges.last_mut() {
+                if i <= last.1 + window_samples / 2 {
+                    last.1 = i + window_samples;
+                } else {
+                    silence_ranges.push((i, i + window_samples));
+                }
+            } else {
+                silence_ranges.push((i, i + window_samples));
+            }
+        }
+        i += window_samples / 2; // 50% overlap
+    }
+
+    // Filter: keep only gaps ≥ min_gap_samples, return midpoint in seconds
+    silence_ranges
+        .iter()
+        .filter(|(start, end)| end - start >= min_gap_samples)
+        .map(|(start, end)| (*start + (*end - start) / 2) as f64 / sample_rate as f64)
+        .collect()
+}
+
+/// Split text at silence split points, distributing text proportionally by time.
+///
+/// `split_times` are in seconds (from `find_silence_splits`).
+/// `total_duration` is the total audio duration in seconds.
+pub(crate) fn split_text_at_silence(
+    text: &str,
+    split_times: &[f64],
+    total_duration: f64,
+) -> Vec<(String, f64, f64)> {
+    if text.len() < 50 || split_times.is_empty() {
+        return vec![(text.to_string(), 0.0, total_duration)];
+    }
+
+    let total_chars = text.len() as f64;
+    let mut result = Vec::new();
+    let mut prev_time = 0.0f64;
+
+    for &split_time in split_times {
+        let char_pos = ((split_time / total_duration) * total_chars) as usize;
+        let char_pos = char_pos.min(text.len());
+
+        // Find nearest whitespace near char_pos (±30 chars) for clean break
+        let search_start = char_pos.saturating_sub(30);
+        let search_end = (char_pos + 30).min(text.len());
+        let region = &text[search_start..search_end];
+
+        let mut best_pos = char_pos;
+        // Prefer punctuation boundary, then whitespace
+        for (j, ch) in region.char_indices() {
+            if matches!(ch, '.' | '!' | '?') {
+                let abs = search_start + j + 1;
+                if abs > search_start && abs < text.len() {
+                    best_pos = abs;
+                    break;
+                }
+            }
+        }
+        // If no punctuation found, try whitespace
+        if best_pos == char_pos {
+            for (j, b) in region.bytes().enumerate() {
+                if b == b' ' || b == b'\n' {
+                    best_pos = search_start + j + 1;
+                    break;
+                }
+            }
+        }
+
+        let start_char = (prev_time / total_duration * total_chars) as usize;
+        let end_char = best_pos.min(text.len());
+
+        if end_char > start_char {
+            let seg = text[start_char..end_char].trim().to_string();
+            if !seg.is_empty() {
+                result.push((seg, prev_time, split_time));
+            }
+        }
+        prev_time = split_time;
+    }
+
+    // Remaining text
+    let last_start = (prev_time / total_duration * total_chars) as usize;
+    if last_start < text.len() {
+        let seg = text[last_start..].trim().to_string();
+        if !seg.is_empty() {
+            result.push((seg, prev_time, total_duration));
+        }
+    }
+
+    if result.len() < 2 {
+        return vec![(text.to_string(), 0.0, total_duration)];
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -61,7 +61,7 @@ export function SpeakerDirectory() {
       setCreating(false);
       toast.success(t('directory.created'));
       await loadPeople();
-      router.push(`/people/${id}`);
+      router.push(`/people/detail?id=${encodeURIComponent(id)}`);
     } catch {
       toast.error(t('directory.create_failed'));
     }
@@ -121,7 +121,7 @@ export function SpeakerDirectory() {
             <button
               key={person.id}
               type="button"
-              onClick={() => router.push(`/people/${person.id}`)}
+              onClick={() => router.push(`/people/detail?id=${encodeURIComponent(person.id)}`)}
               className="w-full flex items-center gap-2.5 border-b border-[rgb(var(--app-border))] px-2 py-4 text-left last:border-b-0 transition-colors hover:bg-[rgb(var(--app-muted))]"
             >
               <div

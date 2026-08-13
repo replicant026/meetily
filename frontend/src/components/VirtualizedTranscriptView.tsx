@@ -13,7 +13,7 @@ import { ConfidenceIndicator } from "./ConfidenceIndicator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { RecordingStatusBar } from "./RecordingStatusBar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X } from "lucide-react";
+import { Check, Play, X } from "lucide-react";
 import { TranscriptSegmentData } from "@/types";
 import { useTranslations } from "next-intl";
 import { getSpeakerColor, buildSpeakerColorMap } from "@/lib/speaker-colors";
@@ -44,6 +44,10 @@ export interface VirtualizedTranscriptViewProps {
     onLoadMore?: () => void;
     /** Called when user clicks the timestamp button to jump audio playback */
     onTimestampClick?: (sec: number) => void;
+    /** Seeks and starts the shared player at a transcript segment. */
+    onPlayFromTimestamp?: (sec: number) => void;
+    /** Shared player position, used to mark the segment currently playing. */
+    currentAudioTime?: number;
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
     onEnrollSpeaker?: (speakerId: string) => void;
@@ -82,11 +86,14 @@ function cleanStopWords(text: string): string {
 const TranscriptSegment = memo(function TranscriptSegment({
     id,
     timestamp,
+    endTime,
     text,
     confidence,
     isStreaming,
     showConfidence,
     onTimestampClick,
+    onPlayFromTimestamp,
+    isActive,
     speaker,
     transientSpeaker,
     customSpeakerNames,
@@ -101,11 +108,14 @@ const TranscriptSegment = memo(function TranscriptSegment({
 }: {
     id: string;
     timestamp: number;
+    endTime?: number | null;
     text: string;
     confidence?: number;
     isStreaming: boolean;
     showConfidence: boolean;
     onTimestampClick?: (sec: number) => void;
+    onPlayFromTimestamp?: (sec: number) => void;
+    isActive: boolean;
     speaker?: string | null;
     transientSpeaker?: string | null;
     customSpeakerNames?: Record<string, string>;
@@ -168,7 +178,13 @@ const TranscriptSegment = memo(function TranscriptSegment({
     );
 
     return (
-        <div id={`segment-${id}`} className="mb-3">
+        <div
+            id={`segment-${id}`}
+            className={`group/segment mb-3 rounded-r-md border-l-2 px-2 py-1 transition-colors ${
+                isActive ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-transparent'
+            }`}
+            aria-current={isActive ? 'true' : undefined}
+        >
             <div className="grid items-start gap-x-3" style={{ gridTemplateColumns: 'auto minmax(0,1fr) auto' }}>
                 {/* Column 1: Speaker identity */}
                 <div className="min-w-0 pt-0.5">
@@ -186,7 +202,13 @@ const TranscriptSegment = memo(function TranscriptSegment({
                                 className="inline-flex items-center gap-2 text-sm font-medium text-stone-800 cursor-pointer hover:text-stone-950"
                                 title={onSpeakerClick ? t('speaker_assign_tooltip', { default: 'Click to assign this speaker to a person' }) : t('speaker_rename_placeholder')}
                             >
-                                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold ${speakerColor?.bg ?? 'bg-stone-200'} ${speakerColor?.text ?? 'text-stone-700'}`}>
+                                <span
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold"
+                                    style={{
+                                        backgroundColor: speakerColor?.backgroundColor ?? '#e7e5e4',
+                                        color: speakerColor?.foregroundColor ?? '#44403c',
+                                    }}
+                                >
                                     {(customName ?? speaker).slice(0, 2).toUpperCase()}
                                 </span>
                                 <span className="max-w-28 truncate">{customName ?? speaker}</span>
@@ -254,6 +276,20 @@ const TranscriptSegment = memo(function TranscriptSegment({
 
                 {/* Column 3: Timestamp action */}
                 <div className="pt-0.5">
+                    {onPlayFromTimestamp && (
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onPlayFromTimestamp(timestamp);
+                            }}
+                            className="mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-blue-700 opacity-0 transition-opacity hover:bg-blue-100 focus:opacity-100 group-hover/segment:opacity-100"
+                            title="Play from this segment"
+                            aria-label={`Play from ${formatRecordingTime(timestamp)}`}
+                        >
+                            <Play size={14} fill="currentColor" />
+                        </button>
+                    )}
                     <Tooltip>
                         <TooltipTrigger asChild>
                             {timeButton}
@@ -273,6 +309,8 @@ const TranscriptSegment = memo(function TranscriptSegment({
 export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps> = ({
     segments,
     onTimestampClick,
+    onPlayFromTimestamp,
+    currentAudioTime,
     isRecording = false,
     isPaused = false,
     isProcessing = false,
@@ -295,6 +333,13 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     const { rules: hotwords, protectedSet } = useHotwords();
     // Build stable speaker→color map from segment order (prevents color reset on rename)
     const speakerColorMap = useMemo(() => buildSpeakerColorMap(segments), [segments]);
+    const activeSegmentId = useMemo(() => {
+        if (currentAudioTime === undefined) return undefined;
+        return segments.find((segment, index) =>
+            currentAudioTime >= segment.timestamp &&
+            currentAudioTime < (segment.endTime ?? segments[index + 1]?.timestamp ?? Infinity)
+        )?.id;
+    }, [currentAudioTime, segments]);
 
     // Wrap onSpeakerClick to resolve segment IDs for the clicked label
     const handleSpeakerClick = useCallback((speakerLabel: string) => {
@@ -477,6 +522,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                     <TranscriptSegment
                                         id={segment.id}
                                         timestamp={segment.timestamp}
+                                        endTime={segment.endTime}
                                         text={resolveDisplayText(segment)}
                                         confidence={segment.confidence}
                                         postprocessFailed={postprocess.hasFailed(segment.id)}
@@ -491,6 +537,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onEnrollSpeaker={onEnrollSpeaker}
                                         onSpeakerClick={handleSpeakerClick}
                                         onTimestampClick={onTimestampClick}
+                                        onPlayFromTimestamp={onPlayFromTimestamp}
+                                        isActive={segment.id === activeSegmentId}
                                         hotwords={hotwords}
                                         protectedSet={protectedSet}
                                     />
@@ -545,6 +593,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                     <TranscriptSegment
                                         id={segment.id}
                                         timestamp={segment.timestamp}
+                                        endTime={segment.endTime}
                                         text={resolveDisplayText(segment)}
                                         confidence={segment.confidence}
                                         postprocessFailed={postprocess.hasFailed(segment.id)}
@@ -559,6 +608,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onEnrollSpeaker={onEnrollSpeaker}
                                         onSpeakerClick={handleSpeakerClick}
                                         onTimestampClick={onTimestampClick}
+                                        onPlayFromTimestamp={onPlayFromTimestamp}
+                                        isActive={segment.id === activeSegmentId}
                                         hotwords={hotwords}
                                     />
                                 </motion.div>
