@@ -183,7 +183,7 @@ export function TranscriptButtonGroup({
               placeholder="jb_your_api_key_here"
               value={jotbirdApiKey}
               onChange={(e) => setJotbirdApiKey(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handlePublishToJotBird(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !jotbirdPublishing) handlePublishToJotBird(); }}
             />
           </div>
           <DialogFooter>

@@ -273,7 +273,8 @@ fn get_transcription_status() -> TranscriptionStatus {
 #[tauri::command]
 fn read_audio_file(file_path: String) -> Result<Vec<u8>, String> {
     // Prevent path traversal
-    if file_path.contains("..") || file_path.starts_with("/") {
+    let path = std::path::Path::new(&file_path);
+    if file_path.contains("..") || path.is_absolute() {
         return Err("Invalid path".into());
     }
     match std::fs::read(&file_path) {
@@ -285,7 +286,8 @@ fn read_audio_file(file_path: String) -> Result<Vec<u8>, String> {
 #[tauri::command]
 async fn save_transcript(file_path: String, content: String) -> Result<(), String> {
     // Prevent path traversal
-    if file_path.contains("..") || file_path.starts_with("/") {
+    let path = std::path::Path::new(&file_path);
+    if file_path.contains("..") || path.is_absolute() {
         return Err("Invalid path".into());
     }
     log_info!("Saving transcript to: {}", file_path);
@@ -464,7 +466,10 @@ async fn export_to_jotbird(
         return Err("Invalid JotBird API key format (must start with jb_)".to_string());
     }
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     let mut body = serde_json::json!({
         "markdown": markdown,
     });

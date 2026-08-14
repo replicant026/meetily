@@ -450,11 +450,6 @@ impl RecordingManager {
         self.recording_saver.speaker_tracker.clone()
     }
 
-    /// Add a transcript chunk to be saved later (legacy method)
-    pub fn add_transcript_chunk(&self, text: String) {
-        self.recording_saver.add_transcript_chunk(text);
-    }
-
     /// Get accumulated transcript segments from current recording session
     /// Used for syncing frontend state after page reload during active recording
     pub fn get_transcript_segments(&self) -> Vec<super::recording_saver::TranscriptSegment> {

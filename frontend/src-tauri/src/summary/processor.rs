@@ -767,7 +767,7 @@ If no action items exist, return an empty array []. Do not include any text outs
         client, provider, model_name, api_key,
         system_prompt, &user_prompt,
         ollama_endpoint, custom_openai_endpoint,
-        Some(1024), temperature, top_p,
+        Some(_max_tokens.unwrap_or(1024)), temperature, top_p,
         app_data_dir, cancellation_token,
     )
     .await

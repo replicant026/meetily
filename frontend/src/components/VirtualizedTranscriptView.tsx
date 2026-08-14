@@ -781,6 +781,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         hotwords={hotwords}
                                         searchQuery={searchOpen ? searchQuery : undefined}
                                         isSearchActive={segment.id === activeSearchSegmentId}
+                                        protectedSet={protectedSet}
                                     />
                                 </motion.div>
                             );

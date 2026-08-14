@@ -133,21 +133,6 @@ impl RecordingSaver {
         }
     }
 
-    /// Legacy method for backward compatibility - converts text to basic segment
-    pub fn add_transcript_chunk(&self, text: String) {
-        let segment = TranscriptSegment {
-            id: format!("seg_{}", chrono::Utc::now().timestamp_millis()),
-            text,
-            audio_start_time: 0.0,
-            audio_end_time: 0.0,
-            duration: 0.0,
-            display_time: "[00:00]".to_string(),
-            confidence: 1.0,
-            sequence_id: 0,
-        };
-        self.add_transcript_segment(segment);
-    }
-
     /// Start accumulation with optional incremental saving
     ///
     /// # Arguments
