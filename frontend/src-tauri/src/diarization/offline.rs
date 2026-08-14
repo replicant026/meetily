@@ -285,7 +285,7 @@ pub async fn commit_speaker_labels(
     min_speakers: usize,
     max_speakers: usize,
 ) -> Result<usize> {
-    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, None).await
+    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, None, None).await
 }
 
 /// Like [`commit_speaker_labels`], but calls `progress(percentage, message)` at
@@ -308,7 +308,7 @@ pub async fn commit_speaker_labels_with_progress<F>(
 where
     F: Fn(u32, &str) + Send + Sync,
 {
-    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, Some(&progress)).await
+    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, Some(&progress), None).await
 }
 
 async fn commit_speaker_labels_inner(
@@ -319,6 +319,7 @@ async fn commit_speaker_labels_inner(
     requested_min_speakers: usize,
     requested_max_speakers: usize,
     progress: Option<&(dyn Fn(u32, &str) + Send + Sync)>,
+    tracker_speaker_count: Option<usize>,
 ) -> Result<usize> {
     let emit = |pct: u32, msg: &str| {
         if let Some(cb) = progress {
@@ -410,7 +411,7 @@ async fn commit_speaker_labels_inner(
     let windows = &effective_windows;
     let (clustered_windows, original_to_block) = aggregate_temporal_windows(windows, MAX_CLUSTER_WINDOWS);
     let group_size = if clustered_windows.is_empty() { 0 } else { (windows.len() + clustered_windows.len() - 1) / clustered_windows.len() };
-    let k = choose_k(clustered_windows.len(), min_speakers, max_speakers);
+    let k = choose_k(clustered_windows.len(), min_speakers, max_speakers, tracker_speaker_count);
 
     emit(96, "Agrupando falantes…");
 
@@ -663,10 +664,19 @@ pub(crate) fn aggregate_temporal_windows(
     (aggregated, original_to_block)
 }
 
-fn choose_k(n: usize, min_k: usize, max_k: usize) -> usize {
+fn choose_k(n: usize, min_k: usize, max_k: usize, tracker_hint: Option<usize>) -> usize {
     let lo = min_k.max(2);
     let hi = max_k.max(lo);
-    let guess = (n / 50).clamp(lo, hi);
+    // Use tracker's observed speaker count as hint when available
+    let guess = if let Some(count) = tracker_hint {
+        if count >= lo && count <= hi {
+            count
+        } else {
+            (n / 50).clamp(lo, hi)
+        }
+    } else {
+        (n / 50).clamp(lo, hi)
+    };
     guess.min(n)
 }
 

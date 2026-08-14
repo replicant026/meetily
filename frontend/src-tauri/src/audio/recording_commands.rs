@@ -55,6 +55,16 @@ pub fn current_diarization_buffer() -> Arc<crate::diarization::EmbeddingBuffer> 
     Arc::new(crate::diarization::EmbeddingBuffer::default())
 }
 
+/// Realtime speaker tracker for online cosine matching.
+pub fn current_speaker_tracker() -> Arc<std::sync::Mutex<crate::diarization::tracker::SpeakerTracker>> {
+    if let Ok(manager_guard) = RECORDING_MANAGER.lock() {
+        if let Some(manager) = manager_guard.as_ref() {
+            return manager.speaker_tracker();
+        }
+    }
+    Arc::new(std::sync::Mutex::new(crate::diarization::tracker::SpeakerTracker::default()))
+}
+
 // ============================================================================
 // PUBLIC TYPES
 // ============================================================================

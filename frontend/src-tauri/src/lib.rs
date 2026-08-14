@@ -741,6 +741,7 @@ pub fn run() {
             api::api_get_meeting_transcripts,
             get_diarization_status,
             set_diarization_config,
+            get_speaker_tracker_status,
             // Speaker profile commands
             list_speaker_people,
             get_speaker_person,
@@ -941,6 +942,17 @@ fn set_diarization_config(
 ) -> crate::diarization::DiarizationStatus {
     crate::diarization::update_status(config);
     crate::diarization::status()
+}
+
+#[tauri::command]
+fn get_speaker_tracker_status() -> serde_json::Value {
+    let tracker_arc = crate::audio::recording_commands::current_speaker_tracker();
+    let count = tracker_arc.lock().map(|t| t.speaker_count()).unwrap_or(0);
+    let is_active = count > 0;
+    serde_json::json!({
+        "speaker_count": count,
+        "is_active": is_active,
+    })
 }
 
 // ── Speaker recognition preferences commands ──────────────────────────────

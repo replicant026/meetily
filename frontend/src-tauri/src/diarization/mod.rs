@@ -4,10 +4,12 @@ use std::sync::Mutex;
 pub mod clustering;
 pub mod embedding;
 pub mod offline;
+pub mod overlap;
 pub mod speaker_preferences;
+pub mod tracker;
 pub mod voice_references;
 
-pub const EMBEDDING_DIM: usize = 192;
+pub const EMBEDDING_DIM: usize = 256;
 pub const MAX_BUFFER_WINDOWS: usize = 2000;
 
 #[derive(Debug, Clone)]

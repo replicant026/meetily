@@ -57,6 +57,8 @@ pub struct RecordingSaver {
     is_saving: Arc<Mutex<bool>>,
     /// PR-44a: per-session embedding buffer released on stop_recording.
     pub diarization_buffer: Arc<crate::diarization::EmbeddingBuffer>,
+    /// Realtime speaker tracker for online cosine matching.
+    pub speaker_tracker: Arc<Mutex<crate::diarization::tracker::SpeakerTracker>>,
 }
 
 impl RecordingSaver {
@@ -70,6 +72,7 @@ impl RecordingSaver {
             chunk_receiver: None,
             is_saving: Arc::new(Mutex::new(false)),
             diarization_buffer: Arc::new(crate::diarization::EmbeddingBuffer::default()),
+            speaker_tracker: Arc::new(Mutex::new(crate::diarization::tracker::SpeakerTracker::default())),
         }
     }
 

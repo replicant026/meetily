@@ -41,6 +41,9 @@ pub struct TranscriptUpdate {
     // the value is advisory and the frontend renders it with a badge.
     #[serde(skip_serializing_if = "Option::is_none", rename = "transientSpeaker")]
     pub transient_speaker: Option<String>,
+    /// Whether overlapping speech was detected during this segment.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub overlap: Option<bool>,
 }
 
 // NOTE: get_transcript_history and get_recording_meeting_name functions
@@ -183,20 +186,29 @@ pub fn start_transcription_task<R: Runtime>(
                                             }));
                                         }
 
-                                        // PR-44a: realtime speaker hint for the whole chunk
+                                        // Realtime speaker identification via online cosine matching
                                         let transient_speaker: Option<String> = {
                                             let buf = crate::audio::recording_commands::current_diarization_buffer();
-                                            if crate::diarization::embedding::push_window(
-                                                buf.as_ref(),
-                                                &diarization_samples,
-                                                diarization_sample_rate,
-                                                chunk_timestamp,
-                                                chunk_timestamp + chunk_duration,
-                                            ) {
-                                                Some("Speaker ?".to_string())
-                                            } else {
-                                                None
-                                            }
+                                            let tracker_arc = crate::audio::recording_commands::current_speaker_tracker();
+                                            tracker_arc.lock().ok().and_then(|mut tracker| {
+                                                crate::diarization::embedding::push_and_match(
+                                                    buf.as_ref(),
+                                                    &mut tracker,
+                                                    &diarization_samples,
+                                                    diarization_sample_rate,
+                                                    chunk_timestamp,
+                                                    chunk_timestamp + chunk_duration,
+                                                    chunk_duration,
+                                                ).and_then(|r| {
+                                                    use crate::diarization::tracker::MatchResult;
+                                                    match r.match_result {
+                                                        MatchResult::Skipped => None,
+                                                        MatchResult::Matched { label, .. }
+                                                        | MatchResult::NewSpeaker { label, .. }
+                                                        | MatchResult::ForceMerged { label, .. } => Some(label),
+                                                    }
+                                                })
+                                            })
                                         };
 
                                         // Emit one TranscriptUpdate per sub-segment.
@@ -222,6 +234,7 @@ pub fn start_transcription_task<R: Runtime>(
 
                                             let update = TranscriptUpdate {
                                                 transient_speaker: transient_speaker.clone(),
+                                                overlap: None, // Set by offline overlap detector
                                                 text: seg.text.clone(),
                                                 timestamp: format_current_timestamp(),
                                                 source: "Audio".to_string(),

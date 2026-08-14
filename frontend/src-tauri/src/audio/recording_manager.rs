@@ -445,6 +445,11 @@ impl RecordingManager {
         self.recording_saver.diarization_buffer.clone()
     }
 
+    /// Realtime speaker tracker for online cosine matching during recording.
+    pub fn speaker_tracker(&self) -> std::sync::Arc<std::sync::Mutex<crate::diarization::tracker::SpeakerTracker>> {
+        self.recording_saver.speaker_tracker.clone()
+    }
+
     /// Add a transcript chunk to be saved later (legacy method)
     pub fn add_transcript_chunk(&self, text: String) {
         self.recording_saver.add_transcript_chunk(text);
