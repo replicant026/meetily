@@ -8,18 +8,15 @@
 //!   0 = silence, 1..=3 = single speaker, 4+ = overlapping speakers
 
 use anyhow::{anyhow, Result};
-use ndarray::{Array1, Array3, IxDyn};
+use ndarray::{Array3, IxDyn};
 use ort::execution_providers::CPUExecutionProvider;
 use ort::inputs;
 use ort::session::builder::GraphOptimizationLevel;
 use ort::session::Session;
 use ort::value::TensorRef;
-use std::path::Path;
 
 use super::embedding::segmentation_model_path;
 
-/// Pyannote segmentation frame size in samples (270 at 16kHz).
-const FRAME_SIZE: usize = 270;
 /// Pyannote segmentation input: 10-second windows.
 const WINDOW_SECONDS: usize = 10;
 /// First class index that represents overlapping speakers.
@@ -75,6 +72,8 @@ impl OverlapDetector {
 
     /// Process a 10-second audio window (16kHz mono f32).
     /// Returns per-frame class predictions.
+    // ponytail: `&mut self` required because ort 2.x Session::run takes &mut self.
+    // Switch to &self when ort upgrades to interior-mutability session.
     pub fn process_window(&mut self, samples: &[f32], sample_rate: u32) -> Result<OverlapResult> {
         if sample_rate != 16_000 {
             return Err(anyhow!("expected 16 kHz, got {}", sample_rate));
@@ -91,21 +90,25 @@ impl OverlapDetector {
         };
         let audio_len = audio.len();
 
-        // Input shape: [1, num_samples]
+        // Input shape: [batch=1, channels=1, samples] (pyannote expects 3D)
         let input_array = Array3::from_shape_vec(
             (1, 1, audio_len),
             audio,
         )?;
         let input_view = input_array.into_dimensionality::<IxDyn>()?;
 
-        let inputs = inputs!["input" => TensorRef::from_array_view(&input_view)?];
+        // Read tensor names dynamically from the model (pyannote uses "x"/"y")
+        let input_name = self.session.inputs[0].name.clone();
+        let output_name = self.session.outputs[0].name.clone();
+
+        let inputs = inputs![input_name => TensorRef::from_array_view(&input_view)?];
 
         let outputs = self.session.run(inputs)?;
 
-        // Output shape: [1, num_frames, num_classes]
+        // Output shape: [batch=1, num_frames, num_classes]
         let output: ndarray::ArrayD<f32> = outputs
-            .get("output")
-            .ok_or_else(|| anyhow!("no output tensor named 'output' from segmentation model"))?
+            .get(&output_name)
+            .ok_or_else(|| anyhow!("no output tensor '{}' from segmentation model", output_name))?
             .try_extract_array()?
             .to_owned();
 
@@ -173,7 +176,7 @@ mod tests {
 
     #[test]
     fn overlap_constants() {
-        assert_eq!(FRAME_SIZE, 270);
+        // FRAME_SIZE = 270 samples at 16kHz (~17ms per frame)
         assert_eq!(WINDOW_SECONDS, 10);
         assert_eq!(FIRST_OVERLAP_CLASS, 4);
     }

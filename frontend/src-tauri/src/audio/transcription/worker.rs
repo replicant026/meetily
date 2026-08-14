@@ -8,7 +8,7 @@ use crate::audio::AudioChunk;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Runtime};
 
 // Sequence counter for transcript updates
@@ -16,6 +16,26 @@ static SEQUENCE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 // Speech detection flag - reset per recording session
 static SPEECH_DETECTED_EMITTED: AtomicBool = AtomicBool::new(false);
+
+// Overlap detector singleton (lazy-init, thread-safe via Mutex)
+static OVERLAP_DETECTOR: Mutex<Option<crate::diarization::overlap::OverlapDetector>> = Mutex::new(None);
+
+fn ensure_overlap_detector() -> Option<&'static Mutex<Option<crate::diarization::overlap::OverlapDetector>>> {
+    // Try to initialize if empty
+    {
+        let mut guard = OVERLAP_DETECTOR.lock().ok()?;
+        if guard.is_none() {
+            match crate::diarization::overlap::OverlapDetector::new() {
+                Ok(det) => *guard = Some(det),
+                Err(e) => {
+                    log::debug!("OverlapDetector unavailable: {}", e);
+                    return None;
+                }
+            }
+        }
+    }
+    Some(&OVERLAP_DETECTOR)
+}
 
 /// Reset the speech detected flag for a new recording session
 pub fn reset_speech_detected_flag() {
@@ -211,6 +231,26 @@ pub fn start_transcription_task<R: Runtime>(
                                             })
                                         };
 
+                                        // Overlap detection via pyannote segmentation model.
+                                        // NOTE: input is VAD-filtered speech only — the detector
+                                        // will miss overlaps within silence regions (acceptable).
+                                        // Skip for very short chunks (<0.5s) — model pads to 10s
+                                        // of silence and produces garbage on tiny inputs.
+                                        let overlap_detected: Option<bool> = if chunk_duration < 0.5 {
+                                            None
+                                        } else {
+                                            ensure_overlap_detector().and_then(|det| {
+                                                det.lock().ok().and_then(|mut guard| {
+                                                    guard.as_mut().and_then(|d| {
+                                                        // Run on 16kHz mono audio; detector pads to 10s automatically
+                                                        d.process_window(&diarization_samples, diarization_sample_rate)
+                                                            .ok()
+                                                            .map(|r| r.has_overlap)
+                                                    })
+                                                })
+                                            })
+                                        };
+
                                         // Emit one TranscriptUpdate per sub-segment.
                                         // Whisper sub-segments carry centisecond timestamps → map to recording-relative seconds.
                                         for seg in &segments {
@@ -234,7 +274,7 @@ pub fn start_transcription_task<R: Runtime>(
 
                                             let update = TranscriptUpdate {
                                                 transient_speaker: transient_speaker.clone(),
-                                                overlap: None, // Set by offline overlap detector
+                                                overlap: overlap_detected,
                                                 text: seg.text.clone(),
                                                 timestamp: format_current_timestamp(),
                                                 source: "Audio".to_string(),
@@ -426,176 +466,6 @@ pub fn start_transcription_task<R: Runtime>(
 
         info!("✅ Parallel transcription task completed - all workers finished, ready for model unload");
     })
-}
-
-/// Transcribe audio chunk using the appropriate provider (Whisper, Parakeet, or trait-based)
-/// Returns: (text, confidence Option, is_partial)
-async fn transcribe_chunk_with_provider<R: Runtime>(
-    engine: &TranscriptionEngine,
-    chunk: AudioChunk,
-    app: &AppHandle<R>,
-    initial_prompt: Option<String>,
-) -> std::result::Result<(String, Option<f32>, bool), TranscriptionError> {
-    // Convert to 16kHz mono for transcription
-    let transcription_data = if chunk.sample_rate != 16000 {
-        crate::audio::audio_processing::resample_audio(&chunk.data, chunk.sample_rate, 16000)
-    } else {
-        chunk.data
-    };
-
-    // Skip VAD processing here since the pipeline already extracted speech using VAD
-    let speech_samples = transcription_data;
-
-    // Check for empty samples - improved error handling
-    if speech_samples.is_empty() {
-        warn!(
-            "Audio chunk {} is empty, skipping transcription",
-            chunk.chunk_id
-        );
-        return Err(TranscriptionError::AudioTooShort {
-            samples: 0,
-            minimum: 1600, // 100ms at 16kHz
-        });
-    }
-
-    // Calculate energy for logging/monitoring only
-    let energy: f32 =
-        speech_samples.iter().map(|&x| x * x).sum::<f32>() / speech_samples.len() as f32;
-    info!(
-        "Processing speech audio chunk {} with {} samples (energy: {:.6})",
-        chunk.chunk_id,
-        speech_samples.len(),
-        energy
-    );
-
-    // Transcribe using the appropriate engine (with improved error handling)
-    match engine {
-        TranscriptionEngine::Whisper(whisper_engine) => {
-            // Get language preference from global state
-            let language = crate::get_language_preference_internal();
-
-            match whisper_engine
-                .transcribe_audio_with_confidence(speech_samples, language, initial_prompt)
-                .await
-            {
-                Ok((text, confidence, is_partial)) => {
-                    let cleaned_text = text.trim().to_string();
-                    if cleaned_text.is_empty() {
-                        return Ok((String::new(), Some(confidence), is_partial));
-                    }
-
-                    info!(
-                        "Whisper transcription complete for chunk {}: '{}' (confidence: {:.2}, partial: {})",
-                        chunk.chunk_id, cleaned_text, confidence, is_partial
-                    );
-
-                    Ok((cleaned_text, Some(confidence), is_partial))
-                }
-                Err(e) => {
-                    error!(
-                        "Whisper transcription failed for chunk {}: {}",
-                        chunk.chunk_id, e
-                    );
-
-                    let transcription_error = TranscriptionError::EngineFailed(e.to_string());
-                    let _ = app.emit(
-                        "transcription-error",
-                        &serde_json::json!({
-                            "error": transcription_error.to_string(),
-                            "userMessage": format!("Transcription failed: {}", transcription_error),
-                            "actionable": false
-                        }),
-                    );
-
-                    Err(transcription_error)
-                }
-            }
-        }
-        TranscriptionEngine::Parakeet(parakeet_engine) => {
-            match parakeet_engine.transcribe_audio(speech_samples).await {
-                Ok(text) => {
-                    let cleaned_text = text.trim().to_string();
-                    if cleaned_text.is_empty() {
-                        return Ok((String::new(), None, false));
-                    }
-
-                    info!(
-                        "Parakeet transcription complete for chunk {}: '{}'",
-                        chunk.chunk_id, cleaned_text
-                    );
-
-                    // Parakeet doesn't provide confidence or partial results
-                    Ok((cleaned_text, None, false))
-                }
-                Err(e) => {
-                    error!(
-                        "Parakeet transcription failed for chunk {}: {}",
-                        chunk.chunk_id, e
-                    );
-
-                    let transcription_error = TranscriptionError::EngineFailed(e.to_string());
-                    let _ = app.emit(
-                        "transcription-error",
-                        &serde_json::json!({
-                            "error": transcription_error.to_string(),
-                            "userMessage": format!("Transcription failed: {}", transcription_error),
-                            "actionable": false
-                        }),
-                    );
-
-                    Err(transcription_error)
-                }
-            }
-        }
-        TranscriptionEngine::Provider(provider) => {
-            // NEW: Trait-based provider (clean, unified interface)
-            let language = crate::get_language_preference_internal();
-
-            match provider.transcribe(speech_samples, language).await {
-                Ok(result) => {
-                    let cleaned_text = result.text.trim().to_string();
-                    if cleaned_text.is_empty() {
-                        return Ok((String::new(), result.confidence, result.is_partial));
-                    }
-
-                    let confidence_str = match result.confidence {
-                        Some(c) => format!("confidence: {:.2}", c),
-                        None => "no confidence".to_string(),
-                    };
-
-                    info!(
-                        "{} transcription complete for chunk {}: '{}' ({}, partial: {})",
-                        provider.provider_name(),
-                        chunk.chunk_id,
-                        cleaned_text,
-                        confidence_str,
-                        result.is_partial
-                    );
-
-                    Ok((cleaned_text, result.confidence, result.is_partial))
-                }
-                Err(e) => {
-                    error!(
-                        "{} transcription failed for chunk {}: {}",
-                        provider.provider_name(),
-                        chunk.chunk_id,
-                        e
-                    );
-
-                    let _ = app.emit(
-                        "transcription-error",
-                        &serde_json::json!({
-                            "error": e.to_string(),
-                            "userMessage": format!("Transcription failed: {}", e),
-                            "actionable": false
-                        }),
-                    );
-
-                    Err(e)
-                }
-            }
-        }
-    }
 }
 
 /// A single transcription segment with its own text and confidence.
@@ -837,10 +707,6 @@ fn split_at_silence(text: &str, audio: &[f32], sample_rate: u32) -> Vec<Transcri
             }
         }
 
-        let segment_text = text[prev_time as usize * text.len() / text.len()..].to_string();
-        // Actually just slice from previous boundary
-        let _ = segment_text; // discard
-
         let start_char = (prev_time / total_dur * total_chars) as usize;
         let end_char = best_boundary.min(text.len());
 
@@ -946,12 +812,3 @@ fn format_current_timestamp() -> String {
     format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
-/// Format recording-relative time as [MM:SS]
-#[allow(dead_code)]
-fn format_recording_time(seconds: f64) -> String {
-    let total_seconds = seconds.floor() as u64;
-    let minutes = total_seconds / 60;
-    let secs = total_seconds % 60;
-
-    format!("[{:02}:{:02}]", minutes, secs)
-}

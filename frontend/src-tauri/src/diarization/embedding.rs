@@ -1,4 +1,4 @@
-use super::{EmbeddingBuffer, WindowedEmbedding, EMBEDDING_DIM};
+use super::{EmbeddingBuffer, WindowedEmbedding};
 use anyhow::{anyhow, Result};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -159,13 +159,9 @@ fn try_load_extractor(model_path: &Path) -> Result<bool> {
     match sherpa_onnx::SpeakerEmbeddingExtractor::create(&config) {
         Some(extractor) => {
             let dim = extractor.dim();
-            if dim as usize != EMBEDDING_DIM {
-                log::warn!(
-                    "Model {} has dim {} but expected {}; trying next model",
-                    model_path.display(), dim, EMBEDDING_DIM
-                );
-                return Ok(false);
-            }
+            // ponytail: dimension gate removed — tracker/cosine-similarity is
+            // dimension-agnostic; offline reembedding validates per-embedding.
+            // Accept any dim so CAM++ (192) and VoxBlink2 (256) both work.
             let _ = EXTRACTOR.set(extractor);
             MODEL_STATUS.store(1, Ordering::SeqCst);
             log::info!("Speaker embedding extractor loaded from {} (dim={})", model_path.display(), dim);
@@ -202,7 +198,7 @@ pub fn ensure_loaded() -> Result<()> {
 
 /// Extract a speaker embedding from 16 kHz mono f32 audio samples.
 ///
-/// Returns a 192-dim embedding vector on success.
+/// Returns a 256-dim embedding vector on success.
 pub fn extract_embedding(samples: &[f32], sample_rate: u32) -> Result<Vec<f32>> {
     if samples.is_empty() {
         return Err(anyhow!("empty audio"));
@@ -286,10 +282,18 @@ pub fn diarize_full_audio(
     max_speakers: usize,
 ) -> Result<Vec<super::DiarizationSegment>> {
     let seg_path = segmentation_model_path();
-    let emb_path = embedding_model_path();
-
-    if !seg_path.exists() || !emb_path.exists() {
+    // Try VoxBlink2 first, fall back to CAM++ if not on disk
+    let emb_path = if embedding_model_path().exists() {
+        embedding_model_path()
+    } else if embedding_model_fallback_path().exists() {
+        log::warn!("VoxBlink2 not found, using CAM++ fallback for offline diarization");
+        embedding_model_fallback_path()
+    } else {
         return Err(anyhow!("diarization models not available"));
+    };
+
+    if !seg_path.exists() {
+        return Err(anyhow!("segmentation model not available at {}", seg_path.display()));
     }
 
     // ponytail: sherpa-onnx FastClusteringConfig has no min/max_speakers fields.

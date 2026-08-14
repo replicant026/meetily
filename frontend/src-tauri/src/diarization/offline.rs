@@ -11,7 +11,7 @@
 use super::clustering::{remap_by_first_appearance, spectral_cluster};
 use super::embedding::{diarize_full_audio, extract_embedding};
 use super::speaker_preferences::{get_preferences, resolve_match_action, SpeakerRecognitionPreferences};
-use super::{WindowedEmbedding, EMBEDDING_DIM};
+use super::WindowedEmbedding;
 use anyhow::Result;
 use hound::WavReader;
 use sqlx::SqlitePool;
@@ -288,6 +288,20 @@ pub async fn commit_speaker_labels(
     commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, None, None).await
 }
 
+/// Like [`commit_speaker_labels`] but with a hint from the realtime speaker tracker.
+/// The tracker count helps `choose_k` pick the right cluster count.
+pub async fn commit_speaker_labels_with_tracker_hint(
+    pool: &SqlitePool,
+    meeting_id: &str,
+    audio_wav: Option<&Path>,
+    realtime_windows: Vec<WindowedEmbedding>,
+    min_speakers: usize,
+    max_speakers: usize,
+    tracker_speaker_count: Option<usize>,
+) -> Result<usize> {
+    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, None, tracker_speaker_count).await
+}
+
 /// Like [`commit_speaker_labels`], but calls `progress(percentage, message)` at
 /// each major pipeline stage so callers can drive a UI progress bar.
 ///
@@ -337,7 +351,7 @@ async fn commit_speaker_labels_inner(
     let min_speakers = if requested_min_speakers > 0 {
         requested_min_speakers
     } else {
-        status.min_speakers.max(2)
+        status.min_speakers.max(1)
     };
     let max_speakers = if requested_max_speakers > 0 {
         requested_max_speakers.max(min_speakers)
@@ -665,7 +679,7 @@ pub(crate) fn aggregate_temporal_windows(
 }
 
 fn choose_k(n: usize, min_k: usize, max_k: usize, tracker_hint: Option<usize>) -> usize {
-    let lo = min_k.max(2);
+    let lo = min_k.max(1);
     let hi = max_k.max(lo);
     // Use tracker's observed speaker count as hint when available
     let guess = if let Some(count) = tracker_hint {
@@ -743,7 +757,7 @@ fn reembed_wav(path: &Path) -> Result<Vec<WindowedEmbedding>> {
     while start + win <= samples.len() {
         let end_sample = start + win;
         let emb = extract_embedding(&samples[start..end_sample], sr)?;
-        if emb.len() != EMBEDDING_DIM {
+        if emb.is_empty() {
             break;
         }
         let start_t = start as f64 / sr as f64;

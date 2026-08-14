@@ -38,6 +38,10 @@ pub use super::transcription::TranscriptUpdate;
 // Simple recording state tracking
 static IS_RECORDING: AtomicBool = AtomicBool::new(false);
 
+// Captured speaker count from the last recording session's tracker.
+// Used by offline diarization to hint choose_k.
+static LAST_TRACKER_SPEAKER_COUNT: Mutex<Option<usize>> = Mutex::new(None);
+
 // Global recording manager and transcription task to keep them alive during recording
 static RECORDING_MANAGER: Mutex<Option<RecordingManager>> = Mutex::new(None);
 static TRANSCRIPTION_TASK: Mutex<Option<JoinHandle<()>>> = Mutex::new(None);
@@ -63,6 +67,12 @@ pub fn current_speaker_tracker() -> Arc<std::sync::Mutex<crate::diarization::tra
         }
     }
     Arc::new(std::sync::Mutex::new(crate::diarization::tracker::SpeakerTracker::default()))
+}
+
+/// Get the speaker count captured from the last recording session's tracker.
+/// Returns None if no count was captured.
+pub fn last_tracker_speaker_count() -> Option<usize> {
+    *LAST_TRACKER_SPEAKER_COUNT.lock().unwrap()
 }
 
 // ============================================================================
@@ -269,9 +279,10 @@ pub async fn start_recording_with_meeting_name<R: Runtime>(
         *global_manager = Some(manager);
     }
 
-    // Set recording flag and reset speech detection flag
-    info!("🔍 Setting IS_RECORDING to true and resetting SPEECH_DETECTED_EMITTED");
+    // Set recording flag and reset per-session state
+    info!("🔍 Setting IS_RECORDING to true and resetting per-session state");
     IS_RECORDING.store(true, Ordering::SeqCst);
+    *LAST_TRACKER_SPEAKER_COUNT.lock().unwrap() = None;
     drop(engine_lifecycle_guard);
     reset_speech_detected_flag(); // Reset for new recording session
 
@@ -454,9 +465,10 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
         *global_manager = Some(manager);
     }
 
-    // Set recording flag and reset speech detection flag
-    info!("🔍 Setting IS_RECORDING to true and resetting SPEECH_DETECTED_EMITTED");
+    // Set recording flag and reset per-session state
+    info!("🔍 Setting IS_RECORDING to true and resetting per-session state");
     IS_RECORDING.store(true, Ordering::SeqCst);
+    *LAST_TRACKER_SPEAKER_COUNT.lock().unwrap() = None;
     drop(engine_lifecycle_guard);
     reset_speech_detected_flag(); // Reset for new recording session
 
@@ -551,34 +563,41 @@ pub async fn stop_recording<R: Runtime>(
         }),
     );
 
-    // Step 1: Stop audio capture immediately (no more new chunks) with proper error handling
-    let manager_for_cleanup = {
+    // Step 1: Stop audio capture immediately (no more new chunks).
+    // Take manager out temporarily for the async stop, then put it back
+    // so workers can still access tracker/buffer during transcription.
+    let manager_for_stop = {
         let mut global_manager = RECORDING_MANAGER.lock().unwrap();
         global_manager.take()
     };
 
-    let stop_result = if let Some(mut manager) = manager_for_cleanup {
-        // Use FORCE FLUSH to immediately process all accumulated audio - eliminates 30s delay!
-        info!("🚀 Using FORCE FLUSH to eliminate pipeline accumulation delays");
-        let result = manager.stop_streams_and_force_flush().await;
-        // Store manager back for later cleanup
-        let manager_for_cleanup = Some(manager);
-        (result, manager_for_cleanup)
-    } else {
-        warn!("No recording manager found to stop");
-        (Ok(()), None)
+    let manager_for_stop = match manager_for_stop {
+        Some(mut manager) => {
+            info!("🚀 Using FORCE FLUSH to eliminate pipeline accumulation delays");
+            match manager.stop_streams_and_force_flush().await {
+                Ok(_) => {
+                    info!("✅ Audio streams stopped successfully - no more chunks will be created");
+                }
+                Err(e) => {
+                    // Put manager back before returning error
+                    let mut global_manager = RECORDING_MANAGER.lock().unwrap();
+                    *global_manager = Some(manager);
+                    error!("❌ Failed to stop audio streams: {}", e);
+                    return Err(format!("Failed to stop audio streams: {}", e));
+                }
+            }
+            Some(manager)
+        }
+        None => {
+            warn!("No recording manager found to stop");
+            return Ok(());
+        }
     };
 
-    let (stop_result, manager_for_cleanup) = stop_result;
-
-    match stop_result {
-        Ok(_) => {
-            info!("✅ Audio streams stopped successfully - no more chunks will be created");
-        }
-        Err(e) => {
-            error!("❌ Failed to stop audio streams: {}", e);
-            return Err(format!("Failed to stop audio streams: {}", e));
-        }
+    // Put manager back so workers can access tracker/buffer
+    {
+        let mut global_manager = RECORDING_MANAGER.lock().unwrap();
+        *global_manager = manager_for_stop;
     }
 
     // Step 1.5: Clean up transcript listener to release microphone
@@ -656,6 +675,24 @@ pub async fn stop_recording<R: Runtime>(
     } else {
         info!("ℹ️ No transcription task found to wait for");
     }
+
+    // Workers finished — NOW safe to take the manager for cleanup.
+    // Keeping it alive until here ensures workers could access tracker/buffer.
+    // Capture tracker speaker count before dropping the manager.
+    {
+        let global_manager = RECORDING_MANAGER.lock().unwrap();
+        if let Some(manager) = global_manager.as_ref() {
+            let count = manager.speaker_tracker().lock().map(|t| t.speaker_count()).unwrap_or(0);
+            if count > 0 {
+                *LAST_TRACKER_SPEAKER_COUNT.lock().unwrap() = Some(count);
+                info!("📋 Captured tracker speaker count: {} for offline diarization", count);
+            }
+        }
+    }
+    let manager_for_cleanup = {
+        let mut global_manager = RECORDING_MANAGER.lock().unwrap();
+        global_manager.take()
+    };
 
     // Step 3: Now safely unload Whisper model after ALL chunks are processed
     let _ = app.emit(
@@ -1299,14 +1336,18 @@ pub async fn run_meeting_diarization(
     let meeting_id_clone = meeting_id.clone();
     let app_clone = app.clone();
 
+    // Consume and clear the tracker hint so it doesn't leak to unrelated meetings.
+    let tracker_count = last_tracker_speaker_count();
+    *LAST_TRACKER_SPEAKER_COUNT.lock().expect("lock") = None;
     tokio::spawn(async move {
-        match crate::diarization::offline::commit_speaker_labels(
+        match crate::diarization::offline::commit_speaker_labels_with_tracker_hint(
             &pool,
             &meeting_id_clone,
             Some(wav_path.as_path()),
             Vec::new(),
             0,
             0,
+            tracker_count,
         )
         .await
         {

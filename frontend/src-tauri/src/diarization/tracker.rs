@@ -127,9 +127,7 @@ impl SpeakerTracker {
         let can_learn = duration_secs >= self.config.min_learn_secs;
 
         // Find best matching speaker
-        let (best_id, best_sim) = self.find_best_match(embedding);
-
-        if let Some((speaker_id, sim)) = best_id {
+        if let Some((speaker_id, sim)) = self.find_best_match(embedding) {
             if sim >= self.config.match_threshold {
                 let label = format!("Speaker {}", speaker_id + 1);
                 if can_learn {
@@ -199,7 +197,7 @@ impl SpeakerTracker {
     // -- Internal helpers --
 
     /// Find the best matching speaker: max of (centroid_sim, max_example_sims).
-    fn find_best_match(&self, embedding: &[f32]) -> (Option<(usize, f32)>, ()) {
+    fn find_best_match(&self, embedding: &[f32]) -> Option<(usize, f32)> {
         let mut best: Option<(usize, f32)> = None;
 
         for (&id, centroid) in &self.centroids {
@@ -221,7 +219,7 @@ impl SpeakerTracker {
             }
         }
 
-        (best, ())
+        best
     }
 
     /// Find the centroid closest to the given embedding (for force-merge).
@@ -237,13 +235,19 @@ impl SpeakerTracker {
     /// Update centroid with running average. Weight capped at `centroid_weight_cap`.
     fn update_centroid(&mut self, speaker_id: usize, embedding: &[f32]) {
         if let Some(centroid) = self.centroids.get_mut(&speaker_id) {
+            if centroid.len() != embedding.len() {
+                log::warn!(
+                    "update_centroid: dimension mismatch for speaker {} (centroid={}, embedding={}), skipping",
+                    speaker_id, centroid.len(), embedding.len()
+                );
+                return;
+            }
             let count = self
                 .counts
                 .entry(speaker_id)
                 .or_insert(1);
             let n = (*count).min(self.config.centroid_weight_cap) as f32;
-            let dim = centroid.len().min(embedding.len());
-            for i in 0..dim {
+            for i in 0..centroid.len() {
                 centroid[i] = (centroid[i] * n + embedding[i]) / (n + 1.0);
             }
             *count += 1;
@@ -256,11 +260,11 @@ impl SpeakerTracker {
         if examples.len() < self.config.max_examples {
             examples.push(embedding);
         } else if let Some(centroid) = self.centroids.get(&speaker_id) {
-            // Replace the example farthest from centroid
+            // Replace the example farthest from centroid (lowest cosine similarity)
             let replace_idx = examples
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| {
+                .min_by(|(_, a), (_, b)| {
                     let sim_a = Self::cosine_similarity(a, centroid);
                     let sim_b = Self::cosine_similarity(b, centroid);
                     sim_a.partial_cmp(&sim_b).unwrap_or(std::cmp::Ordering::Equal)

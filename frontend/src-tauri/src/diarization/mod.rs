@@ -103,8 +103,8 @@ pub fn status() -> DiarizationStatus {
 pub fn update_status(next: DiarizationStatus) {
     let mut g = STATUS.lock().expect("diarization status lock");
     g.enabled = next.enabled;
-    g.min_speakers = next.min_speakers.max(2);
-    g.max_speakers = next.max_speakers.max(g.min_speakers);
+    g.min_speakers = next.min_speakers.max(1);
+    g.max_speakers = next.max_speakers.max(g.min_speakers).min(20);
     g.model_status = next.model_status;
 }
 
