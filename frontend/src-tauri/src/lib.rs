@@ -449,6 +449,54 @@ pub fn get_language_preference_internal() -> Option<String> {
     LANGUAGE_PREFERENCE.lock().ok().map(|lang| lang.clone())
 }
 
+// ── JotBird export ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn export_to_jotbird(
+    markdown: String,
+    title: Option<String>,
+    api_key: String,
+) -> Result<String, String> {
+    if api_key.is_empty() {
+        return Err("JotBird API key is required".to_string());
+    }
+    if !api_key.starts_with("jb_") {
+        return Err("Invalid JotBird API key format (must start with jb_)".to_string());
+    }
+
+    let client = reqwest::Client::new();
+    let mut body = serde_json::json!({
+        "markdown": markdown,
+    });
+    if let Some(t) = title {
+        body["title"] = serde_json::json!(t);
+    }
+
+    let resp = client
+        .post("https://www.jotbird.com/api/v1/documents")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("JotBird API request failed: {}", e))?;
+
+    let status = resp.status();
+    let text = resp.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(format!("JotBird API error ({}): {}", status, text));
+    }
+
+    let parsed: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| format!("Failed to parse JotBird response: {}", e))?;
+
+    parsed["url"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| format!("No URL in JotBird response: {}", text))
+}
+
 pub fn run() {
     log::set_max_level(log::LevelFilter::Info);
 
@@ -894,6 +942,8 @@ pub fn run() {
             accept_speaker_suggestion,
             reject_speaker_suggestion,
             assign_meeting_speaker,
+            // JotBird export
+            export_to_jotbird,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

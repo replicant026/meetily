@@ -306,6 +306,11 @@ export default function PageContent({
       meetingId={meeting.id}
       meetingFolderPath={meeting.folder_path}
       onRefetchTranscripts={onRefetchTranscripts}
+      meetingTitle={meetingData.meetingTitle}
+      transcriptMarkdown={meetingData.transcripts.map((tr: { speaker?: string | null; text: string }) => {
+        const speaker = tr.speaker ? `**${tr.speaker}:** ` : '';
+        return `${speaker}${tr.text}`;
+      }).join('\n\n')}
     />
   );
 

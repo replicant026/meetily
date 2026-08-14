@@ -4,12 +4,16 @@ import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
-import { Copy, Download, FolderOpen, RefreshCw } from 'lucide-react';
+import { Copy, Download, FolderOpen, RefreshCw, ExternalLink } from 'lucide-react';
 import Analytics from '@/lib/analytics';
 import { RetranscribeDialog } from './RetranscribeDialog';
 import { useConfig } from '@/contexts/ConfigContext';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { TranscriptExportFormat } from '@/lib/transcript-export';
+import { invoke } from '@tauri-apps/api/core';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 
 interface TranscriptButtonGroupProps {
@@ -20,6 +24,8 @@ interface TranscriptButtonGroupProps {
   meetingId?: string;
   meetingFolderPath?: string | null;
   onRefetchTranscripts?: () => Promise<void>;
+  meetingTitle?: string;
+  transcriptMarkdown?: string;
 }
 
 
@@ -31,10 +37,38 @@ export function TranscriptButtonGroup({
   meetingId,
   meetingFolderPath,
   onRefetchTranscripts,
+  meetingTitle,
+  transcriptMarkdown,
 }: TranscriptButtonGroupProps) {
   const { betaFeatures } = useConfig();
   const t = useTranslations('transcript.view');
   const [showRetranscribeDialog, setShowRetranscribeDialog] = useState(false);
+  const [showJotBirdDialog, setShowJotBirdDialog] = useState(false);
+  const [jotbirdApiKey, setJotbirdApiKey] = useState('');
+  const [jotbirdPublishing, setJotbirdPublishing] = useState(false);
+
+  const handlePublishToJotBird = useCallback(async () => {
+    if (!transcriptMarkdown || !jotbirdApiKey) return;
+    setJotbirdPublishing(true);
+    try {
+      const url = await invoke<string>('export_to_jotbird', {
+        markdown: transcriptMarkdown,
+        title: meetingTitle || undefined,
+        apiKey: jotbirdApiKey,
+      });
+      toast.success('Published to JotBird!', {
+        description: url,
+        action: { label: 'Open', onClick: () => window.open(url, '_blank') },
+      });
+      // Persist API key for next time
+      localStorage.setItem('jotbird_api_key', jotbirdApiKey);
+      setShowJotBirdDialog(false);
+    } catch (err) {
+      toast.error(`JotBird export failed: ${err}`);
+    } finally {
+      setJotbirdPublishing(false);
+    }
+  }, [transcriptMarkdown, meetingTitle, jotbirdApiKey]);
 
   const handleRetranscribeComplete = useCallback(async () => {
     // Refetch transcripts to show the updated data
@@ -79,6 +113,15 @@ export function TranscriptButtonGroup({
             <DropdownMenuItem onSelect={() => void onExportTranscript('docx')}>
               {t('export_docx')}
             </DropdownMenuItem>
+            {transcriptMarkdown && (
+              <DropdownMenuItem onSelect={() => {
+                setJotbirdApiKey(localStorage.getItem('jotbird_api_key') || '');
+                setShowJotBirdDialog(true);
+              }}>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Publish to JotBird
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
@@ -121,6 +164,39 @@ export function TranscriptButtonGroup({
           onComplete={handleRetranscribeComplete}
         />
       )}
+
+      <Dialog open={showJotBirdDialog} onOpenChange={setShowJotBirdDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Publish to JotBird</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Publish your transcript as a shareable web page. Get your API key from{' '}
+              <a href="https://www.jotbird.com/account" target="_blank" rel="noopener noreferrer"
+                 className="text-blue-500 hover:underline">
+                jotbird.com/account
+              </a>.
+            </p>
+            <Input
+              type="password"
+              placeholder="jb_your_api_key_here"
+              value={jotbirdApiKey}
+              onChange={(e) => setJotbirdApiKey(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handlePublishToJotBird(); }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowJotBirdDialog(false)}>Cancel</Button>
+            <Button
+              onClick={() => void handlePublishToJotBird()}
+              disabled={!jotbirdApiKey || jotbirdPublishing}
+            >
+              {jotbirdPublishing ? 'Publishing...' : 'Publish'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
