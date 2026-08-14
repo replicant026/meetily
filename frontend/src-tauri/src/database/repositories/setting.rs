@@ -95,12 +95,10 @@ impl SettingsRepository {
 
         let query = format!(
             r#"
-            INSERT INTO settings (id, provider, model, whisperModel, "{}")
-            VALUES ('1', 'openai', 'gpt-4o-2024-11-20', 'large-v3', $1)
-            ON CONFLICT(id) DO UPDATE SET
-                "{}" = $1
+            INSERT OR IGNORE INTO settings (id) VALUES ('1');
+            UPDATE settings SET "{}" = $1 WHERE id = '1'
             "#,
-            api_key_column, api_key_column
+            api_key_column
         );
         sqlx::query(&query).bind(api_key).execute(pool).await?;
 

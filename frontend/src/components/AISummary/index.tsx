@@ -102,15 +102,15 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
     }
   }, [currentHistoryIndex, history, onSummaryChange]);
 
-  const getAllBlocks = () => {
-    const allBlocks: { id: string; sectionKey: string }[] = [];
+  const allBlocks = useMemo(() => {
+    const result: { id: string; sectionKey: string }[] = [];
     Object.entries(currentSummary).forEach(([sectionKey, section]) => {
       section.blocks.forEach(block => {
-        allBlocks.push({ id: block.id, sectionKey });
+        result.push({ id: block.id, sectionKey });
       });
     });
-    return allBlocks;
-  };
+    return result;
+  }, [currentSummary]);
 
   const findBlockAndSection = (blockId: string) => {
     for (const [sectionKey, section] of Object.entries(currentSummary)) {
@@ -123,7 +123,6 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
   };
 
   const handleBlockNavigate = (blockId: string, direction: 'up' | 'down') => {
-    const allBlocks = getAllBlocks();
     const currentIndex = allBlocks.findIndex(b => b.id === blockId);
     
     if (currentIndex === -1) return;
@@ -143,7 +142,6 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
   };
 
   const getBlockRange = (startId: string, endId: string) => {
-    const allBlocks = getAllBlocks();
     const startIndex = allBlocks.findIndex(b => b.id === startId);
     const endIndex = allBlocks.findIndex(b => b.id === endId);
     
@@ -701,7 +699,7 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
         <div className="flex items-center space-x-2">
           <span className="text-2xl">✨</span>
           <h2 className="text-2xl font-semibold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
-            AI Enhanced Summary
+            AI Retranslated Summary
           </h2>
         </div>
         <div className="flex items-center space-x-2">

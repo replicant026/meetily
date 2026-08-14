@@ -110,7 +110,22 @@ impl MeetingsRepository {
         match delete_meeting_with_transaction(&mut transaction, meeting_id).await {
             Ok(success) => {
                 if success {
+                    // Fetch folder_path before committing so we can clean up the filesystem
+                    let meeting: Option<MeetingModel> =
+                        sqlx::query_as("SELECT id, title, created_at, updated_at, folder_path FROM meetings WHERE id = ?")
+                            .bind(meeting_id)
+                            .fetch_optional(&mut *transaction)
+                            .await?;
+
                     transaction.commit().await?;
+
+                    // Delete filesystem folder if present
+                    if let Some(folder) = meeting.and_then(|m| m.folder_path) {
+                        if !folder.is_empty() {
+                            let _ = std::fs::remove_dir_all(&folder);
+                        }
+                    }
+
                     info!(
                         "Successfully deleted meeting {} and all associated data",
                         meeting_id

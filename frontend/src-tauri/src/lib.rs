@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 // Removed unused import
 
@@ -119,8 +118,6 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::RwLock;
 
-static RECORDING_FLAG: AtomicBool = AtomicBool::new(false);
-
 // Global language preference storage (default to "auto-translate" for automatic translation to English)
 static LANGUAGE_PREFERENCE: std::sync::LazyLock<StdMutex<String>> =
     std::sync::LazyLock::new(|| StdMutex::new("auto-translate".to_string()));
@@ -167,7 +164,6 @@ async fn start_recording<R: Runtime>(
     .await
     {
         Ok(_) => {
-            RECORDING_FLAG.store(true, Ordering::SeqCst);
             tray::update_tray_menu(&app);
 
             log_info!("Recording started successfully");
@@ -219,7 +215,6 @@ async fn stop_recording<R: Runtime>(app: AppHandle<R>, args: RecordingArgs) -> R
     .await
     {
         Ok(_) => {
-            RECORDING_FLAG.store(false, Ordering::SeqCst);
             tray::update_tray_menu(&app);
 
             // Create the save directory if it doesn't exist
@@ -255,8 +250,6 @@ async fn stop_recording<R: Runtime>(app: AppHandle<R>, args: RecordingArgs) -> R
         }
         Err(e) => {
             log_error!("Failed to stop audio recording: {}", e);
-            // Still update the flag even if stopping failed
-            RECORDING_FLAG.store(false, Ordering::SeqCst);
             tray::update_tray_menu(&app);
             Err(format!("Failed to stop recording: {}", e))
         }
@@ -279,6 +272,10 @@ fn get_transcription_status() -> TranscriptionStatus {
 
 #[tauri::command]
 fn read_audio_file(file_path: String) -> Result<Vec<u8>, String> {
+    // Prevent path traversal
+    if file_path.contains("..") || file_path.starts_with("/") {
+        return Err("Invalid path".into());
+    }
     match std::fs::read(&file_path) {
         Ok(data) => Ok(data),
         Err(e) => Err(format!("Failed to read audio file: {}", e)),
@@ -287,6 +284,10 @@ fn read_audio_file(file_path: String) -> Result<Vec<u8>, String> {
 
 #[tauri::command]
 async fn save_transcript(file_path: String, content: String) -> Result<(), String> {
+    // Prevent path traversal
+    if file_path.contains("..") || file_path.starts_with("/") {
+        return Err("Invalid path".into());
+    }
     log_info!("Saving transcript to: {}", file_path);
 
     // Ensure parent directory exists
@@ -1003,17 +1004,24 @@ async fn accept_speaker_suggestion(
     .await
     .map_err(|e| e.to_string())?;
 
-    let (_id, _meeting_id, _source_label, speaker_id, _confidence, _ref_id, segment_ids_json, _status, _created, _resolved) = suggestions.ok_or_else(|| format!("suggestion {} not found", suggestion_id))?;
+    let (_id, meeting_id, _source_label, speaker_id, _confidence, _ref_id, segment_ids_json, _status, _created, _resolved) = suggestions.ok_or_else(|| format!("suggestion {} not found", suggestion_id))?;
 
     let seg_ids: Vec<String> =
-        serde_json::from_str(&segment_ids_json).unwrap_or_default();
+        serde_json::from_str(&segment_ids_json)
+            .map_err(|e| format!("Invalid segment_ids_json: {}", e))?;
 
-    // Update transcript labels for the affected segments using the person's display name
-    // (speaker_id in the suggestion stores the matched display name from find_match)
+    // speaker_id is now a UUID (FK to speaker_people).  Look up the display
+    // name for transcript labels.
+    let person = crate::database::repositories::speaker::SpeakerRepository::get_person(pool, &speaker_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("person {} not found", speaker_id))?;
+
     if !seg_ids.is_empty() {
+        // Update transcript labels with the person's display name
         let mapping: Vec<(String, String)> = seg_ids
             .iter()
-            .map(|sid| (sid.clone(), speaker_id.clone()))
+            .map(|sid| (sid.clone(), person.display_name.clone()))
             .collect();
         crate::database::repositories::transcript::TranscriptsRepository::update_segment_speakers(
             pool,
@@ -1021,6 +1029,22 @@ async fn accept_speaker_suggestion(
         )
         .await
         .map_err(|e| e.to_string())?;
+
+        // Create a voice reference so future diarizations match better
+        if let Err(e) = crate::diarization::voice_references::create_voice_reference_from_segments(
+            pool,
+            &speaker_id,
+            &meeting_id,
+            &seg_ids,
+            None,
+        )
+        .await
+        {
+            log::warn!(
+                "Accepted suggestion for {} but could not create voice reference: {}",
+                person.display_name, e
+            );
+        }
     }
 
     // Mark suggestion as accepted
@@ -1195,6 +1219,9 @@ async fn merge_speaker_people(
     source_id: String,
     target_id: String,
 ) -> Result<(), String> {
+    if source_id == target_id {
+        return Err("Cannot merge a person with themselves".into());
+    }
     crate::database::repositories::speaker::SpeakerRepository::merge_people(
         state.db_manager.pool(),
         &source_id,

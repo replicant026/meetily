@@ -12,6 +12,7 @@ const STORE_KEY: &str = "language";
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UiLocale {
     pub language: String,
+    #[serde(default)]
     pub last_updated: String,
 }
 

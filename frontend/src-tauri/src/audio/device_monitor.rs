@@ -166,7 +166,7 @@ impl AudioDeviceMonitor {
         stop_signal: Arc<tokio::sync::Notify>,
     ) {
         let mut last_device_list = Vec::new();
-        let check_interval = Duration::from_secs(2); // Poll every 2 seconds
+        let mut check_interval = Duration::from_secs(2); // Poll every 2 seconds
 
         loop {
             // Check for stop signal with timeout
@@ -247,6 +247,7 @@ impl AudioDeviceMonitor {
 
             if next_interval != check_interval {
                 debug!("Adjusting monitor interval to {:?}", next_interval);
+                check_interval = next_interval;
             }
         }
     }

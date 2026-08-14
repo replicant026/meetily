@@ -18,7 +18,7 @@ use super::vad::{ContinuousVadProcessor};
 struct AudioMixerRingBuffer {
     mic_buffer: VecDeque<f32>,
     system_buffer: VecDeque<f32>,
-    window_size_samples: usize,  // Fixed mixing window (e.g., 50ms)
+    window_size_samples: usize,  // Fixed mixing window (600ms)
     max_buffer_size: usize,  // Safety limit (e.g., 100ms)
 }
 
@@ -48,13 +48,12 @@ impl AudioMixerRingBuffer {
 
     fn add_samples(&mut self, device_type: DeviceType, samples: Vec<f32>) {
         // Log buffer health periodically for diagnostics
-        static mut SAMPLE_COUNTER: u64 = 0;
-        unsafe {
-            SAMPLE_COUNTER += 1;
-            if SAMPLE_COUNTER % 200 == 0 {
-                debug!("📊 Ring buffer status: mic={} samples, sys={} samples (max={})",
-                       self.mic_buffer.len(), self.system_buffer.len(), self.max_buffer_size);
-            }
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static SAMPLE_COUNTER: AtomicU64 = AtomicU64::new(0);
+        let count = SAMPLE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        if count % 200 == 0 {
+            debug!("📊 Ring buffer status: mic={} samples, sys={} samples (max={})",
+                   self.mic_buffer.len(), self.system_buffer.len(), self.max_buffer_size);
         }
 
         match device_type {
@@ -162,22 +161,15 @@ impl ProfessionalAudioMixer {
             let mic = mic_window.get(i).copied().unwrap_or(0.0);
             let sys = sys_window.get(i).copied().unwrap_or(0.0);
 
-            // Pre-scale system audio to 70% to leave headroom
-            // This prevents constant soft scaling which can cause pumping artifacts
-            // Mic is normalized to -23 LUFS (already optimal), system needs reduction
-            let sys_scaled = sys * 1.0;
-            let _mic_scaled = mic * 0.8;  // Reserved for future mic scaling
-
             // Sum without ducking - mic stays at full volume, system slightly reduced
-            let sum = mic + sys_scaled;
+            let sum = mic + sys;
 
-            // CRITICAL FIX: Soft scaling prevents distortion artifacts
-            // If the sum would exceed ±1.0, scale down PROPORTIONALLY
+            // CRITICAL FIX: Soft clipping via tanh prevents distortion artifacts
+            // If the sum would exceed ±1.0, apply soft knee compression
             // This avoids hard clipping distortion that sounds like "radio breaks"
             let sum_abs = sum.abs();
             let mixed_sample = if sum_abs > 1.0 {
-                // Scale down to fit within ±1.0
-                sum / sum_abs
+                sum.tanh() // Soft knee compression
             } else {
                 sum
             };
@@ -707,7 +699,7 @@ impl AudioPipeline {
         mic_device_kind: super::device_detection::InputDeviceKind,
         system_device_name: String,
         system_device_kind: super::device_detection::InputDeviceKind,
-    ) -> Self {
+    ) -> Result<Self, String> {
         // Log device characteristics for adaptive buffering
         info!("🎛️ AudioPipeline initializing with device characteristics:");
         info!("   Mic: '{}' ({:?}) - Buffer: {:?}",
@@ -732,8 +724,7 @@ impl AudioPipeline {
                 processor
             }
             Err(e) => {
-                error!("Failed to create VAD processor: {}", e);
-                panic!("VAD processor creation failed: {}", e);
+                return Err(format!("VAD processor creation failed: {}", e));
             }
         };
 
@@ -744,7 +735,7 @@ impl AudioPipeline {
         // Note: target_chunk_duration_ms is ignored - VAD controls segmentation now
         let _ = target_chunk_duration_ms;
 
-        Self {
+        Ok(Self {
             receiver,
             transcription_sender,
             state,
@@ -760,7 +751,7 @@ impl AudioPipeline {
             ring_buffer,
             mixer,
             recording_sender_for_mixed: None,  // Will be set by manager
-        }
+        })
     }
 
     /// Run the VAD-driven audio processing pipeline
@@ -989,7 +980,10 @@ impl AudioPipelineManager {
             mic_device_kind,
             system_device_name,
             system_device_kind,
-        );
+        ).map_err(|e| {
+            error!("Failed to create audio pipeline: {}", e);
+            anyhow::anyhow!("Audio pipeline creation failed: {}", e)
+        })?;
 
         // CRITICAL FIX: Connect recording sender to receive pre-mixed audio
         // This ensures both mic AND system audio are captured in recordings

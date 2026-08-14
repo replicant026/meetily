@@ -32,6 +32,14 @@ pub fn references_dir() -> Option<&'static PathBuf> {
     REFERENCES_DIR.get()
 }
 
+/// Resolve a reference path, returning an owned PathBuf.
+/// This clones the base dir out of the OnceLock so the caller doesn't hold a reference.
+fn resolve_reference_path(relative_path: &str) -> Result<PathBuf> {
+    let base = references_dir()
+        .ok_or_else(|| anyhow!("references directory not initialized"))?;
+    Ok(base.join(relative_path))
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
@@ -83,7 +91,7 @@ pub fn select_reference_window(segments: &[(i64, i64)]) -> Option<ReferenceWindo
         let needed = MIN_WINDOW_MS - span;
         let pad_before = needed / 2;
         let pad_after = needed - pad_before;
-        let start_ms = first_start - pad_before;
+        let start_ms = (first_start - pad_before).max(0);
         let end_ms = last_end + pad_after;
 
         if (end_ms - start_ms) > MAX_WINDOW_MS {
@@ -135,8 +143,7 @@ pub fn managed_reference_path(relative_path: &str) -> Result<PathBuf> {
         bail!("absolute path not allowed: {relative_path}");
     }
 
-    let base = REFERENCES_DIR
-        .get()
+    let base = references_dir()
         .ok_or_else(|| anyhow!("references directory not initialized"))?;
     Ok(base.join(relative_path))
 }
@@ -328,8 +335,7 @@ pub async fn create_voice_reference_from_segments(
 
     // 6. Write WAV atomically
     let ref_id = format!("ref-{}", uuid::Uuid::new_v4());
-    let speaker_dir = REFERENCES_DIR
-        .get()
+    let speaker_dir = references_dir()
         .ok_or_else(|| anyhow!("references directory not initialized"))?
         .join(speaker_id);
     std::fs::create_dir_all(&speaker_dir)?;

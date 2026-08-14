@@ -19,6 +19,14 @@ use crate::{
 // Hardcoded server URL
 const APP_SERVER_URL: &str = "http://localhost:5167";
 
+// Shared HTTP client to avoid creating a new one per request
+static HTTP_CLIENT: once_cell::sync::Lazy<reqwest::Client> = once_cell::sync::Lazy::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .expect("Failed to create HTTP client")
+});
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
     pub success: bool,
@@ -246,7 +254,7 @@ async fn make_api_request<R: Runtime, T: for<'de> Deserialize<'de>>(
     additional_headers: Option<HashMap<String, String>>,
     auth_token: Option<String>, // Pass auth token from frontend
 ) -> Result<T, String> {
-    let client = reqwest::Client::new();
+    let client = HTTP_CLIENT.clone();
     let server_url = get_server_address(app).await?;
 
     let url = format!("{}{}", server_url, endpoint);
@@ -1085,7 +1093,7 @@ pub async fn test_backend_connection<R: Runtime>(
 ) -> Result<String, String> {
     log_debug!("Testing backend connection...");
 
-    let client = reqwest::Client::new();
+    let client = HTTP_CLIENT.clone();
     let server_url = get_server_address(&app).await?;
 
     log_debug!("Testing connection to: {}", server_url);
@@ -1127,7 +1135,7 @@ pub async fn debug_backend_connection<R: Runtime>(app: AppHandle<R>) -> Result<S
     };
 
     // Test 2: Make a simple HTTP request to the backend
-    let client = reqwest::Client::new();
+    let client = HTTP_CLIENT.clone();
     let test_url = format!("{}/docs", server_url); // Try the docs endpoint which should be public
 
     log_debug!("Testing connection to: {}", test_url);
@@ -1150,6 +1158,11 @@ pub async fn debug_backend_connection<R: Runtime>(app: AppHandle<R>) -> Result<S
 
 #[tauri::command]
 pub async fn open_external_url(url: String) -> Result<(), String> {
+    // Prevent command injection: only allow HTTP/HTTPS URLs
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Only HTTP/HTTPS URLs are allowed".into());
+    }
+
     use std::process::Command;
 
     let result = if cfg!(target_os = "windows") {

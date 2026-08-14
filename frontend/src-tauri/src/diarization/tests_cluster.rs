@@ -21,9 +21,9 @@ fn make_window(start: f64, end: f64, val: f32) -> WindowedEmbedding {
 
 #[test]
 fn three_speakers_separate() {
-    let s1: Vec<f32> = vec_repeating(&[1.0, 0.0, 0.0], 8);
-    let s2: Vec<f32> = vec_repeating(&[0.0, 1.0, 0.0], 8);
-    let s3: Vec<f32> = vec_repeating(&[0.0, 0.0, 1.0], 8);
+    let s1: Vec<f32> = vec_repeating(&[1.0, 0.1, 0.1], 8);
+    let s2: Vec<f32> = vec_repeating(&[0.1, 1.0, 0.1], 8);
+    let s3: Vec<f32> = vec_repeating(&[0.1, 0.1, 1.0], 8);
     let mut emb = vec![];
     for _ in 0..3 {
         emb.push(s1.clone());

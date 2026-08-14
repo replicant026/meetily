@@ -120,7 +120,13 @@ fn managed_reference_path_ok_for_valid_relative() {
     set_references_dir(tmp.path().to_path_buf());
 
     let p = managed_reference_path("person-1/ref-abc.wav").unwrap();
-    assert_eq!(p, tmp.path().join("person-1/ref-abc.wav"));
+    // Normalize path components to avoid Windows / vs \ mismatch.
+    // Compare against references_dir() (not tmp.path()) because OnceLock
+    // may already be set by a parallel test to a different tempdir.
+    let p_norm: std::path::PathBuf = p.components().collect();
+    let base = references_dir().unwrap();
+    let expected: std::path::PathBuf = base.join("person-1").join("ref-abc.wav").components().collect();
+    assert_eq!(p_norm, expected);
 }
 
 // ── ReferenceWindow helper ────────────────────────────────────────────────

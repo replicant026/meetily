@@ -123,11 +123,8 @@ pub fn init_extractor() -> Result<bool> {
         Some(extractor) => {
             let dim = extractor.dim();
             if dim as usize != EMBEDDING_DIM {
-                log::warn!(
-                    "Embedding dim mismatch: expected {}, got {}",
-                    EMBEDDING_DIM, dim
-                );
-                // Still accept — just log the mismatch
+                MODEL_STATUS.store(2, Ordering::SeqCst);
+                anyhow::bail!("Embedding dim mismatch: expected {}, got {}", EMBEDDING_DIM, dim);
             }
             let _ = EXTRACTOR.set(extractor);
             MODEL_STATUS.store(1, Ordering::SeqCst);

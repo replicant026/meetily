@@ -60,12 +60,20 @@ async fn process_speaker_match(
         super::speaker_preferences::MatchAction::Ignore => Ok(None),
 
         super::speaker_preferences::MatchAction::Suggest => {
+            // Look up the person UUID so the suggestion stores a proper FK
+            let person_id = match SpeakerRepository::find_person_by_name(pool, &name).await {
+                Ok(Some((id, _))) => id,
+                _ => {
+                    log::warn!("speaker recognition: could not find person id for '{}'; skipping suggestion", name);
+                    return Ok(None);
+                }
+            };
             let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
             match VoiceReferenceRepository::create_suggestion(
                 pool,
                 meeting_id,
                 speaker_label,
-                &name,
+                &person_id,
                 sim,
                 &seg_ids,
             )
@@ -88,12 +96,19 @@ async fn process_speaker_match(
                     "speaker recognition: quality {:.3} below minimum {:.3} for {}; creating suggestion",
                     sim, prefs.minimum_reference_quality, name
                 );
+                let person_id = match SpeakerRepository::find_person_by_name(pool, &name).await {
+                    Ok(Some((id, _))) => id,
+                    _ => {
+                        log::warn!("speaker recognition: could not find person id for '{}'; skipping suggestion", name);
+                        return Ok(None);
+                    }
+                };
                 let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
                 let _ = VoiceReferenceRepository::create_suggestion(
                     pool,
                     meeting_id,
                     speaker_label,
-                    &name,
+                    &person_id,
                     sim,
                     &seg_ids,
                 )
@@ -424,19 +439,15 @@ async fn commit_speaker_labels_inner(
 
     // Try to match clusters against known speaker profiles
     let recognition_prefs = super::speaker_preferences::get_preferences();
-    let _known_names: Vec<String> = if super::status().model_status == "ready" {
-        SpeakerRepository::list_people(pool).await
-            .map(|ps| ps.into_iter().map(|p| p.display_name).collect())
-            .unwrap_or_default()
-    } else {
-        Vec::new()
-    };
 
     let segments = crate::database::repositories::transcript::TranscriptsRepository::fetch_segment_times(
         pool, meeting_id,
     )
     .await?;
-    let mut mapping: Vec<(String, String)> = Vec::with_capacity(segments.len());
+
+    // Group segments by cluster_id for per-cluster speaker recognition
+    let mut cluster_segments: std::collections::HashMap<usize, Vec<(String, f64, f64)>> =
+        std::collections::HashMap::new();
     for (seg_id, seg_start, seg_end) in segments {
         let mid = (seg_start + seg_end) / 2.0;
         let mut best_idx = 0usize;
@@ -448,31 +459,45 @@ async fn commit_speaker_labels_inner(
                 best_idx = i;
             }
         }
-        // Map original window index → aggregated block index → cluster label
         let block_idx = original_to_block[best_idx];
         let cluster_id = labels[block_idx];
+        cluster_segments.entry(cluster_id).or_default().push((seg_id, seg_start, seg_end));
+    }
 
-        // Check if this cluster matches a known speaker profile
-        let mut speaker_name = None;
-        if let Some((_, centroid)) = cluster_embeddings.iter().find(|(cid, _)| *cid == cluster_id) {
+    // Run process_speaker_match once per cluster with ALL segments
+    let mut cluster_names: std::collections::HashMap<usize, String> = std::collections::HashMap::new();
+    for (cluster_id, cluster_segs) in &cluster_segments {
+        if let Some((_, centroid)) = cluster_embeddings.iter().find(|(cid, _)| *cid == *cluster_id) {
             let cluster_label = format!("Speaker {}", cluster_id + 1);
-            let single_segment = [(seg_id.clone(), Some(seg_start), Some(seg_end))];
+            let seg_refs: Vec<(String, Option<f64>, Option<f64>)> = cluster_segs
+                .iter()
+                .map(|(id, s, e)| (id.clone(), Some(*s), Some(*e)))
+                .collect();
             if let Some((_, name)) = process_speaker_match(
                 pool,
                 meeting_id,
                 &cluster_label,
-                &single_segment,
+                &seg_refs,
                 centroid,
                 &recognition_prefs,
             )
             .await?
             {
-                speaker_name = Some(name);
+                cluster_names.insert(*cluster_id, name);
             }
         }
+    }
 
-        let speaker = speaker_name.unwrap_or_else(|| format!("Speaker {}", cluster_id + 1));
-        mapping.push((seg_id, speaker));
+    // Build mapping using cluster-level results
+    let mut mapping: Vec<(String, String)> = Vec::with_capacity(cluster_segments.values().map(|v| v.len()).sum());
+    for (cluster_id, cluster_segs) in &cluster_segments {
+        let speaker = cluster_names
+            .get(cluster_id)
+            .cloned()
+            .unwrap_or_else(|| format!("Speaker {}", cluster_id + 1));
+        for (seg_id, _, _) in cluster_segs {
+            mapping.push((seg_id.clone(), speaker.clone()));
+        }
     }
 
     emit(99, "Saving speaker labels…");
@@ -502,7 +527,8 @@ fn run_sherpa_diarization(
     let spec = reader.spec();
     let samples: Vec<f32> = reader
         .samples::<i16>()
-        .map(|s| s.unwrap() as f32 / 32768.0)
+        .filter_map(|s| s.ok())
+        .map(|s| s as f32 / 32768.0)
         .collect();
 
     let sr = spec.sample_rate;
@@ -693,7 +719,8 @@ fn reembed_wav(path: &Path) -> Result<Vec<WindowedEmbedding>> {
     let mut reader = WavReader::open(path)?;
     let samples: Vec<f32> = reader
         .samples::<i16>()
-        .map(|s| s.unwrap() as f32 / 32768.0)
+        .filter_map(|s| s.ok())
+        .map(|s| s as f32 / 32768.0)
         .collect();
     let sr = reader.spec().sample_rate;
     if sr != 16_000 {

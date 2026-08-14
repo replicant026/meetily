@@ -312,22 +312,28 @@ impl SpeakerRepository {
         let mut tx = pool.begin().await?;
 
         // Move voice references
-        sqlx::query(
+        let ref_result = sqlx::query(
             "UPDATE OR IGNORE speaker_voice_references SET speaker_id = ? WHERE speaker_id = ?",
         )
         .bind(target_id)
         .bind(source_id)
         .execute(&mut *tx)
         .await?;
+        if ref_result.rows_affected() == 0 {
+            log::warn!("merge_people: no voice references moved from {} to {} (constraint ignored)", source_id, target_id);
+        }
 
         // Move suggestions
-        sqlx::query(
+        let sug_result = sqlx::query(
             "UPDATE OR IGNORE speaker_match_suggestions SET speaker_id = ? WHERE speaker_id = ?",
         )
         .bind(target_id)
         .bind(source_id)
         .execute(&mut *tx)
         .await?;
+        if sug_result.rows_affected() == 0 {
+            log::warn!("merge_people: no suggestions moved from {} to {} (constraint ignored)", source_id, target_id);
+        }
 
         // Delete source person (cascade deletes orphaned references/suggestions)
         sqlx::query("DELETE FROM speaker_people WHERE id = ?")

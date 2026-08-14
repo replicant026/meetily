@@ -184,6 +184,11 @@ impl RecordingSaver {
             }
         }
 
+        // Set saving flag BEFORE spawning task so the task sees it immediately
+        if let Ok(mut is_saving) = self.is_saving.lock() {
+            *is_saving = true;
+        }
+
         // Start accumulation task
         let is_saving_clone = self.is_saving.clone();
         let incremental_saver_arc = self.incremental_saver.clone();
@@ -224,11 +229,6 @@ impl RecordingSaver {
 
                 info!("Recording saver accumulation task ended");
             });
-        }
-
-        // Set saving flag
-        if let Ok(mut is_saving) = self.is_saving.lock() {
-            *is_saving = true;
         }
 
         sender
@@ -379,8 +379,17 @@ impl RecordingSaver {
             *is_saving = false;
         }
 
-        // Give time for final chunks
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+        // Give time for final chunks to drain from the channel
+        let drain_timeout = tokio::time::timeout(
+            tokio::time::Duration::from_secs(2),
+            async {
+                // Wait briefly to let any in-flight chunks arrive
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            },
+        ).await;
+        if drain_timeout.is_err() {
+            warn!("Timed out waiting for final audio chunks to drain (2s timeout)");
+        }
 
         // Check if incremental saver exists (indicates auto_save was enabled)
         let should_save_audio = self.incremental_saver.is_some();

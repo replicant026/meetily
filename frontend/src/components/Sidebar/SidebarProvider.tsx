@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
@@ -75,6 +75,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [serverAddress, setServerAddress] = useState('');
   const [transcriptServerAddress, setTranscriptServerAddress] = useState('');
   const [activeSummaryPolls, setActiveSummaryPolls] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const activeSummaryPollsRef = useRef(activeSummaryPolls);
+  activeSummaryPollsRef.current = activeSummaryPolls;
 
   // Use recording state from RecordingStateContext (single source of truth)
   const { isRecording } = useRecordingState();
@@ -191,8 +193,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     onUpdate: (result: any) => void
   ) => {
     // Stop existing poll for this meeting if any
-    if (activeSummaryPolls.has(meetingId)) {
-      clearInterval(activeSummaryPolls.get(meetingId)!);
+    if (activeSummaryPollsRef.current.has(meetingId)) {
+      clearInterval(activeSummaryPollsRef.current.get(meetingId)!);
     }
 
     console.log(`📊 Starting polling for meeting ${meetingId}, process ${processId}`);
@@ -264,12 +266,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     }, 5000); // Poll every 5 seconds
 
     setActiveSummaryPolls(prev => new Map(prev).set(meetingId, pollInterval));
-  }, [activeSummaryPolls]);
+  }, []);
 
   const stopSummaryPolling = React.useCallback((meetingId: string) => {
-    const pollInterval = activeSummaryPolls.get(meetingId);
+    const pollInterval = activeSummaryPollsRef.current.get(meetingId);
     if (pollInterval) {
-      console.log(`⏹️ Stopping polling for meeting ${meetingId}`);
+      console.log(`Stopping polling for meeting ${meetingId}`);
       clearInterval(pollInterval);
       setActiveSummaryPolls(prev => {
         const next = new Map(prev);
@@ -277,15 +279,15 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
     }
-  }, [activeSummaryPolls]);
+  }, []);
 
   // Cleanup all polling intervals on unmount
   useEffect(() => {
     return () => {
-      console.log('🧹 Cleaning up all summary polling intervals');
-      activeSummaryPolls.forEach(interval => clearInterval(interval));
+      console.log('Cleaning up all summary polling intervals');
+      activeSummaryPollsRef.current.forEach(interval => clearInterval(interval));
     };
-  }, [activeSummaryPolls]);
+  }, []);
 
 
 

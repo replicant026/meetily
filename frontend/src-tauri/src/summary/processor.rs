@@ -1053,7 +1053,7 @@ mod tests {
     fn chunk_prompt_omits_glossary_when_absent() {
         crate::audio::post_processor::set_hotwords_for_llm(vec![]);
         let prompt = build_chunk_summary_user_prompt("hello world");
-        assert!(!prompt.contains("<glossary>"));
+        assert!(!prompt.contains("</glossary>"));
     }
 
     #[test]

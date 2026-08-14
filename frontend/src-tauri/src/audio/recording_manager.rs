@@ -327,7 +327,7 @@ impl RecordingManager {
         }
 
         // Stop audio pipeline
-        if let Err(e) = self.pipeline_manager.stop().await {
+        if let Err(e) = self.pipeline_manager.force_flush_and_stop().await {
             error!("Error stopping audio pipeline: {}", e);
         }
 
