@@ -13,7 +13,7 @@ import { ConfidenceIndicator } from "./ConfidenceIndicator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { RecordingStatusBar } from "./RecordingStatusBar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Play, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Play, Search, X } from "lucide-react";
 import { TranscriptSegmentData } from "@/types";
 import { useTranslations } from "next-intl";
 import { getSpeakerColor, buildSpeakerColorMap } from "@/lib/speaker-colors";
@@ -82,6 +82,37 @@ function cleanStopWords(text: string): string {
     return cleanedText.replace(/\s+/g, ' ').trim();
 }
 
+// Post-process ReactNode array to wrap search query matches in <mark> tags.
+// Only touches plain-text nodes; existing React elements (hotword marks) pass through.
+function applySearchHighlight(
+    nodes: React.ReactNode[],
+    query: string,
+    keyPrefix: string,
+): React.ReactNode[] {
+    if (!query.trim()) return nodes;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    const lower = query.toLowerCase();
+    const result: React.ReactNode[] = [];
+    let k = 0;
+    for (const node of nodes) {
+        if (typeof node !== 'string') { result.push(node); continue; }
+        for (const part of node.split(regex)) {
+            if (!part) continue;
+            if (part.toLowerCase() === lower) {
+                result.push(
+                    <mark key={`${keyPrefix}-${k++}`} className="bg-yellow-200 text-inherit rounded-sm px-0.5">
+                        {part}
+                    </mark>
+                );
+            } else {
+                result.push(part);
+            }
+        }
+    }
+    return result;
+}
+
 // Memoized transcript segment component
 const TranscriptSegment = memo(function TranscriptSegment({
     id,
@@ -105,6 +136,8 @@ const TranscriptSegment = memo(function TranscriptSegment({
     protectedSet,
     postprocessFailed,
     postprocessFailedMessage,
+    searchQuery,
+    isSearchActive,
 }: {
     id: string;
     timestamp: number;
@@ -127,6 +160,8 @@ const TranscriptSegment = memo(function TranscriptSegment({
     protectedSet?: Set<string>;
     postprocessFailed?: boolean;
     postprocessFailedMessage?: string;
+    searchQuery?: string;
+    isSearchActive?: boolean;
 }) {
     const t = useTranslations('settings.transcript');
     const handleHotwordCopy = useCallback((value: string) => {
@@ -138,6 +173,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     }, [t]);
     const displayText = cleanStopWords(text) || (text.trim() === '' ? '[Silence]' : text);
     const hotwordNodes = wrapHotwords(displayText, hotwords, handleHotwordCopy, protectedSet).nodes;
+    const displayNodes = searchQuery ? applySearchHighlight(hotwordNodes, searchQuery, `sh-${id}`) : hotwordNodes;
     const customName = speaker ? customSpeakerNames?.[speaker] : undefined;
     const speakerColor = speaker ? (speakerColorMap?.get(speaker) ?? getSpeakerColor(speaker)) : null;
     const [isRenaming, setIsRenaming] = useState(false);
@@ -181,7 +217,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
         <div
             id={`segment-${id}`}
             className={`group/segment mb-3 rounded-r-md border-l-2 px-2 py-1 transition-colors ${
-                isActive ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-transparent'
+                isActive ? 'border-blue-500 bg-blue-50 shadow-sm' : isSearchActive ? 'border-yellow-400 bg-yellow-50/50 shadow-sm' : 'border-transparent'
             }`}
             aria-current={isActive ? 'true' : undefined}
         >
@@ -267,10 +303,10 @@ const TranscriptSegment = memo(function TranscriptSegment({
                 <div className="min-w-0">
                     {isStreaming ? (
                         <div className="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
-                            <p className="text-[19px] text-stone-900 leading-8" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
+                            <p className="text-[19px] text-stone-900 leading-8" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{displayNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
                         </div>
                     ) : (
-                        <p className="text-[19px] text-stone-900 leading-8" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
+                        <p className="text-[19px] text-stone-900 leading-8" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{displayNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
                     )}
                 </div>
 
@@ -394,6 +430,83 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     const resolveDisplayText = (segment: TranscriptSegmentData): string =>
         postprocess.getDisplayText(segment.id, getDisplayText(segment));
 
+    // --- Transcript search ---
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Cmd/Ctrl+F → toggle search bar
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                e.preventDefault();
+                e.stopPropagation();
+                setSearchOpen(prev => !prev);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, []);
+
+    // Escape → close search (only when open)
+    useEffect(() => {
+        if (!searchOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                setSearchOpen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [searchOpen]);
+
+    // Auto-focus input when search opens; clear state when it closes
+    useEffect(() => {
+        if (searchOpen) {
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select();
+        } else {
+            setSearchQuery('');
+            setActiveMatchIndex(0);
+        }
+    }, [searchOpen]);
+
+    // Matching segments (case-insensitive substring)
+    const matchingSegments = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const lower = searchQuery.toLowerCase();
+        return segments.filter(s => resolveDisplayText(s).toLowerCase().includes(lower));
+    }, [searchQuery, segments, postprocess, getDisplayText]);
+
+    // Reset active index when query changes
+    useEffect(() => {
+        setActiveMatchIndex(0);
+    }, [searchQuery]);
+
+    const goToNextMatch = useCallback(() => {
+        if (matchingSegments.length === 0) return;
+        setActiveMatchIndex(prev => (prev + 1) % matchingSegments.length);
+    }, [matchingSegments.length]);
+
+    const goToPrevMatch = useCallback(() => {
+        if (matchingSegments.length === 0) return;
+        setActiveMatchIndex(prev => (prev - 1 + matchingSegments.length) % matchingSegments.length);
+    }, [matchingSegments.length]);
+
+    // Scroll active match into view
+    const activeSearchSegmentId = useMemo(() => {
+        if (!searchOpen || !searchQuery.trim() || matchingSegments.length === 0) return undefined;
+        return matchingSegments[Math.min(activeMatchIndex, matchingSegments.length - 1)]?.id;
+    }, [searchOpen, searchQuery, activeMatchIndex, matchingSegments]);
+
+    useEffect(() => {
+        if (!activeSearchSegmentId) return;
+        const el = document.getElementById(`segment-${activeSearchSegmentId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, [activeSearchSegmentId]);
+
     // Infinite scroll: IntersectionObserver to trigger loading more
     useEffect(() => {
         if (!onLoadMore || !hasMore || isLoadingMore || isRecording || segments.length === 0) {
@@ -461,6 +574,59 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                     <div className="sticky top-0 z-10 bg-white pb-2">
                         <RecordingStatusBar isPaused={isPaused} />
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* Transcript Search Bar */}
+            <AnimatePresence>
+                {searchOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                        className="sticky top-0 z-20 flex justify-end py-2 pointer-events-none"
+                    >
+                        <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200 rounded-full px-3 py-1.5 pointer-events-auto">
+                            <Search size={14} className="text-gray-400 flex-shrink-0" />
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); goToNextMatch(); }
+                                    else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); goToPrevMatch(); }
+                                }}
+                                placeholder="Search transcript..."
+                                className="w-40 text-sm bg-transparent border-none outline-none text-gray-800 placeholder-gray-400"
+                            />
+                            {searchQuery.trim() && (
+                                <span className="text-xs text-gray-500 whitespace-nowrap tabular-nums select-none">
+                                    {matchingSegments.length > 0
+                                        ? `${Math.min(activeMatchIndex + 1, matchingSegments.length)} of ${matchingSegments.length}`
+                                        : 'No matches'}
+                                </span>
+                            )}
+                            {searchQuery.trim() && matchingSegments.length > 0 && (
+                                <>
+                                    <button onClick={goToPrevMatch} className="p-0.5 text-gray-400 hover:text-gray-700 rounded transition-colors" aria-label="Previous match">
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button onClick={goToNextMatch} className="p-0.5 text-gray-400 hover:text-gray-700 rounded transition-colors" aria-label="Next match">
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </>
+                            )}
+                            <button
+                                onClick={() => setSearchOpen(false)}
+                                className="p-0.5 text-gray-400 hover:text-gray-700 rounded transition-colors ml-0.5"
+                                aria-label="Close search"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
 
@@ -541,6 +707,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         isActive={segment.id === activeSegmentId}
                                         hotwords={hotwords}
                                         protectedSet={protectedSet}
+                                        searchQuery={searchOpen ? searchQuery : undefined}
+                                        isSearchActive={segment.id === activeSearchSegmentId}
                                     />
                                 </div>
                             );
@@ -611,6 +779,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onPlayFromTimestamp={onPlayFromTimestamp}
                                         isActive={segment.id === activeSegmentId}
                                         hotwords={hotwords}
+                                        searchQuery={searchOpen ? searchQuery : undefined}
+                                        isSearchActive={segment.id === activeSearchSegmentId}
                                     />
                                 </motion.div>
                             );

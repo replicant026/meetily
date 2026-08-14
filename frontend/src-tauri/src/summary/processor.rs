@@ -6,7 +6,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 // Compile regex once and reuse (significant performance improvement for repeated calls)
 static THINKING_TAG_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -21,6 +21,15 @@ pub struct SummaryChapter {
     pub segment_id: String,
     pub title: String,
     pub start_time: f64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ActionItem {
+    pub assignee: Option<String>,
+    pub task: String,
+    pub due_date: Option<String>,
+    pub priority: Option<String>,
+    pub segment_ref: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -723,6 +732,59 @@ pub async fn generate_meeting_summary(
 
     info!("Summary generation completed successfully");
     Ok((final_markdown, english_markdown, successful_chunk_count))
+}
+
+/// Extracts structured action items from a final summary markdown via LLM.
+///
+/// Returns an empty Vec on parse failure or LLM error rather than propagating.
+#[allow(clippy::too_many_arguments)]
+pub async fn extract_action_items(
+    client: &Client,
+    provider: &LLMProvider,
+    model_name: &str,
+    api_key: &str,
+    summary_markdown: &str,
+    ollama_endpoint: Option<&str>,
+    custom_openai_endpoint: Option<&str>,
+    _max_tokens: Option<u32>,
+    temperature: Option<f32>,
+    top_p: Option<f32>,
+    app_data_dir: Option<&PathBuf>,
+    cancellation_token: Option<&CancellationToken>,
+) -> Vec<ActionItem> {
+    let system_prompt = r#"Extract action items from this meeting summary. Return ONLY a JSON array of objects with these fields:
+- assignee: string or null (who is responsible)
+- task: string (what needs to be done)
+- due_date: string or null (deadline if mentioned)
+- priority: "high" or "medium" or "low" or null
+- segment_ref: string or null (reference to transcript segment if mentioned)
+
+If no action items exist, return an empty array []. Do not include any text outside the JSON array."#;
+
+    let user_prompt = format!("<meeting_summary>\n{summary_markdown}\n</meeting_summary>");
+
+    match generate_summary(
+        client, provider, model_name, api_key,
+        system_prompt, &user_prompt,
+        ollama_endpoint, custom_openai_endpoint,
+        Some(1024), temperature, top_p,
+        app_data_dir, cancellation_token,
+    )
+    .await
+    {
+        Ok(raw) => {
+            let cleaned = raw
+                .trim()
+                .trim_start_matches("```json")
+                .trim_end_matches("```")
+                .trim();
+            serde_json::from_str::<Vec<ActionItem>>(cleaned).unwrap_or_default()
+        }
+        Err(e) => {
+            warn!("Action item extraction failed: {}", e);
+            Vec::new()
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

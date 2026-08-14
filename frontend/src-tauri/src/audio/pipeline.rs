@@ -686,6 +686,8 @@ pub struct AudioPipeline {
     mixer: ProfessionalAudioMixer,
     // Recording sender for pre-mixed audio
     recording_sender_for_mixed: Option<mpsc::UnboundedSender<AudioChunk>>,
+    // Rolling buffer of recent mixed audio for VAD segment overlap padding
+    mixed_history: std::collections::VecDeque<f32>,
 }
 
 impl AudioPipeline {
@@ -751,6 +753,7 @@ impl AudioPipeline {
             ring_buffer,
             mixer,
             recording_sender_for_mixed: None,  // Will be set by manager
+            mixed_history: std::collections::VecDeque::new(),
         })
     }
 
@@ -822,6 +825,14 @@ impl AudioPipeline {
                             // Previous 2x gain was causing excessive limiting/distortion
                             let mixed_with_gain = mixed_clean;
 
+                            // Store in rolling history for VAD segment overlap padding
+                            // Keep last 8000 samples (~500ms at 16kHz)
+                            const MIXED_HISTORY_MAX: usize = 8000;
+                            self.mixed_history.extend(mixed_with_gain.iter().copied());
+                            while self.mixed_history.len() > MIXED_HISTORY_MAX {
+                                self.mixed_history.pop_front();
+                            }
+
                             // STEP 3: Send mixed audio for transcription (VAD + Whisper)
                             match self.vad_processor.process_audio(&mixed_with_gain) {
                                 Ok(speech_segments) => {
@@ -829,13 +840,25 @@ impl AudioPipeline {
                                         let duration_ms = segment.end_timestamp_ms - segment.start_timestamp_ms;
 
                                         if segment.samples.len() >= 800 {  // Minimum 50ms at 16kHz - matches Parakeet capability
-                                            info!("📤 Sending VAD segment: {:.1}ms, {} samples",
-                                                  duration_ms, segment.samples.len());
+                                            // Pad with 200ms left context from mixed audio history
+                                            // to catch words split at VAD segment boundaries
+                                            const PAD_SAMPLES: usize = 3200; // 200ms at 16kHz
+                                            let pad_count = PAD_SAMPLES.min(self.mixed_history.len());
+                                            let mut padded = Vec::with_capacity(pad_count + segment.samples.len());
+                                            if pad_count > 0 {
+                                                let start = self.mixed_history.len() - pad_count;
+                                                padded.extend(self.mixed_history.iter().skip(start).copied());
+                                            }
+                                            padded.extend(segment.samples);
+
+                                            let padded_duration_ms = padded.len() as f64 / 16.0;
+                                            info!("📤 Sending VAD segment: {:.1}ms (padded from {:.1}ms), {} samples",
+                                                  padded_duration_ms, duration_ms, padded.len());
 
                                             let transcription_chunk = AudioChunk {
-                                                data: segment.samples,
+                                                data: padded,
                                                 sample_rate: 16000,
-                                                timestamp: segment.start_timestamp_ms / 1000.0,
+                                                timestamp: (segment.start_timestamp_ms - (pad_count as f64 / 16.0)).max(0.0),
                                                 chunk_id: self.chunk_id_counter,
                                                 device_type: DeviceType::Microphone,  // Mixed audio
                                             };

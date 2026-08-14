@@ -1,45 +1,27 @@
 {
-      "name": "Retrospective (Agile)",
-      "description": "Sprint retrospective template for continuous improvement.",
-      "sections": [
-        {
-          "title": "Sprint",
-          "instruction": "Sprint name/number and date range",
-          "format": "string"
-        },
-        {
-          "title": "Attendance",
-          "instruction": "List of participants",
-          "format": "list"
-        },
-        {
-          "title": "Start Doing",
-          "instruction": "Actions or experiments to start next sprint",
-          "format": "list",
-          "item_format": "| **Idea** | **Proposer** |\n| --- | --- |"
-        },
-        {
-          "title": "Stop Doing",
-          "instruction": "Practices to stop",
-          "format": "list",
-          "item_format": "| **Practice** | **Reason** |\n| --- | --- |"
-        },
-        {
-          "title": "Continue Doing",
-          "instruction": "Practices to continue",
-          "format": "list",
-          "item_format": "| **Practice** | **Notes** |\n| --- | --- |"
-        },
-        {
-          "title": "Action Items",
-          "instruction": "Concrete experiments with owners and success metrics",
-          "format": "list",
-          "item_format": "| **Owner** | **Task** | **Due Date** | **Success Metric** |\n| --- | --- | --- | --- |"
-        },
-        {
-          "title": "Notes & Votes",
-          "instruction": "Summary and top-voted items",
-          "format": "paragraph"
-        }
-      ]
+  "name": "Retrospective",
+  "description": "Sprint or project retrospective template for reflecting on what went well, what could improve, and action items.",
+  "sections": [
+    {
+      "title": "What Went Well",
+      "instruction": "List the practices, achievements, and positive outcomes from the sprint or project phase.",
+      "format": "list"
+    },
+    {
+      "title": "What Could Improve",
+      "instruction": "List the challenges, pain points, and areas where the team struggled or processes broke down.",
+      "format": "list"
+    },
+    {
+      "title": "Action Items",
+      "instruction": "List all assigned tasks with their owners and due date. Always add reference transcript segment and timestamp in the table.",
+      "format": "list",
+      "item_format": "| **Owner** | Task | Due | Reference Transcript Segment | Segment Time stamp |\n| --- | --- | --- | --- | --- |"
+    },
+    {
+      "title": "Kudos & Highlights",
+      "instruction": "Summarize team shout-outs, individual recognitions, and notable highlights from the period.",
+      "format": "paragraph"
     }
+  ]
+}

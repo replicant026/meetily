@@ -5,17 +5,61 @@
 use super::engine::TranscriptionEngine;
 use super::provider::TranscriptionError;
 use crate::audio::AudioChunk;
+use crate::audio::RecordingDeviceType as DeviceType;
 use log::{error, info, warn};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use tauri::{AppHandle, Emitter, Runtime};
+
+struct MergedChunk {
+    chunk: AudioChunk,
+    sub_chunks: usize,
+}
+
+fn merge_audio_chunks(buffer: &mut Vec<AudioChunk>, total_samples: &mut usize) -> MergedChunk {
+    let sub_chunks = buffer.len();
+    let first_ts = buffer.first().map(|c| c.timestamp).unwrap_or(0.0);
+    let chunk_id = buffer.first().map(|c| c.chunk_id).unwrap_or(0);
+
+    // Concatenate all audio data
+    let mut merged_data = Vec::with_capacity(*total_samples);
+    for chunk in buffer.drain(..) {
+        merged_data.extend(chunk.data);
+    }
+    *total_samples = 0;
+
+    MergedChunk {
+        chunk: AudioChunk {
+            data: merged_data,
+            sample_rate: 16000,
+            timestamp: first_ts,
+            chunk_id,
+            device_type: DeviceType::Microphone,
+        },
+        sub_chunks,
+    }
+}
 
 // Sequence counter for transcript updates
 static SEQUENCE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 // Speech detection flag - reset per recording session
 static SPEECH_DETECTED_EMITTED: AtomicBool = AtomicBool::new(false);
+
+// Auto language detection: pin detected language after first successful transcription
+static LANGUAGE_DETECTED: AtomicBool = AtomicBool::new(false);
+static DETECTED_LANGUAGE: Lazy<RwLock<Option<String>>> = Lazy::new(|| RwLock::new(None));
+
+/// Reset detected language state for a new recording session
+pub fn reset_detected_language() {
+    LANGUAGE_DETECTED.store(false, Ordering::SeqCst);
+    if let Ok(mut lang) = DETECTED_LANGUAGE.write() {
+        *lang = None;
+    }
+    info!("Auto language detection reset for new session");
+}
 
 // Overlap detector singleton (lazy-init, thread-safe via Mutex)
 static OVERLAP_DETECTOR: Mutex<Option<crate::diarization::overlap::OverlapDetector>> = Mutex::new(None);
@@ -177,14 +221,45 @@ pub fn start_transcription_task<R: Runtime>(
 
                             // Transcribe — returns sub-segments for Whisper (one per sentence),
                             // single segment for Parakeet/Provider.
-                            match transcribe_chunk_segments(
-                                &engine_clone,
-                                chunk,
-                                &app_clone,
-                                initial_prompt_clone.clone(),
-                            )
-                            .await
-                            {
+                            const MAX_RETRIES: u32 = 2;
+                            const RETRY_DELAY_MS: u64 = 500;
+
+                            let mut retries = 0u32;
+                            let result = loop {
+                                match transcribe_chunk_segments(
+                                    &engine_clone,
+                                    chunk.clone(),
+                                    &app_clone,
+                                    initial_prompt_clone.clone(),
+                                )
+                                .await
+                                {
+                                    Ok(segments) => break Ok(segments),
+                                    Err(e) => match e {
+                                        TranscriptionError::AudioTooShort { .. } => break Err(e),
+                                        TranscriptionError::ModelNotLoaded => break Err(e),
+                                        _ => {
+                                            if retries < MAX_RETRIES {
+                                                retries += 1;
+                                                warn!(
+                                                    "Worker {}: Transcription failed (attempt {}/{}): {} - retrying in {}ms",
+                                                    worker_id, retries, MAX_RETRIES + 1, e, RETRY_DELAY_MS
+                                                );
+                                                tokio::time::sleep(tokio::time::Duration::from_millis(RETRY_DELAY_MS)).await;
+                                            } else {
+                                                warn!(
+                                                    "Worker {}: Transcription failed after {} attempts: {}",
+                                                    worker_id, MAX_RETRIES + 1, e
+                                                );
+                                                let _ = app_clone.emit("transcription-warning", e.to_string());
+                                                break Err(e);
+                                            }
+                                        }
+                                    }
+                                }
+                            };
+
+                            match result {
                                 Ok(segments) => {
                                     // Provider-aware confidence threshold
                                     let confidence_threshold = match &engine_clone {
@@ -252,7 +327,7 @@ pub fn start_transcription_task<R: Runtime>(
                                         };
 
                                         // Emit one TranscriptUpdate per sub-segment.
-                                        // Whisper sub-segments carry centisecond timestamps → map to recording-relative seconds.
+                                        // Whisper sub-segments carry centisecond timestamps -> map to recording-relative seconds.
                                         for seg in &segments {
                                             let meets_threshold = seg.confidence.map_or(true, |c| c >= confidence_threshold);
                                             if seg.text.trim().is_empty() || !meets_threshold {
@@ -300,25 +375,18 @@ pub fn start_transcription_task<R: Runtime>(
                                         }
                                     }
                                 }
-                                Err(e) => {
-                                    // Improved error handling with specific cases
-                                    match e {
-                                        TranscriptionError::AudioTooShort { .. } => {
-                                            // Skip silently, this is expected for very short chunks
-                                            info!("Worker {}: {}", worker_id, e);
-                                            chunks_completed_clone.fetch_add(1, Ordering::SeqCst);
-                                            continue;
-                                        }
-                                        TranscriptionError::ModelNotLoaded => {
-                                            warn!("Worker {}: Model unloaded during transcription", worker_id);
-                                            chunks_completed_clone.fetch_add(1, Ordering::SeqCst);
-                                            continue;
-                                        }
-                                        _ => {
-                                            warn!("Worker {}: Transcription failed: {}", worker_id, e);
-                                            let _ = app_clone.emit("transcription-warning", e.to_string());
-                                        }
-                                    }
+                                Err(e @ TranscriptionError::AudioTooShort { .. }) => {
+                                    info!("Worker {}: {}", worker_id, e);
+                                    chunks_completed_clone.fetch_add(1, Ordering::SeqCst);
+                                    continue;
+                                }
+                                Err(TranscriptionError::ModelNotLoaded) => {
+                                    warn!("Worker {}: Model unloaded during transcription", worker_id);
+                                    chunks_completed_clone.fetch_add(1, Ordering::SeqCst);
+                                    continue;
+                                }
+                                Err(_) => {
+                                    // Warning already emitted in retry loop; fall through to chunk completion
                                 }
                             }
 
@@ -385,18 +453,43 @@ pub fn start_transcription_task<R: Runtime>(
             worker_handles.push(worker_handle);
         }
 
-        // Main dispatcher: receive chunks and distribute to workers
-        let mut receiver = transcription_receiver;
-        while let Some(chunk) = receiver.recv().await {
-            let queued = chunks_queued.fetch_add(1, Ordering::SeqCst) + 1;
-            info!(
-                "📥 Dispatching chunk {} to workers (total queued: {})",
-                chunk.chunk_id, queued
-            );
+        // Main dispatcher: batch short chunks before dispatching to workers
+        const MIN_BATCH_SAMPLES: usize = 16000; // 1 second at 16kHz
+        const BATCH_TIMEOUT_MS: u64 = 200;
 
-            if let Err(_) = work_sender.send(chunk) {
-                error!("❌ Failed to send chunk to workers - this should not happen!");
-                break;
+        let mut receiver = transcription_receiver;
+        let mut batch_buffer: Vec<AudioChunk> = Vec::new();
+        let mut batch_samples: usize = 0;
+        let mut batch_start = tokio::time::Instant::now();
+
+        while let Some(chunk) = receiver.recv().await {
+            batch_buffer.push(chunk);
+            batch_samples += batch_buffer.last().unwrap().data.len();
+
+            let timeout_reached = batch_start.elapsed().as_millis() >= BATCH_TIMEOUT_MS as u128;
+
+            if batch_samples >= MIN_BATCH_SAMPLES || timeout_reached {
+                // Merge batch into single chunk and dispatch
+                let merged = merge_audio_chunks(&mut batch_buffer, &mut batch_samples);
+                let queued = chunks_queued.fetch_add(1, Ordering::SeqCst) + 1;
+                info!("📥 Dispatching merged chunk ({} samples, {} sub-chunks) to workers (total queued: {})",
+                      merged.chunk.data.len(), merged.sub_chunks, queued);
+                if let Err(_) = work_sender.send(merged.chunk) {
+                    error!("❌ Failed to send merged chunk to workers");
+                    break;
+                }
+                batch_start = tokio::time::Instant::now();
+            }
+        }
+
+        // Flush remaining batch
+        if !batch_buffer.is_empty() {
+            let merged = merge_audio_chunks(&mut batch_buffer, &mut batch_samples);
+            let queued = chunks_queued.fetch_add(1, Ordering::SeqCst) + 1;
+            info!("📥 Dispatching final merged chunk ({} samples, {} sub-chunks) to workers (total queued: {})",
+                  merged.chunk.data.len(), merged.sub_chunks, queued);
+            if let Err(_) = work_sender.send(merged.chunk) {
+                error!("❌ Failed to send final merged chunk to workers");
             }
         }
 
@@ -508,13 +601,33 @@ async fn transcribe_chunk_segments<R: Runtime>(
 
     match engine {
         TranscriptionEngine::Whisper(whisper_engine) => {
-            let language = crate::get_language_preference_internal();
+            // Auto language detection: use pinned language from first chunk if available
+            let language = {
+                let detected = DETECTED_LANGUAGE.read().unwrap();
+                if detected.is_some() {
+                    detected.clone()
+                } else {
+                    crate::get_language_preference_internal()
+                }
+            };
 
             match whisper_engine
                 .transcribe_audio_with_segments(speech_samples, language, initial_prompt)
                 .await
             {
                 Ok((ws_segments, avg_confidence)) => {
+                    // After first successful transcription, mark language as detected
+                    // to avoid re-detecting on subsequent chunks.
+                    // ponytail: whisper-rs exposes full_lang_id_from_state() on WhisperState
+                    // but transcribe_audio_with_segments doesn't return it yet. When it does,
+                    // store the actual detected language code in DETECTED_LANGUAGE.
+                    if !LANGUAGE_DETECTED.load(Ordering::SeqCst)
+                        && DETECTED_LANGUAGE.read().unwrap().is_none()
+                    {
+                        LANGUAGE_DETECTED.store(true, Ordering::SeqCst);
+                        info!("Auto language detection: first transcription complete, language pinned");
+                    }
+
                     if ws_segments.is_empty() {
                         return Ok(vec![]);
                     }
@@ -577,7 +690,14 @@ async fn transcribe_chunk_segments<R: Runtime>(
             }
         }
         TranscriptionEngine::Provider(provider) => {
-            let language = crate::get_language_preference_internal();
+            let language = {
+                let detected = DETECTED_LANGUAGE.read().unwrap();
+                if detected.is_some() {
+                    detected.clone()
+                } else {
+                    crate::get_language_preference_internal()
+                }
+            };
             match provider.transcribe(speech_samples, language).await {
                 Ok(result) => {
                     let cleaned = result.text.trim().to_string();

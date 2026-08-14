@@ -1,0 +1,27 @@
+{
+  "name": "Brainstorm Session",
+  "description": "Brainstorming and ideation session template for generating, evaluating, and prioritizing ideas.",
+  "sections": [
+    {
+      "title": "Context & Problem Statement",
+      "instruction": "Summarize the problem or challenge being addressed, including relevant background and constraints.",
+      "format": "paragraph"
+    },
+    {
+      "title": "Ideas Generated",
+      "instruction": "List all ideas proposed during the session, including brief descriptions where helpful.",
+      "format": "list"
+    },
+    {
+      "title": "Evaluation & Prioritization",
+      "instruction": "List the ideas that were selected for further exploration, with reasoning for prioritization.",
+      "format": "list"
+    },
+    {
+      "title": "Next Steps",
+      "instruction": "List all assigned tasks with their owners and due date. Always add reference transcript segment and timestamp in the table.",
+      "format": "list",
+      "item_format": "| **Owner** | Task | Due | Reference Transcript Segment | Segment Time stamp |\n| --- | --- | --- | --- | --- |"
+    }
+  ]
+}

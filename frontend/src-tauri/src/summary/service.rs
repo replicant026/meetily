@@ -6,8 +6,8 @@ use crate::summary::llm_client::{LLMError, LLMProvider};
 use crate::summary::language_detection::detect_summary_language;
 use crate::summary::metadata::read_detected_summary_language_from_metadata;
 use crate::summary::processor::{
-    extract_meeting_name_from_markdown, generate_grounded_chapters, generate_meeting_summary,
-    language_name_from_code, SummaryChapter,
+    extract_action_items, extract_meeting_name_from_markdown, generate_grounded_chapters,
+    generate_meeting_summary, language_name_from_code, SummaryChapter,
 };
 use crate::summary::templates::{self, Template};
 use crate::ollama::metadata::ModelMetadataCache;
@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use once_cell::sync::Lazy;
@@ -617,6 +617,38 @@ impl SummaryService {
                     info!(
                         "Summary saved successfully for meeting_id: {}",
                         meeting_id
+                    );
+                }
+
+                // Extract structured action items from the final summary
+                let action_items = extract_action_items(
+                    &client,
+                    &provider,
+                    &model_name,
+                    &final_api_key,
+                    &final_markdown,
+                    ollama_endpoint.as_deref(),
+                    custom_openai_endpoint.as_deref(),
+                    custom_openai_max_tokens,
+                    custom_openai_temperature,
+                    custom_openai_top_p,
+                    app_data_dir.as_ref(),
+                    Some(&cancellation_token),
+                )
+                .await;
+
+                if !action_items.is_empty() {
+                    info!(
+                        "Extracted {} action items from summary for meeting_id: {}",
+                        action_items.len(),
+                        meeting_id
+                    );
+                    let _ = _app.emit(
+                        "action-items-extracted",
+                        serde_json::json!({
+                            "meeting_id": meeting_id,
+                            "items": action_items,
+                        }),
                     );
                 }
             }

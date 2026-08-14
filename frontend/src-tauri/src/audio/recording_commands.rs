@@ -26,6 +26,7 @@ use super::{
 use super::transcription::{
     self,
     reset_speech_detected_flag,
+    reset_detected_language,
 };
 
 // Re-export TranscriptUpdate for backward compatibility
@@ -285,6 +286,7 @@ pub async fn start_recording_with_meeting_name<R: Runtime>(
     *LAST_TRACKER_SPEAKER_COUNT.lock().unwrap() = None;
     drop(engine_lifecycle_guard);
     reset_speech_detected_flag(); // Reset for new recording session
+    reset_detected_language(); // Reset auto language detection for new session
 
     // Start optimized parallel transcription task and store handle
     if !defer_transcription {
@@ -471,6 +473,7 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
     *LAST_TRACKER_SPEAKER_COUNT.lock().unwrap() = None;
     drop(engine_lifecycle_guard);
     reset_speech_detected_flag(); // Reset for new recording session
+    reset_detected_language(); // Reset auto language detection for new session
 
     // Start optimized parallel transcription task and store handle
     if !defer_transcription {

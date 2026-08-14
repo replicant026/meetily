@@ -1,0 +1,32 @@
+{
+  "name": "Project Review",
+  "description": "Project status review template covering milestones, risks, decisions, and action items.",
+  "sections": [
+    {
+      "title": "Status Summary",
+      "instruction": "Provide a one-paragraph overview of the current project status, overall health, and key takeaways.",
+      "format": "paragraph"
+    },
+    {
+      "title": "Milestones & Progress",
+      "instruction": "List milestones with their current status (on track, at risk, completed) and relevant progress notes.",
+      "format": "list"
+    },
+    {
+      "title": "Risks & Blockers",
+      "instruction": "List current risks, blockers, and dependencies that may impact the project timeline or deliverables.",
+      "format": "list"
+    },
+    {
+      "title": "Decisions Made",
+      "instruction": "List all decisions made during the review meeting, including the rationale behind each.",
+      "format": "list"
+    },
+    {
+      "title": "Action Items",
+      "instruction": "List all assigned tasks with their owners and due date. Always add reference transcript segment and timestamp in the table.",
+      "format": "list",
+      "item_format": "| **Owner** | Task | Due | Reference Transcript Segment | Segment Time stamp |\n| --- | --- | --- | --- | --- |"
+    }
+  ]
+}

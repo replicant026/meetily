@@ -72,7 +72,7 @@ pub use template_commands::{
 // Re-export commonly used items
 pub use llm_client::LLMProvider;
 pub use processor::{
-    chunk_text, clean_llm_markdown_output, extract_meeting_name_from_markdown,
-    generate_meeting_summary, rough_token_count,
+    chunk_text, clean_llm_markdown_output, extract_action_items, extract_meeting_name_from_markdown,
+    generate_meeting_summary, rough_token_count, ActionItem,
 };
 pub use service::SummaryService;
