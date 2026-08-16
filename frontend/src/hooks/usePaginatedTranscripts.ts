@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Transcript, MeetingMetadata, PaginatedTranscriptsResponse, TranscriptSegmentData } from "@/types";
@@ -82,7 +83,7 @@ export function usePaginatedTranscripts({
             setMetadata(data);
             return data;
         } catch (err) {
-            console.error('Failed to load meeting metadata:', err);
+            logger.error('Failed to load meeting metadata:', err);
             setError('Failed to load meeting details');
             return null;
         }
@@ -127,7 +128,7 @@ export function usePaginatedTranscripts({
 
             return newTranscripts;
         } catch (err) {
-            console.error('Failed to load transcripts:', err);
+            logger.error('Failed to load transcripts:', err);
             setError('Failed to load transcripts');
             return [];
         }

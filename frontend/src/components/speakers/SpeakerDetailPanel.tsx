@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -61,7 +62,7 @@ export function SpeakerDetailPanel({ person, allPeople, onUpdated }: SpeakerDeta
       const refs = await listReferences(person.id);
       setReferences(refs);
     } catch (e) {
-      console.warn('Failed to load references:', e);
+      logger.warn('Failed to load references:', e);
     } finally {
       setLoadingRefs(false);
     }

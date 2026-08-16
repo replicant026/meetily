@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * Update Service
  *
@@ -48,7 +49,7 @@ export class UpdateService {
     if (!force && this.lastCheckTime) {
       const timeSinceLastCheck = Date.now() - this.lastCheckTime;
       if (timeSinceLastCheck < this.CHECK_INTERVAL_MS) {
-        console.log('Skipping update check - checked recently');
+        logger.log('Skipping update check - checked recently');
         return {
           available: false,
           currentVersion: await getVersion(),
@@ -78,7 +79,7 @@ export class UpdateService {
         currentVersion,
       };
     } catch (error) {
-      console.error('Failed to check for updates:', error);
+      logger.error('Failed to check for updates:', error);
       throw error;
     } finally {
       this.updateCheckInProgress = false;
@@ -108,7 +109,7 @@ export class UpdateService {
       await update.install();
       await relaunch();
     } catch (error) {
-      console.error('Failed to download/install update:', error);
+      logger.error('Failed to download/install update:', error);
       throw error;
     }
   }

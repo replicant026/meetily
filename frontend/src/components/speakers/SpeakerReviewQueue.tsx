@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -55,7 +56,7 @@ export function SpeakerReviewQueue({ meetingId, onResolved }: SpeakerReviewQueue
       setSuggestions(s);
       setPeople(p);
     } catch (e) {
-      console.warn('Failed to load suggestions:', e);
+      logger.warn('Failed to load suggestions:', e);
     } finally {
       setLoading(false);
     }

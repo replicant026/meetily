@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -90,7 +91,7 @@ export function RecoveryFailureBanner() {
             const list = await invoke<RecoveryFailure[]>('get_failed_recoveries_cmd');
             setFailures(list.filter((f) => !f.discarded));
         } catch (e) {
-            console.warn('get_failed_recoveries failed:', e);
+            logger.warn('get_failed_recoveries failed:', e);
         }
     }, []);
 
@@ -140,7 +141,7 @@ export function RecoveryFailureBanner() {
 
                 );
             } catch (err) {
-                console.warn('recovery event listener failed:', err);
+                logger.warn('recovery event listener failed:', err);
             }
         })();
         return () => {

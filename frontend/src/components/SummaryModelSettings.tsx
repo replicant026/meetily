@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -39,7 +40,7 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
             }) as string;
             data.apiKey = apiKeyData;
           } catch (err) {
-            console.error('Failed to fetch API key:', err);
+            logger.error('Failed to fetch API key:', err);
           }
         }
         // Fetch Custom OpenAI config if that's the active provider
@@ -58,13 +59,13 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
               data.model = customConfig.model || data.model;
             }
           } catch (err) {
-            console.error('Failed to fetch custom OpenAI config:', err);
+            logger.error('Failed to fetch custom OpenAI config:', err);
           }
         }
         setModelConfig(data);
       }
     } catch (error) {
-      console.error('Failed to fetch model config:', error);
+      logger.error('Failed to fetch model config:', error);
       toast.error(t('summary.load_failed'));
     }
   }, [t]);
@@ -86,7 +87,7 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
     const setupListener = async () => {
       const { listen } = await import('@tauri-apps/api/event');
       const unlisten = await listen<ModelConfig>('model-config-updated', (event) => {
-        console.log('SummaryModelSettings received model-config-updated event:', event.payload);
+        logger.log('SummaryModelSettings received model-config-updated event:', event.payload);
         setModelConfig(event.payload);
       });
 
@@ -120,7 +121,7 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
 
       toast.success(t('summary.save_success'));
     } catch (error) {
-      console.error('Error saving model config:', error);
+      logger.error('Error saving model config:', error);
       toast.error(t('summary.save_failed'));
     }
   };

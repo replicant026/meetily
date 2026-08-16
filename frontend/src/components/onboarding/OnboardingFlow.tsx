@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useEffect } from 'react';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import {
@@ -22,7 +23,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         const { platform } = await import('@tauri-apps/plugin-os');
         setIsMac(platform() === 'macos');
       } catch (e) {
-        console.error('Failed to detect platform:', e);
+        logger.error('Failed to detect platform:', e);
         setIsMac(navigator.userAgent.includes('Mac'));
       }
     };

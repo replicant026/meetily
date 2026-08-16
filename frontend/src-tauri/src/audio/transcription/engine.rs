@@ -135,10 +135,15 @@ pub async fn validate_transcription_model_ready<R: Runtime>(app: &AppHandle<R>) 
                 }
             }
         }
+        "groq" | "deepgram" | "mistral" => {
+            // Cloud providers don't need local model validation — API key is checked at transcribe time
+            info!("✅ Cloud STT provider '{}' accepted (no local model needed)", config.provider);
+            Ok(())
+        }
         other => {
             warn!("❌ Unsupported transcription provider for local recording: {}", other);
             Err(format!(
-                "Provider '{}' is not supported for local transcription. Please select 'localWhisper' or 'parakeet'.",
+                "Provider '{}' is not supported for local transcription. Please select 'localWhisper', 'parakeet', 'groq', or 'deepgram'.",
                 other
             ))
         }
@@ -211,6 +216,44 @@ pub async fn get_or_init_transcription_engine<R: Runtime>(
                     Err("Parakeet engine not initialized. This should not happen after validation.".to_string())
                 }
             }
+        }
+        "groq" => {
+            info!("☁️ Initializing Groq Whisper cloud provider");
+            let api_key = config.api_key.clone().ok_or_else(|| {
+                "Groq API key is required. Please set it in Settings → Transcription.".to_string()
+            })?;
+            let provider = Arc::new(super::groq_provider::GroqProvider::new(api_key));
+            Ok(TranscriptionEngine::Provider(provider))
+        }
+        "deepgram" => {
+            info!("☁️ Initializing Deepgram Nova cloud provider");
+            let api_key = config.api_key.clone().ok_or_else(|| {
+                "Deepgram API key is required. Please set it in Settings → Transcription.".to_string()
+            })?;
+            let model = if config.model.is_empty() {
+                None
+            } else {
+                Some(config.model)
+            };
+            let provider = Arc::new(super::deepgram_provider::DeepgramProvider::new(
+                api_key, model,
+            ));
+            Ok(TranscriptionEngine::Provider(provider))
+        }
+        "mistral" => {
+            info!("☁️ Initializing Mistral Voxtral cloud provider");
+            let api_key = config.api_key.clone().ok_or_else(|| {
+                "Mistral API key is required. Please set it in Settings → Transcription.".to_string()
+            })?;
+            let model = if config.model.is_empty() {
+                None
+            } else {
+                Some(config.model)
+            };
+            let provider = Arc::new(super::mistral_provider::MistralProvider::new(
+                api_key, model,
+            ));
+            Ok(TranscriptionEngine::Provider(provider))
         }
         "localWhisper" | _ => {
             info!("🎤 Initializing Whisper transcription engine");

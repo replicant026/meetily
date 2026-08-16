@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -213,7 +214,7 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
   };
 
   const handleTitleChange = (sectionKey: keyof Summary, newTitle: string) => {
-    console.log('Title change:', { sectionKey, newTitle });
+    logger.log('Title change:', { sectionKey, newTitle });
     const updatedSummary = {
       ...currentSummary,
       [sectionKey]: {
@@ -221,7 +222,7 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
         title: newTitle
       }
     };
-    console.log('Updated summary:', updatedSummary);
+    logger.log('Updated summary:', updatedSummary);
     onSummaryChange(updatedSummary);
   };
 

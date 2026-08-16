@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
@@ -115,7 +116,7 @@ export function useImportAudio({
           try {
             await applyPinnedSummaryLanguageToMeeting(event.payload.meeting_id);
           } catch (error) {
-            console.warn('Failed to apply pinned summary language to imported meeting:', error);
+            logger.warn('Failed to apply pinned summary language to imported meeting:', error);
             toast.warning('Could not apply default summary language', {
               description: 'The imported meeting was saved, but the default summary language was not applied.',
             });
@@ -258,7 +259,7 @@ export function useImportAudio({
       setStatus('idle');
       setProgress(null);
     } catch (err: any) {
-      console.error('Failed to cancel import:', err);
+      logger.error('Failed to cancel import:', err);
     }
   }, []);
 

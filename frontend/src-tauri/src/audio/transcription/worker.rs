@@ -583,7 +583,7 @@ async fn transcribe_chunk_segments<R: Runtime>(
     initial_prompt: Option<String>,
 ) -> std::result::Result<Vec<TranscriptionSegment>, TranscriptionError> {
     // Compute duration before data is moved by resampling
-    let chunk_duration = chunk.data.len() as f64 / chunk.sample_rate as f64;
+    let _chunk_duration = chunk.data.len() as f64 / chunk.sample_rate as f64;
 
     // Convert to 16kHz mono
     let speech_samples = if chunk.sample_rate != 16000 {
@@ -698,7 +698,7 @@ async fn transcribe_chunk_segments<R: Runtime>(
                     crate::get_language_preference_internal()
                 }
             };
-            match provider.transcribe(speech_samples, language).await {
+            match provider.transcribe(speech_samples, language, initial_prompt).await {
                 Ok(result) => {
                     let cleaned = result.text.trim().to_string();
                     if cleaned.is_empty() {
@@ -792,7 +792,7 @@ fn split_at_silence(text: &str, audio: &[f32], sample_rate: u32) -> Vec<Transcri
     let mut segments: Vec<TranscriptionSegment> = Vec::new();
     let mut prev_time = 0.0f64;
 
-    for (idx, &split_time) in split_points.iter().enumerate() {
+    for (_idx, &split_time) in split_points.iter().enumerate() {
         // Estimate character position from time proportion
         let char_pos = ((split_time / total_dur) * total_chars) as usize;
         let char_pos = char_pos.min(text.len());
@@ -906,7 +906,7 @@ fn split_by_punctuation(text: &str, chunk_duration: f64) -> Vec<TranscriptionSeg
         .map(|s| {
             let fraction = s.len() as f64 / total_chars;
             let dur = chunk_duration * fraction;
-            let start = elapsed;
+            let _start = elapsed;
             elapsed += dur;
             TranscriptionSegment {
                 text: s,

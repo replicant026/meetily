@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import React, { useEffect } from 'react';
@@ -34,16 +35,16 @@ export function RecordingPostProcessingProvider({ children }: { children: React.
       try {
         // Listen for recording-stop-complete event from Rust
         unlistenFn = await listen<boolean>('recording-stop-complete', (event) => {
-          console.log('[RecordingPostProcessing] Received recording-stop-complete event:', event.payload);
+          logger.log('[RecordingPostProcessing] Received recording-stop-complete event:', event.payload);
 
           // Call the post-processing handler
           // event.payload is the callApi boolean (true for normal stops)
           handleRecordingStop(event.payload);
         });
 
-        console.log('[RecordingPostProcessing] Event listener set up successfully');
+        logger.log('[RecordingPostProcessing] Event listener set up successfully');
       } catch (error) {
-        console.error('[RecordingPostProcessing] Failed to set up event listener:', error);
+        logger.error('[RecordingPostProcessing] Failed to set up event listener:', error);
       }
     };
 
@@ -51,7 +52,7 @@ export function RecordingPostProcessingProvider({ children }: { children: React.
 
     return () => {
       if (unlistenFn) {
-        console.log('[RecordingPostProcessing] Cleaning up event listener');
+        logger.log('[RecordingPostProcessing] Cleaning up event listener');
         unlistenFn();
       }
     };

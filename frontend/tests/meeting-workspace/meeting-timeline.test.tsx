@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MeetingTimeline } from '@/components/MeetingWorkspace/MeetingTimeline';
 
 vi.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }));
@@ -12,11 +11,6 @@ const audioFixture = {
   toggle: vi.fn(),
   seek: vi.fn(),
 };
-
-const segments = [
-  { id: 's1', speaker: 'Speaker A', start_time: 0, end_time: 30 },
-  { id: 's2', speaker: 'Speaker B', start_time: 30, end_time: 60 },
-];
 
 describe('MeetingTimeline', () => {
   it('draws waveform bars upward from a bottom baseline', () => {
@@ -38,11 +32,10 @@ describe('MeetingTimeline', () => {
     expect(y + height).toBe(61);
   });
 
-  it('seeks shared audio when the waveform is clicked', async () => {
+  it('seeks shared audio when the waveform is clicked', () => {
     const seek = vi.fn();
-    const user = userEvent.setup();
-    render(<MeetingTimeline audio={{ ...audioFixture, seek }} peaks={new Float32Array([0.1, 1])} segments={segments} />);
-    await user.click(screen.getByLabelText(/audioTimeline/i), { clientX: 150 });
+    render(<MeetingTimeline audio={{ ...audioFixture, seek }} peaks={new Float32Array([0.1, 1])} />);
+    fireEvent.click(screen.getByLabelText(/audioTimeline/i), { clientX: 150 });
     expect(seek).toHaveBeenCalledWith(expect.any(Number));
   });
 });

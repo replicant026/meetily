@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 // Wave 23 / PR-42-iii: streaming LLM postprocess events.
@@ -75,7 +76,7 @@ export function useTranscriptPostprocessEvents(
           },
         );
       } catch (error) {
-        console.warn('Failed to subscribe to transcript-postprocessed:', error);
+        logger.warn('Failed to subscribe to transcript-postprocessed:', error);
       }
 
       try {
@@ -95,7 +96,7 @@ export function useTranscriptPostprocessEvents(
             } catch {
               errorMessage = code;
             }
-            console.warn('LLM postprocess failed:', code, message);
+            logger.warn('LLM postprocess failed:', code, message);
             setStates((prev) => {
               const next = new Map(prev);
               const prior = next.get(segment_id) || {};
@@ -110,7 +111,7 @@ export function useTranscriptPostprocessEvents(
           },
         );
       } catch (error) {
-        console.warn('Failed to subscribe to transcript-postprocess-failed:', error);
+        logger.warn('Failed to subscribe to transcript-postprocess-failed:', error);
       }
     })();
 
@@ -118,12 +119,12 @@ export function useTranscriptPostprocessEvents(
       try {
         unlistenOk?.();
       } catch (error) {
-        console.warn('Failed to unlisten transcript-postprocessed:', error);
+        logger.warn('Failed to unlisten transcript-postprocessed:', error);
       }
       try {
         unlistenErr?.();
       } catch (error) {
-        console.warn('Failed to unlisten transcript-postprocess-failed:', error);
+        logger.warn('Failed to unlisten transcript-postprocess-failed:', error);
       }
     };
   }, [enabled]);

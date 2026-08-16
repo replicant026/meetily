@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * IndexedDB Service for Transcript Recovery
  * Provides browser-based persistence for meeting transcripts and metadata
@@ -54,7 +55,7 @@ class IndexedDBService {
         const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
 
         request.onerror = () => {
-          console.error('Failed to open IndexedDB:', request.error);
+          logger.error('Failed to open IndexedDB:', request.error);
           reject(request.error);
         };
 
@@ -84,7 +85,7 @@ class IndexedDBService {
           }
         };
       } catch (error) {
-        console.error('Exception during IndexedDB initialization:', error);
+        logger.error('Exception during IndexedDB initialization:', error);
         reject(error);
       }
     });
@@ -110,7 +111,7 @@ class IndexedDBService {
         request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.warn('Failed to save meeting metadata to IndexedDB:', error);
+      logger.warn('Failed to save meeting metadata to IndexedDB:', error);
       // Fail silently - don't interrupt recording
     }
   }
@@ -131,7 +132,7 @@ class IndexedDBService {
         request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('Failed to get meeting metadata from IndexedDB:', error);
+      logger.error('Failed to get meeting metadata from IndexedDB:', error);
       return null;
     }
   }
@@ -160,7 +161,7 @@ class IndexedDBService {
         request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('Failed to get meetings from IndexedDB:', error);
+      logger.error('Failed to get meetings from IndexedDB:', error);
       return [];
     }
   }
@@ -192,7 +193,7 @@ class IndexedDBService {
         getRequest.onerror = () => reject(getRequest.error);
       });
     } catch (error) {
-      console.warn('Failed to mark meeting as saved:', error);
+      logger.warn('Failed to mark meeting as saved:', error);
     }
   }
 
@@ -217,7 +218,7 @@ class IndexedDBService {
         request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('Failed to delete meeting from IndexedDB:', error);
+      logger.error('Failed to delete meeting from IndexedDB:', error);
       throw error;
     }
   }
@@ -265,7 +266,7 @@ class IndexedDBService {
         });
       }
     } catch (error) {
-      console.warn('Failed to save transcript to IndexedDB:', error);
+      logger.warn('Failed to save transcript to IndexedDB:', error);
       // Fail silently - don't interrupt recording
     }
   }
@@ -292,7 +293,7 @@ class IndexedDBService {
         request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('Failed to get transcripts from IndexedDB:', error);
+      logger.error('Failed to get transcripts from IndexedDB:', error);
       return [];
     }
   }
@@ -314,7 +315,7 @@ class IndexedDBService {
         request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('Failed to get transcript count from IndexedDB:', error);
+      logger.error('Failed to get transcript count from IndexedDB:', error);
       return 0;
     }
   }
@@ -360,10 +361,10 @@ class IndexedDBService {
         }
       }
 
-      console.log(`Cleaned up ${deletedCount} old meetings`);
+      logger.log(`Cleaned up ${deletedCount} old meetings`);
       return deletedCount;
     } catch (error) {
-      console.error('Failed to delete old meetings:', error);
+      logger.error('Failed to delete old meetings:', error);
       return 0;
     }
   }
@@ -410,10 +411,10 @@ class IndexedDBService {
         }
       }
 
-      console.log(`Cleaned up ${deletedCount} saved meetings`);
+      logger.log(`Cleaned up ${deletedCount} saved meetings`);
       return deletedCount;
     } catch (error) {
-      console.error('Failed to delete saved meetings:', error);
+      logger.error('Failed to delete saved meetings:', error);
       return 0;
     }
   }

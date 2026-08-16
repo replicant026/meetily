@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -112,7 +113,7 @@ const Sidebar: React.FC = () => {
     const fetchModelConfig = async () => {
       // Only make API call if serverAddress is loaded
       if (!serverAddress) {
-        console.log('Waiting for server address to load before fetching model config');
+        logger.log('Waiting for server address to load before fetching model config');
         return;
       }
 
@@ -127,13 +128,13 @@ const Sidebar: React.FC = () => {
               }) as string;
               data.apiKey = apiKeyData;
             } catch (err) {
-              console.error('Failed to fetch API key:', err);
+              logger.error('Failed to fetch API key:', err);
             }
           }
           setModelConfig(data);
         }
       } catch (error) {
-        console.error('Failed to fetch model config:', error);
+        logger.error('Failed to fetch model config:', error);
       }
     };
 
@@ -146,7 +147,7 @@ const Sidebar: React.FC = () => {
     const fetchTranscriptSettings = async () => {
       // Only make API call if serverAddress is loaded
       if (!serverAddress) {
-        console.log('Waiting for server address to load before fetching transcript settings');
+        logger.log('Waiting for server address to load before fetching transcript settings');
         return;
       }
 
@@ -156,7 +157,7 @@ const Sidebar: React.FC = () => {
           setTranscriptModelConfig(data);
         }
       } catch (error) {
-        console.error('Failed to fetch transcript settings:', error);
+        logger.error('Failed to fetch transcript settings:', error);
       }
     };
     fetchTranscriptSettings();
@@ -167,7 +168,7 @@ const Sidebar: React.FC = () => {
     const setupListener = async () => {
       const { listen } = await import('@tauri-apps/api/event');
       const unlisten = await listen<ModelConfig>('model-config-updated', (event) => {
-        console.log('Sidebar received model-config-updated event:', event.payload);
+        logger.log('Sidebar received model-config-updated event:', event.payload);
         setModelConfig(event.payload);
       });
 
@@ -196,7 +197,7 @@ const Sidebar: React.FC = () => {
       });
 
       setModelConfig(config);
-      console.log('Model config saved successfully');
+      logger.log('Model config saved successfully');
       setSettingsSaveSuccess(true);
 
       // Emit event to sync other components
@@ -206,7 +207,7 @@ const Sidebar: React.FC = () => {
       // Track settings change
       await Analytics.trackSettingsChanged('model_config', `${config.provider}_${config.model}`);
     } catch (error) {
-      console.error('Error saving model config:', error);
+      logger.error('Error saving model config:', error);
       setSettingsSaveSuccess(false);
     }
   };
@@ -219,7 +220,7 @@ const Sidebar: React.FC = () => {
         model: configToSave.model,
         apiKey: configToSave.apiKey ?? null
       };
-      console.log('Saving transcript config with payload:', payload);
+      logger.log('Saving transcript config with payload:', payload);
 
       await invoke('api_save_transcript_config', {
         provider: payload.provider,
@@ -234,7 +235,7 @@ const Sidebar: React.FC = () => {
       const transcriptConfigToSave = updatedConfig || transcriptModelConfig;
       await Analytics.trackSettingsChanged('transcript_config', `${transcriptConfigToSave.provider}_${transcriptConfigToSave.model}`);
     } catch (error) {
-      console.error('Failed to save transcript config:', error);
+      logger.error('Failed to save transcript config:', error);
       setSettingsSaveSuccess(false);
     }
   };
@@ -321,7 +322,7 @@ const Sidebar: React.FC = () => {
 
 
   const handleDelete = async (itemId: string) => {
-    console.log('Deleting item:', itemId);
+    logger.log('Deleting item:', itemId);
     const payload = {
       meetingId: itemId
     };
@@ -331,7 +332,7 @@ const Sidebar: React.FC = () => {
       await invoke('api_delete_meeting', {
         meetingId: itemId,
       });
-      console.log('Meeting deleted successfully');
+      logger.log('Meeting deleted successfully');
       const updatedMeetings = meetings.filter((m: CurrentMeeting) => m.id !== itemId);
       setMeetings(updatedMeetings);
 
@@ -349,7 +350,7 @@ const Sidebar: React.FC = () => {
         router.push('/');
       }
     } catch (error) {
-      console.error('Failed to delete meeting:', error);
+      logger.error('Failed to delete meeting:', error);
       toast.error("Failed to delete meeting", {
         description: error instanceof Error ? error.message : String(error)
       });
@@ -411,7 +412,7 @@ const Sidebar: React.FC = () => {
       setEditModalState({ isOpen: false, meetingId: null, currentTitle: '' });
       setEditingTitle('');
     } catch (error) {
-      console.error('Failed to update meeting title:', error);
+      logger.error('Failed to update meeting title:', error);
       toast.error("Failed to update meeting title", {
         description: error instanceof Error ? error.message : String(error)
       });

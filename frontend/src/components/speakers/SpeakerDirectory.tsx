@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -40,7 +41,7 @@ export function SpeakerDirectory() {
       const data = await listPeople();
       setPeople(data);
     } catch (e) {
-      console.warn('Failed to load people:', e);
+      logger.warn('Failed to load people:', e);
     } finally {
       setLoading(false);
     }

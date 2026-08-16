@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useCallback } from 'react';
 import { Transcript, Summary } from '@/types';
 import { ModelConfig } from '@/components/ModelSettingsModal';
@@ -21,7 +22,7 @@ async function resolveSummaryLanguage(
     const perMeeting = await readMeetingSummaryLanguage(meetingId);
     if (perMeeting.language) return perMeeting.language;
   } catch (err) {
-    console.warn('Failed to load meeting summary language:', err);
+    logger.warn('Failed to load meeting summary language:', err);
     toast.warning('Could not load saved summary language', {
       description: 'Using Auto for this generation.',
     });
@@ -31,7 +32,7 @@ async function resolveSummaryLanguage(
     const cachedDetected = await readCachedDetectedSummaryLanguage(meetingId);
     if (cachedDetected) return cachedDetected;
   } catch (err) {
-    console.warn('Failed to load cached detected summary language:', err);
+    logger.warn('Failed to load cached detected summary language:', err);
   }
 
   try {
@@ -43,7 +44,7 @@ async function resolveSummaryLanguage(
     }
     return detection.language;
   } catch (err) {
-    console.warn('Failed to detect transcript summary language:', err);
+    logger.warn('Failed to detect transcript summary language:', err);
     return null;
   }
 }
@@ -116,7 +117,7 @@ export function useSummaryGeneration({
         throw new Error('No transcript text available. Please add some text first.');
       }
 
-      console.log('Processing transcript with template:', selectedTemplate);
+      logger.log('Processing transcript with template:', selectedTemplate);
 
       // Calculate time since recording
       const timeSinceRecording = (Date.now() - new Date(meeting.created_at).getTime()) / 60000; // minutes
@@ -160,15 +161,15 @@ export function useSummaryGeneration({
       }) as any;
 
       const process_id = result.process_id;
-      console.log('Process ID:', process_id);
+      logger.log('Process ID:', process_id);
 
       // Start global polling via context
       startSummaryPolling(meeting.id, process_id, async (pollingResult) => {
-        console.log('Summary status:', pollingResult);
+        logger.log('Summary status:', pollingResult);
 
         // Handle cancellation
         if (pollingResult.status === 'cancelled') {
-          console.log('Summary generation was cancelled');
+          logger.log('Summary generation was cancelled');
 
           // Reload summary from database (backend has already restored from backup)
           try {
@@ -177,14 +178,14 @@ export function useSummaryGeneration({
             }) as any;
 
             if (existingSummary?.data) {
-              console.log('Restored previous summary after cancellation');
+              logger.log('Restored previous summary after cancellation');
               setAiSummary(existingSummary.data);
               setSummaryStatus('completed');
             } else {
               setSummaryStatus('idle');
             }
           } catch (error) {
-            console.error('Failed to reload summary after cancellation:', error);
+            logger.error('Failed to reload summary after cancellation:', error);
             setSummaryStatus('idle');
           }
 
@@ -194,7 +195,7 @@ export function useSummaryGeneration({
 
         // Handle errors
         if (pollingResult.status === 'error' || pollingResult.status === 'failed') {
-          console.error('Backend returned error:', pollingResult.error);
+          logger.error('Backend returned error:', pollingResult.error);
           const errorMessage = pollingResult.error || `Summary ${isRegeneration ? 'regeneration' : 'generation'} failed`;
 
           // If this was a regeneration, try to restore previous summary from database
@@ -205,7 +206,7 @@ export function useSummaryGeneration({
               }) as any;
 
               if (existingSummary?.data) {
-                console.log('Restored previous summary after regeneration failure');
+                logger.log('Restored previous summary after regeneration failure');
                 setAiSummary(existingSummary.data);
                 setSummaryStatus('completed');
                 setSummaryError(null);
@@ -225,7 +226,7 @@ export function useSummaryGeneration({
                 return;
               }
             } catch (error) {
-              console.error('Failed to reload summary after error:', error);
+              logger.error('Failed to reload summary after error:', error);
             }
           }
 
@@ -247,7 +248,7 @@ export function useSummaryGeneration({
 
           // Auto-open model settings modal if model is missing
           if (isModelRequiredError && onOpenModelSettings) {
-            console.log('🔧 Model required error detected, opening model settings...');
+            logger.log('🔧 Model required error detected, opening model settings...');
             onOpenModelSettings();
           }
 
@@ -263,7 +264,7 @@ export function useSummaryGeneration({
 
         // Handle successful completion
         if (pollingResult.status === 'completed' && pollingResult.data) {
-          console.log('Summary generation completed:', pollingResult.data);
+          logger.log('Summary generation completed:', pollingResult.data);
 
           // Update meeting title if available
           const meetingName = pollingResult.data.MeetingName || pollingResult.meetingName;
@@ -273,7 +274,7 @@ export function useSummaryGeneration({
 
           // Check if backend returned markdown format (new flow)
           if (pollingResult.data.markdown) {
-            console.log('Received markdown format from backend');
+            logger.log('Received markdown format from backend');
             setAiSummary({ markdown: pollingResult.data.markdown } as any);
             setSummaryStatus('completed');
 
@@ -300,7 +301,7 @@ export function useSummaryGeneration({
           const allEmpty = summarySections.every(([, section]) => !(section as any).blocks || (section as any).blocks.length === 0);
 
           if (allEmpty) {
-            console.error('Summary completed but all sections empty');
+            logger.error('Summary completed but all sections empty');
             setSummaryError('Summary generation completed but returned empty content.');
             setSummaryStatus('error');
 
@@ -344,7 +345,7 @@ export function useSummaryGeneration({
                 }
               }
             } catch (error) {
-              console.warn(`Error processing section ${key}:`, error);
+              logger.warn(`Error processing section ${key}:`, error);
             }
           }
 
@@ -369,7 +370,7 @@ export function useSummaryGeneration({
         }
       });
     } catch (error) {
-      console.error(`Failed to ${isRegeneration ? 'regenerate' : 'generate'} summary:`, error);
+      logger.error(`Failed to ${isRegeneration ? 'regenerate' : 'generate'} summary:`, error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setSummaryError(errorMessage);
       setSummaryStatus('error');
@@ -401,7 +402,7 @@ export function useSummaryGeneration({
   // Helper function to fetch ALL transcripts for summary generation
   const fetchAllTranscripts = useCallback(async (meetingId: string): Promise<Transcript[]> => {
     try {
-      console.log('📊 Fetching all transcripts for meeting:', meetingId);
+      logger.log('📊 Fetching all transcripts for meeting:', meetingId);
 
       // First, get total count by fetching first page
       const firstPage = await invokeTauri('api_get_meeting_transcripts', {
@@ -411,7 +412,7 @@ export function useSummaryGeneration({
       }) as { transcripts: Transcript[]; total_count: number; has_more: boolean };
 
       const totalCount = firstPage.total_count;
-      console.log(`📊 Total transcripts in database: ${totalCount}`);
+      logger.log(`📊 Total transcripts in database: ${totalCount}`);
 
       if (totalCount === 0) {
         return [];
@@ -424,10 +425,10 @@ export function useSummaryGeneration({
         offset: 0,
       }) as { transcripts: Transcript[]; total_count: number; has_more: boolean };
 
-      console.log(`✅ Fetched ${allData.transcripts.length} transcripts from database`);
+      logger.log(`✅ Fetched ${allData.transcripts.length} transcripts from database`);
       return allData.transcripts;
     } catch (error) {
-      console.error('❌ Error fetching all transcripts:', error);
+      logger.error('❌ Error fetching all transcripts:', error);
       toast.error('Failed to fetch transcripts for summary generation');
       return [];
     }
@@ -456,25 +457,25 @@ export function useSummaryGeneration({
   const handleGenerateSummary = useCallback(async (customPrompt: string = '') => {
     // Check if model config is still loading
     if (isModelConfigLoading) {
-      console.log('⏳ Model configuration is still loading, please wait...');
+      logger.log('⏳ Model configuration is still loading, please wait...');
       toast.info('Loading model configuration, please wait...');
       return;
     }
 
     // CHANGE: Fetch ALL transcripts from database, not from pagination state
-    console.log('📊 Fetching all transcripts for summary generation...');
+    logger.log('📊 Fetching all transcripts for summary generation...');
     const allTranscripts = await fetchAllTranscripts(meeting.id);
 
     if (!allTranscripts.length) {
       const error_msg = 'No transcripts available for summary';
-      console.log(error_msg);
+      logger.log(error_msg);
       toast.error(error_msg);
       return;
     }
 
-    console.log(`✅ Proceeding with ${allTranscripts.length} transcripts`);
+    logger.log(`✅ Proceeding with ${allTranscripts.length} transcripts`);
 
-    console.log('🚀 Starting summary generation with config:', {
+    logger.log('🚀 Starting summary generation with config:', {
       provider: modelConfig.provider,
       model: modelConfig.model,
       template: selectedTemplate
@@ -494,7 +495,7 @@ export function useSummaryGeneration({
           return;
         }
       } catch (error) {
-        console.error('Error checking Ollama models:', error);
+        logger.error('Error checking Ollama models:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
 
         if (isOllamaNotInstalledError(errorMessage)) {
@@ -599,7 +600,7 @@ export function useSummaryGeneration({
 
         // Model is ready, continue to backend call
       } catch (error) {
-        console.error('Error validating built-in AI model:', error);
+        logger.error('Error validating built-in AI model:', error);
         toast.error('Failed to validate built-in AI model', {
           description: error instanceof Error ? error.message : String(error),
           duration: 5000,
@@ -621,7 +622,7 @@ export function useSummaryGeneration({
     const allTranscripts = await fetchAllTranscripts(meeting.id);
 
     if (!allTranscripts.length) {
-      console.error('No transcripts available for regeneration');
+      logger.error('No transcripts available for regeneration');
       toast.error('No transcripts available for summary regeneration');
       return;
     }
@@ -634,16 +635,16 @@ export function useSummaryGeneration({
 
   // Public API: Stop ongoing summary generation
   const handleStopGeneration = useCallback(async () => {
-    console.log('Stopping summary generation for meeting:', meeting.id);
+    logger.log('Stopping summary generation for meeting:', meeting.id);
 
     try {
       // Call backend to cancel the summary generation
       await invokeTauri('api_cancel_summary', {
         meetingId: meeting.id
       });
-      console.log('✓ Backend cancellation request sent for meeting:', meeting.id);
+      logger.log('✓ Backend cancellation request sent for meeting:', meeting.id);
     } catch (error) {
-      console.error('Failed to cancel summary generation:', error);
+      logger.error('Failed to cancel summary generation:', error);
       // Continue with frontend cleanup even if backend call fails
     }
 

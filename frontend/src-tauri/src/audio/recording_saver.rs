@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as AsyncMutex;
 use anyhow::Result;
 use log::{info, warn, error};
-use tauri::{AppHandle, Runtime, Emitter, Manager};
+use tauri::{AppHandle, Runtime, Emitter};
 use tokio::sync::mpsc;
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
@@ -119,7 +119,7 @@ impl RecordingSaver {
         // NEW: Save incrementally to disk
         // PR-A: record hotword hits against this segment (fire-and-forget).
         // Errors are swallowed inside the helper so the streaming path never blocks.
-        crate::hotword_stats::record_segment(&segment.text);
+        let _ = crate::hotword_stats::record_segment(&segment.text);
         // PR-42-iii: spawn async LLM postprocess; emits transcript-postprocessed
         // or transcript-postprocess-failed to the frontend. No-op when text is short.
         crate::llm_postprocess::spawn_segment_postprocess(

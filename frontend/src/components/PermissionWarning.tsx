@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 import React from 'react';
 import { AlertTriangle, Mic, Speaker, RefreshCw } from 'lucide-react';
@@ -40,7 +41,7 @@ export function PermissionWarning({
       try {
         await invoke('open_system_settings', { preferencePane: 'Privacy_Microphone' });
       } catch (error) {
-        console.error('Failed to open microphone settings:', error);
+        logger.error('Failed to open microphone settings:', error);
       }
     }
   };
@@ -50,7 +51,7 @@ export function PermissionWarning({
       try {
         await invoke('open_system_settings', { preferencePane: 'Privacy_ScreenCapture' });
       } catch (error) {
-        console.error('Failed to open screen recording settings:', error);
+        logger.error('Failed to open screen recording settings:', error);
       }
     }
   };

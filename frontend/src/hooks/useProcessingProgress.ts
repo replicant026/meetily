@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChunkStatus, ProcessingProgress } from '../components/ChunkProgressDisplay';
 
@@ -53,7 +54,7 @@ export function useProcessingProgress() {
     });
     setIsActive(true);
 
-    console.log(`Initialized processing session for ${totalChunks} chunks`);
+    logger.log(`Initialized processing session for ${totalChunks} chunks`);
   }, []);
 
   // Start processing a specific chunk
@@ -70,7 +71,7 @@ export function useProcessingProgress() {
       )
     }));
 
-    console.log(`Started processing chunk ${chunkId}`);
+    logger.log(`Started processing chunk ${chunkId}`);
   }, []);
 
   // Complete a chunk with transcribed text
@@ -97,7 +98,7 @@ export function useProcessingProgress() {
     }));
 
     delete processingTimeRef.current[chunkId];
-    console.log(`Completed chunk ${chunkId} in ${duration}ms`);
+    logger.log(`Completed chunk ${chunkId} in ${duration}ms`);
   }, []);
 
   // Mark a chunk as failed
@@ -119,7 +120,7 @@ export function useProcessingProgress() {
     }));
 
     delete processingTimeRef.current[chunkId];
-    console.log(`Failed chunk ${chunkId}: ${errorMessage}`);
+    logger.log(`Failed chunk ${chunkId}: ${errorMessage}`);
   }, []);
 
   // Calculate estimated remaining time
@@ -151,7 +152,7 @@ export function useProcessingProgress() {
   const pauseProcessing = useCallback(() => {
     if (session) {
       setSession(prev => prev ? { ...prev, is_paused: true } : null);
-      console.log('Processing paused');
+      logger.log('Processing paused');
     }
   }, [session]);
 
@@ -159,7 +160,7 @@ export function useProcessingProgress() {
   const resumeProcessing = useCallback(() => {
     if (session) {
       setSession(prev => prev ? { ...prev, is_paused: false } : null);
-      console.log('Processing resumed');
+      logger.log('Processing resumed');
     }
   }, [session]);
 
@@ -175,7 +176,7 @@ export function useProcessingProgress() {
       chunks: []
     });
     processingTimeRef.current = {};
-    console.log('Processing cancelled');
+    logger.log('Processing cancelled');
   }, []);
 
   // Reset for new session
@@ -218,10 +219,10 @@ export function useProcessingProgress() {
       setIsActive(state.is_active);
       processingTimeRef.current = state.processing_times || {};
 
-      console.log('Loaded saved progress state');
+      logger.log('Loaded saved progress state');
       return true;
     } catch (error) {
-      console.error('Failed to load progress state:', error);
+      logger.error('Failed to load progress state:', error);
       return false;
     }
   }, []);

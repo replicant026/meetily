@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useCallback } from 'react';
 import { invoke as invokeTauri } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
@@ -20,10 +21,10 @@ export function useTemplates() {
           name: string;
           description: string;
         }>;
-        console.log('Available templates:', templates);
+        logger.log('Available templates:', templates);
         setAvailableTemplates(templates);
       } catch (error) {
-        console.error('Failed to fetch templates:', error);
+        logger.error('Failed to fetch templates:', error);
       }
     };
     fetchTemplates();

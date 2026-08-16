@@ -5,6 +5,9 @@
 pub mod provider;
 pub mod whisper_provider;
 pub mod parakeet_provider;
+pub mod groq_provider;
+pub mod deepgram_provider;
+pub mod mistral_provider;
 pub mod engine;
 pub mod worker;
 
@@ -12,6 +15,9 @@ pub mod worker;
 pub use provider::{TranscriptionError, TranscriptionProvider, TranscriptResult};
 pub use whisper_provider::WhisperProvider;
 pub use parakeet_provider::ParakeetProvider;
+pub use groq_provider::GroqProvider;
+pub use deepgram_provider::DeepgramProvider;
+pub use mistral_provider::MistralProvider;
 pub use engine::{
     TranscriptionEngine,
     validate_transcription_model_ready,
@@ -21,5 +27,6 @@ pub use engine::{
 pub use worker::{
     start_transcription_task,
     reset_speech_detected_flag,
+    reset_detected_language,
     TranscriptUpdate
 };

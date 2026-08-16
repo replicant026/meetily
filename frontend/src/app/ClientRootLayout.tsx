@@ -4,11 +4,8 @@ import './globals.css'
 import { SidebarProvider } from '@/components/Sidebar/SidebarProvider'
 import { AppShell } from '@/components/AppShell/AppShell'
 import AnalyticsProvider from '@/components/AnalyticsProvider'
-import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
-import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
-import { useTranslations } from 'next-intl'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { RecordingStateProvider } from '@/contexts/RecordingStateContext'
 import { OllamaDownloadProvider } from '@/contexts/OllamaDownloadContext'
@@ -19,10 +16,10 @@ import { OnboardingFlow } from '@/components/onboarding'
 import { UpdateCheckProvider } from '@/components/UpdateCheckProvider'
 import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcessingProvider'
 import { GlobalFeedbackLayer } from './_components/GlobalFeedbackLayer'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 export default function ClientRootLayout({ children }: { children: React.ReactNode }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const t = useTranslations('common');
 
   useEffect(() => {
     invoke<{ completed: boolean } | null>('get_onboarding_status')
@@ -45,25 +42,13 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
     }
   }, []);
 
-  useEffect(() => {
-    const unlisten = listen('request-recording-toggle', () => {
-      if (showOnboarding) {
-        toast.error(t('feedback.onboarding_complete_setup'), {
-          description: t('feedback.onboarding_complete_description')
-        });
-      } else {
-        window.dispatchEvent(new CustomEvent('start-recording-from-sidebar'));
-      }
-    });
-    return () => { unlisten.then(fn => fn()); };
-  }, [showOnboarding, t]);
-
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
     window.location.reload();
   };
 
   return (
+    <ErrorBoundary>
     <AnalyticsProvider>
       <RecordingStateProvider>
         <TranscriptProvider>
@@ -92,5 +77,6 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
         </TranscriptProvider>
       </RecordingStateProvider>
     </AnalyticsProvider>
+    </ErrorBoundary>
   );
 }

@@ -17,7 +17,8 @@
     "close": "閉じる",
     "confirm": "確認",
     "back": "戻る",
-    "next": "次へ"
+    "next": "次へ",
+    "copy": "コピー"
   },
   "status": {
     "loading": "読み込み中...",
@@ -37,5 +38,77 @@
     "drop_audio_title": "オーディオファイルをドロップしてインポート",
     "onboarding_complete_setup": "最初にセットアップを完了してください",
     "onboarding_complete_description": "録音を開始するにはオンボーディングを完了する必要があります。"
+  },
+  "audio_level_meter": {"active": "アクティブ", "inactive": "非アクティブ"},
+  "confidence": {
+    "high": "高信頼度",
+    "good": "良好な信頼度",
+    "medium": "中程度の信頼度",
+    "low": "低信頼度",
+    "confidence_title": "{percent}% 信頼度 - {label}",
+    "aria_label": "文字起こしの信頼度: {percent}%"
+  },
+  "console": {
+    "label": "開発者コンソール",
+    "toggle_button": "コンソールを切り替え",
+    "description": "開発者コンソールウィンドウの表示/非表示を切り替えます。Windows ではコンソールウィンドウを制御し、macOS ではアプリのログを表示するターミナルを開きます。"
+  },
+  "info": {"about": "情報", "about_title": "Meetily について"},
+  "model_download": {
+    "finalizing": "完了処理中...",
+    "downloading": "{model} をダウンロード中",
+    "percent_complete": "{percent}% 完了",
+    "downloading_status": "ダウンロード中...",
+    "completed_loading": "✓ ダウンロード完了、モデルを読み込んでいます...",
+    "models_available": "📦 {total} 個中 {downloaded} 個のモデルが利用可能",
+    "total_size": "💾 合計 {size}",
+    "local_no_internet": "✓ モデルはローカルで実行 - 文字起こしにインターネット不要"
+  },
+  "confirmation": {"delete_title": "削除の確認"},
+  "summary_updater": {
+    "saving_title": "保存中",
+    "save_changes_title": "変更を保存",
+    "saving": "保存中...",
+    "copy_summary_title": "要約をコピー"
+  },
+  "chunk_progress": {
+    "processing_progress": "処理の進行状況",
+    "paused": "一時停止中",
+    "pause": "一時停止",
+    "resume": "再開",
+    "calculating": "計算中...",
+    "chunks_completed": "{total} 件中 {completed} 件のチャンクが完了",
+    "completed": "完了",
+    "processing": "処理中",
+    "pending": "保留中",
+    "failed": "失敗",
+    "estimated_time_remaining": "残り所要時間の見積もり: {time}",
+    "recent_chunks": "最近のチャンク（{total} 件中 {shown} 件）",
+    "chunk_label": "チャンク {id}",
+    "processing_complete": "処理が完了しました！全 {count} 件のチャンクが文字起こしされました。",
+    "mini_processing": "処理中",
+    "mini_chunks": "{completed} / {total} チャンク",
+    "processing_count": "（{count} 件処理中）",
+    "error": "エラー: {message}"
+  },
+  "onboarding": {
+    "ready": {
+      "title": "準備完了",
+      "description": "Meetily は録音、文字起こし、要約の準備ができました。",
+      "transcription_ready": "文字起こしエンジン準備完了",
+      "transcription_downloading": "文字起こしエンジンをバックグラウンドでダウンロード中",
+      "summary_ready": "要約エンジン準備完了",
+      "summary_downloading": "要約エンジンをバックグラウンドでダウンロード中",
+      "start_button": "Meetily を使い始める"
+    },
+    "welcome": {
+      "title": "Meetily へようこそ",
+      "description": "録音。文字起こし。要約。すべてあなたのデバイスで。",
+      "feature_data": "データはデバイスから外に出ません",
+      "feature_summaries": "インテリジェントな要約と洞察",
+      "feature_offline": "オフラインで動作、クラウド不要",
+      "get_started": "はじめる",
+      "takes_less": "3 分未満で完了"
+    }
   }
 }

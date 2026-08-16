@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React from 'react';
 import { CheckCircle2, Mic, Sparkles } from 'lucide-react';
 import { OnboardingContainer } from '../OnboardingContainer';
@@ -11,7 +12,7 @@ export function ReadyStep() {
       await completeOnboarding();
       window.location.reload();
     } catch (error) {
-      console.error('Failed to complete onboarding:', error);
+      logger.error('Failed to complete onboarding:', error);
     }
   };
 

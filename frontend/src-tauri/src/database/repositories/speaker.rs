@@ -689,7 +689,7 @@ mod tests {
             .await
             .unwrap();
 
-        let ref_a = VoiceReferenceRepository::create(&pool, &alice, &fixture_reference())
+        let _ref_a = VoiceReferenceRepository::create(&pool, &alice, &fixture_reference())
             .await
             .unwrap();
         let ref_b = VoiceReferenceRepository::create(&pool, &bob, &fixture_reference())

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 import React, { useState, useEffect } from "react";
 import { invoke } from '@tauri-apps/api/core';
@@ -21,14 +22,14 @@ export function About() {
 
     useEffect(() => {
         // Get current version on mount
-        getVersion().then(setCurrentVersion).catch(console.error);
+        getVersion().then(setCurrentVersion).catch(logger.error);
     }, []);
 
     const handleContactClick = async () => {
         try {
             await invoke('open_external_url', { url: 'https://meetily.zackriya.com/#about' });
         } catch (error) {
-            console.error('Failed to open link:', error);
+            logger.error('Failed to open link:', error);
         }
     };
 
@@ -43,7 +44,7 @@ export function About() {
                 toast.success(t('about.latest_version'));
             }
         } catch (error: any) {
-            console.error('Failed to check for updates:', error);
+            logger.error('Failed to check for updates:', error);
             toast.error(t('about.check_failed', { message: error.message || 'Unknown error' }));
         } finally {
             setIsChecking(false);

@@ -15,7 +15,6 @@ use crate::summary::CustomOpenAIConfig;
 use std::sync::OnceLock;
 use serde::Serialize;
 use sqlx::SqlitePool;
-use std::str::FromStr;
 use tauri::{AppHandle, Emitter, Manager};
 
 
@@ -129,14 +128,6 @@ pub fn should_skip_for_length(text: &str) -> bool {
             .count();
         ascii_count < MIN_ASCII_CHARS
     }
-}
-
-fn build_glossary_block() -> Option<String> {
-    let terms = post_processor::read_hotwords_for_llm();
-    if terms.is_empty() {
-        return None;
-    }
-    Some(format!("<glossary>\n{}\n</glossary>", terms.join("\n")))
 }
 
 fn build_user_prompt(text: &str) -> String {
@@ -326,20 +317,6 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn glossary_block_empty_when_no_hotwords() {
-        post_processor::set_hotwords_for_llm(vec![]);
-        assert!(build_glossary_block().is_none());
-    }
-
-    #[test]
-    fn glossary_block_renders_terms() {
-        post_processor::set_hotwords_for_llm(vec!["AGI".to_string(), "Meetily".to_string()]);
-        let block = build_glossary_block().unwrap();
-        assert!(block.contains("AGI"));
-        assert!(block.contains("Meetily"));
-        post_processor::set_hotwords_for_llm(vec![]);
-    }
     // ---- is_cjk boundary tests ----
     #[test]
     fn is_cjk_basic_cjk_inside_range() {
@@ -406,22 +383,6 @@ mod tests {
     fn threshold_only_punctuation_skips() {
         // Pure punctuation: 0 CJK, 0 alphanumeric -> below both thresholds.
         assert!(should_skip_for_length("......,,,!!!"));
-    }
-
-    // ---- build_glossary_block ordering ----
-    #[test]
-    fn glossary_block_preserves_term_order() {
-        post_processor::set_hotwords_for_llm(vec![
-            "Charlie".to_string(),
-            "Alpha".to_string(),
-            "Bravo".to_string(),
-        ]);
-        let block = build_glossary_block().unwrap();
-        let c = block.find("Charlie").unwrap();
-        let a = block.find("Alpha").unwrap();
-        let b = block.find("Bravo").unwrap();
-        assert!(c < a && a < b, "glossary block must preserve insertion order");
-        post_processor::set_hotwords_for_llm(vec![]);
     }
 
     // ---- render_user_prompt tests ----

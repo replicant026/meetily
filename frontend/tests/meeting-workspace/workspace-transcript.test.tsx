@@ -33,6 +33,7 @@ const baseProps = {
     id: s.id,
     text: s.text,
     speaker: s.speaker,
+    timestamp: '14:30:00',
     audio_start_time: s.timestamp,
     audio_end_time: s.timestamp + 5,
     confidence: s.confidence,

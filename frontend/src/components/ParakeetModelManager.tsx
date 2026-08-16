@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
@@ -57,7 +58,7 @@ export function ParakeetModelManager({
 
         setInitialized(true);
       } catch (err) {
-        console.error('Failed to initialize Parakeet:', err);
+        logger.error('Failed to initialize Parakeet:', err);
         setError(err instanceof Error ? err.message : 'Failed to load models');
         toast.error('Failed to load transcription models', {
           description: err instanceof Error ? err.message : 'Unknown error',
@@ -78,7 +79,7 @@ export function ParakeetModelManager({
     let unlistenError: (() => void) | null = null;
 
     const setupListeners = async () => {
-      console.log('[ParakeetModelManager] Setting up event listeners...');
+      logger.log('[ParakeetModelManager] Setting up event listeners...');
 
       // Download progress with throttling
       unlistenProgress = await listen<{ modelName: string; progress: number }>(
@@ -94,7 +95,7 @@ export function ParakeetModelManager({
             Math.abs(progress - throttleData.progress) >= 5;
 
           if (shouldUpdate) {
-            console.log(`[ParakeetModelManager] Progress update for ${modelName}: ${progress}%`);
+            logger.log(`[ParakeetModelManager] Progress update for ${modelName}: ${progress}%`);
             progressThrottleRef.current.set(modelName, { progress, timestamp: now });
 
             setModels(prevModels =>
@@ -188,7 +189,7 @@ export function ParakeetModelManager({
     setupListeners();
 
     return () => {
-      console.log('[ParakeetModelManager] Cleaning up event listeners...');
+      logger.log('[ParakeetModelManager] Cleaning up event listeners...');
       if (unlistenProgress) unlistenProgress();
       if (unlistenComplete) unlistenComplete();
       if (unlistenError) unlistenError();
@@ -203,7 +204,7 @@ export function ParakeetModelManager({
         apiKey: null
       });
     } catch (error) {
-      console.error('Failed to save model selection:', error);
+      logger.error('Failed to save model selection:', error);
     }
   };
 
@@ -235,7 +236,7 @@ export function ParakeetModelManager({
         duration: 3000
       });
     } catch (err) {
-      console.error('Failed to cancel download:', err);
+      logger.error('Failed to cancel download:', err);
       toast.error('Failed to cancel download', {
         description: err instanceof Error ? err.message : 'Unknown error',
         duration: 4000
@@ -267,7 +268,7 @@ export function ParakeetModelManager({
 
       await ParakeetAPI.downloadModel(modelName);
     } catch (err) {
-      console.error('Download failed:', err);
+      logger.error('Download failed:', err);
       setDownloadingModels(prev => {
         const newSet = new Set(prev);
         newSet.delete(modelName);
@@ -320,7 +321,7 @@ export function ParakeetModelManager({
         onModelSelect('');
       }
     } catch (err) {
-      console.error('Failed to delete model:', err);
+      logger.error('Failed to delete model:', err);
       toast.error(`Failed to delete ${displayName}`, {
         description: err instanceof Error ? err.message : 'Delete failed',
         duration: 4000

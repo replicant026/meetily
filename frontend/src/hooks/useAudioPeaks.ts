@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { bucketPeaks } from '@/components/MeetingWorkspace/waveform';
@@ -39,7 +40,7 @@ export function useAudioPeaks(audioPath: string | null): Float32Array | null {
 
         setPeaks(bucketPeaks(mono, width));
       } catch (err) {
-        console.error('useAudioPeaks error:', err);
+        logger.error('useAudioPeaks error:', err);
       }
     })();
 

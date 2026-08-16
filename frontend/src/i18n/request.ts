@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { getRequestConfig } from "next-intl/server";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "./config";
 import commonEn from "../../locales/en-US/common.json";
@@ -90,7 +91,7 @@ export async function getStoredLocale(): Promise<Locale> {
     // We log a single warning the first time this fires, then fall back to
     // DEFAULT_LOCALE so the build and unit tests can render.
     if (typeof console !== "undefined") {
-      console.warn("[i18n] get_ui_language unavailable, using default locale:", String(e));
+      logger.warn("[i18n] get_ui_language unavailable, using default locale:", String(e));
     }
     return DEFAULT_LOCALE;
   }

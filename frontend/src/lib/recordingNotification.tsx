@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { toast } from 'sonner';
 import Analytics from '@/lib/analytics';
 
@@ -57,7 +58,7 @@ export async function showRecordingNotification(): Promise<void> {
       });
     }
   } catch (notificationError) {
-    console.error('Failed to show recording notification:', notificationError);
+    logger.error('Failed to show recording notification:', notificationError);
     // Don't fail the recording if notification fails
   }
 }

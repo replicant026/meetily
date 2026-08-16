@@ -18,12 +18,17 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock @/hooks/useMeetingDirectory
-const mockMeetings = Array.from({ length: 6 }, (_, i) => ({
+import type { MeetingDirectoryItem } from '@/lib/meeting-directory';
+
+const mockMeetings: MeetingDirectoryItem[] = Array.from({ length: 6 }, (_, i) => ({
   id: `meeting-${i}`,
   title: `Meeting ${i}`,
   createdAt: new Date().toISOString(),
+  updatedAt: null,
   durationSeconds: 300,
+  transcriptSegmentCount: 0,
   hasSummary: i % 2 === 0,
+  recordingState: 'ready',
 }));
 
 vi.mock('@/hooks/useMeetingDirectory', () => ({

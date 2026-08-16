@@ -24,8 +24,9 @@ vi.mock('@/lib/speaker-api', () => ({
 // Import components that may show raw keys
 import { ParticipantsSidebar } from '@/components/MeetingWorkspace/ParticipantsSidebar';
 import { SpeakerRecognitionSettings } from '@/components/speakers/SpeakerRecognitionSettings';
+import type { WorkspaceParticipant } from '@/components/MeetingWorkspace/types';
 
-const fixtureParticipants = [
+const fixtureParticipants: WorkspaceParticipant[] = [
   { id: '1', name: 'Speaker 1', source: 'microphone', spokenSeconds: 30, share: 0.6, color: '#16a34a' },
   { id: '2', name: 'Speaker 2', source: 'system', spokenSeconds: 20, share: 0.4, color: '#2563eb' },
 ];

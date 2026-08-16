@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -98,7 +99,7 @@ export const useAudioPlayer = (audioPath: string | null) => {
       })
       .catch((err) => {
         if (!cancelled) {
-          console.error('Error reading audio file:', err);
+          logger.error('Error reading audio file:', err);
           setError('Failed to read audio file');
         }
       });
@@ -114,7 +115,7 @@ export const useAudioPlayer = (audioPath: string | null) => {
     try {
       await audioRef.current.play();
     } catch (err) {
-      console.error('Error during playback:', err);
+      logger.error('Error during playback:', err);
       setError('Failed to play audio');
     }
   }, []);

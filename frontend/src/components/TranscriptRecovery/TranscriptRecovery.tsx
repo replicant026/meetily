@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * TranscriptRecovery Component
  *
@@ -67,7 +68,7 @@ export function TranscriptRecovery({
       // Limit to first 10 for preview
       setPreviewTranscripts(transcripts.slice(0, 10));
     } catch (error) {
-      console.error('Failed to load preview:', error);
+      logger.error('Failed to load preview:', error);
       setPreviewTranscripts([]);
     } finally {
       setIsLoadingPreview(false);
@@ -80,10 +81,10 @@ export function TranscriptRecovery({
     setIsRecovering(true);
     try {
       const result = await onRecover(selectedMeetingId);
-      console.log('Recovery successful:', result);
+      logger.log('Recovery successful:', result);
       onClose();
     } catch (error) {
-      console.error('Recovery failed:', error);
+      logger.error('Recovery failed:', error);
       alert(t('recovery.alert_recover_failed'));
     } finally {
       setIsRecovering(false);
@@ -103,7 +104,7 @@ export function TranscriptRecovery({
       setSelectedMeetingId(null);
       setPreviewTranscripts([]);
     } catch (error) {
-      console.error('Delete failed:', error);
+      logger.error('Delete failed:', error);
       alert(t('recovery.alert_delete_failed'));
     } finally {
       setIsDeleting(false);

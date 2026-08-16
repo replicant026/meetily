@@ -47,10 +47,10 @@ describe('People directory', () => {
     expect(screen.queryByText('detail.no_selection')).not.toBeInTheDocument();
   });
 
-  it('navigates to /people/<id> on click', async () => {
+  it('navigates to /people/detail?id=<id> on click', async () => {
     render(<SpeakerDirectory />);
     const felipe = await screen.findByText('Felipe');
     felipe.closest('button')?.click();
-    expect(mockPush).toHaveBeenCalledWith('/people/person-1');
+    expect(mockPush).toHaveBeenCalledWith('/people/detail?id=person-1');
   });
 });

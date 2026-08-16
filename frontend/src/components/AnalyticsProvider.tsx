@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import React, { useEffect, ReactNode, useRef, useState, createContext } from 'react';
@@ -136,7 +137,7 @@ export default function AnalyticsProvider({ children }: AnalyticsProviderProps) 
 
     };
 
-    initAnalytics().catch(console.error);
+    initAnalytics().catch(logger.error);
   }, []); // Run only once on mount to prevent infinite loops
 
   // Separate effect to handle re-initialization when analytics is toggled

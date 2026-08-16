@@ -174,14 +174,15 @@ Quarterly product review session with stakeholders.
 
       <div className="prose prose-blue max-w-none">
         <div dangerouslySetInnerHTML={{ __html: note.content.split('\n').map(line => {
+          const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           if (line.startsWith('# ')) {
-            return `<h1>${line.slice(2)}</h1>`;
+            return `<h1>${escape(line.slice(2))}</h1>`;
           } else if (line.startsWith('## ')) {
-            return `<h2>${line.slice(3)}</h2>`;
+            return `<h2>${escape(line.slice(3))}</h2>`;
           } else if (line.startsWith('- ')) {
-            return `<li>${line.slice(2)}</li>`;
+            return `<li>${escape(line.slice(2))}</li>`;
           }
-          return line;
+          return escape(line);
         }).join('\n') }} />
       </div>
     </div>

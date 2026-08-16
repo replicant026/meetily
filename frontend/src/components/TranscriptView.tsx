@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { Transcript } from '@/types';
@@ -112,7 +113,7 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({ transcripts, isR
   const [speechDetected, setSpeechDetected] = useState(false);
 
   // Debug: Log the props to understand what's happening
-  console.log('TranscriptView render:', {
+  logger.log('TranscriptView render:', {
     isRecording,
     isPaused,
     isProcessing,

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -242,7 +243,7 @@ export function RetranscribeDialog({
         setProgress(null);
         toast.info(t('actions.retranscription_cancelled'));
       } catch (err) {
-        console.error('Failed to cancel retranscription:', err);
+        logger.error('Failed to cancel retranscription:', err);
       }
     }
     onOpenChange(false);

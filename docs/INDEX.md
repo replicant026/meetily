@@ -12,9 +12,6 @@ to the codebase, start with the project root `README.md`, then this index.
 | [building_in_linux.md](building_in_linux.md) | Linux devs | Linux-specific build notes |
 | [GPU_ACCELERATION.md](GPU_ACCELERATION.md) | Performance-conscious users | GPU tuning for Whisper.cpp |
 | [asr_postprocess.md](asr_postprocess.md) | Power users | What is the postprocessor; how to extend it |
-| [hotword_highlight.md](hotword_highlight.md) | Users | Hotword matching in transcripts (PR-52) |
-| [recovery_zh.md](recovery_zh.md) | Users | Orphan-checkpoint recovery (PR-54) |
-| [recovery_retry_zh.md](recovery_retry_zh.md) | Users | Persistent retry + failure banner (PR-56) |
 | [ui_timestamp_jump.md](ui_timestamp_jump.md) | Users | Clickable timestamp audio seek (PR-44c) |
 | [asr_benchmark_zh.md](asr_benchmark_zh.md) | Model choosers | Whisper model selection for Chinese |
 

@@ -60,8 +60,8 @@ export function TranscriptButtonGroup({
         description: url,
         action: { label: 'Open', onClick: () => window.open(url, '_blank') },
       });
-      // Persist API key for next time
-      localStorage.setItem('jotbird_api_key', jotbirdApiKey);
+      // Session-only persistence — avoids leaving API key in localStorage permanently
+      sessionStorage.setItem('jotbird_api_key', jotbirdApiKey);
       setShowJotBirdDialog(false);
     } catch (err) {
       toast.error(`JotBird export failed: ${err}`);
@@ -115,7 +115,7 @@ export function TranscriptButtonGroup({
             </DropdownMenuItem>
             {transcriptMarkdown && (
               <DropdownMenuItem onSelect={() => {
-                setJotbirdApiKey(localStorage.getItem('jotbird_api_key') || '');
+                setJotbirdApiKey(sessionStorage.getItem('jotbird_api_key') || '');
                 setShowJotBirdDialog(true);
               }}>
                 <ExternalLink className="mr-2 h-4 w-4" />

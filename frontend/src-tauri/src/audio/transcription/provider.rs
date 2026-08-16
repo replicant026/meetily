@@ -45,7 +45,7 @@ pub struct TranscriptResult {
     pub is_partial: bool,
 }
 
-/// Trait for transcription providers (Whisper, Parakeet, future providers)
+/// Trait for transcription providers (Whisper, Parakeet, cloud providers)
 #[async_trait]
 pub trait TranscriptionProvider: Send + Sync {
     /// Transcribe audio samples to text
@@ -53,6 +53,8 @@ pub trait TranscriptionProvider: Send + Sync {
     /// # Arguments
     /// * `audio` - Audio samples (16kHz mono, f32 format)
     /// * `language` - Optional language hint (e.g., "en", "es", "fr")
+    /// * `initial_prompt` - Optional custom vocabulary / prompt to bias transcription
+    ///   (Whisper: initial_prompt, Groq: prompt, Deepgram: keywords)
     ///
     /// # Returns
     /// * `TranscriptResult` with text, optional confidence, and partial flag
@@ -60,6 +62,7 @@ pub trait TranscriptionProvider: Send + Sync {
         &self,
         audio: Vec<f32>,
         language: Option<String>,
+        initial_prompt: Option<String>,
     ) -> std::result::Result<TranscriptResult, TranscriptionError>;
 
     /// Check if a model is currently loaded

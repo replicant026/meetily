@@ -32,14 +32,6 @@ pub fn references_dir() -> Option<&'static PathBuf> {
     REFERENCES_DIR.get()
 }
 
-/// Resolve a reference path, returning an owned PathBuf.
-/// This clones the base dir out of the OnceLock so the caller doesn't hold a reference.
-fn resolve_reference_path(relative_path: &str) -> Result<PathBuf> {
-    let base = references_dir()
-        .ok_or_else(|| anyhow!("references directory not initialized"))?;
-    Ok(base.join(relative_path))
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]

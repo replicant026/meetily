@@ -29,6 +29,10 @@ docs/superpowers/*
 # misc
 .DS_Store
 *.pem
+.repowise/*
+.claude/*
+opencode.json
+.codex/*
 
 # debug
 npm-debug.log*

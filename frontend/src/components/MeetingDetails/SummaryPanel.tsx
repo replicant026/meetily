@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 "use client";
 
 import { Summary, SummaryResponse, Transcript } from '@/types';
@@ -140,7 +141,7 @@ export function SummaryPanel({
           setSummaryLangStorage(stored.storage);
         }
       } catch (err) {
-        console.error('Failed to load summary language:', err);
+        logger.error('Failed to load summary language:', err);
         toast.warning(t('status.failed_to_load_lang'), {
           description: t('status.load_failed_description'),
         });
@@ -191,14 +192,14 @@ export function SummaryPanel({
             latest?.version === request.version &&
             activeMeetingIdRef.current === request.meetingId
           ) {
-            console.error('Failed to persist summary language:', err);
+            logger.error('Failed to persist summary language:', err);
             toast.error(t('status.failed_to_save_lang'));
             setSummaryLang(request.rollback.language);
             setSummaryLangStorage(request.rollback.storage);
             return;
           }
 
-          console.warn('Ignoring failed stale summary language save:', err);
+          logger.warn('Ignoring failed stale summary language save:', err);
           if (latest?.version === request.version) return;
         }
       }
@@ -302,7 +303,7 @@ export function SummaryPanel({
                 onCopy={onCopySummary}
                 onFind={() => {
                   // TODO: Implement find in summary functionality
-                  console.log('Find in summary clicked');
+                  logger.log('Find in summary clicked');
                 }}
                 onOpenFolder={onOpenFolder}
                 hasSummary={!!aiSummary}

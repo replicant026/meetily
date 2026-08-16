@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 import React, { useContext, useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
@@ -29,7 +30,7 @@ export default function AnalyticsConsentSwitch() {
           const id = await Analytics.getPersistentUserId();
           setUserId(id);
         } catch (error) {
-          console.error('Failed to load user ID:', error);
+          logger.error('Failed to load user ID:', error);
         }
       } else {
         setUserId('');
@@ -51,7 +52,7 @@ export default function AnalyticsConsentSwitch() {
         user_id: userId
       });
     } catch (error) {
-      console.error('Failed to copy user ID:', error);
+      logger.error('Failed to copy user ID:', error);
     }
   };
 
@@ -63,7 +64,7 @@ export default function AnalyticsConsentSwitch() {
       try {
         await invoke('track_analytics_transparency_viewed');
       } catch (error) {
-        console.error('Failed to track transparency view:', error);
+        logger.error('Failed to track transparency view:', error);
       }
       return; // Don't disable yet, wait for modal confirmation
     }
@@ -113,23 +114,23 @@ export default function AnalyticsConsentSwitch() {
         try {
           await invoke('track_analytics_enabled');
         } catch (error) {
-          console.error('Failed to track analytics enabled:', error);
+          logger.error('Failed to track analytics enabled:', error);
         }
 
-        console.log('Analytics re-enabled successfully');
+        logger.log('Analytics re-enabled successfully');
       } else {
         // Track that user disabled analytics BEFORE disabling
         try {
           await invoke('track_analytics_disabled');
         } catch (error) {
-          console.error('Failed to track analytics disabled:', error);
+          logger.error('Failed to track analytics disabled:', error);
         }
 
         await Analytics.disable();
-        console.log('Analytics disabled successfully');
+        logger.log('Analytics disabled successfully');
       }
     } catch (error) {
-      console.error('Failed to toggle analytics:', error);
+      logger.error('Failed to toggle analytics:', error);
       // Revert the optimistic update on error
       setIsAnalyticsOptedIn(!enabled);
       // You could also show a toast notification here to inform the user
@@ -152,7 +153,7 @@ export default function AnalyticsConsentSwitch() {
     try {
       await invoke('open_external_url', { url: 'https://github.com/Zackriya-Solutions/meeting-minutes/blob/main/PRIVACY_POLICY.md' });
     } catch (error) {
-      console.error('Failed to open privacy policy link:', error);
+      logger.error('Failed to open privacy policy link:', error);
     }
   };
 

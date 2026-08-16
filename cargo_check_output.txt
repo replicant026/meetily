@@ -1,0 +1,137 @@
+warning: patch for the non root package will be ignored, specify patch at the workspace root:
+package:   D:\meetily\frontend\src-tauri\Cargo.toml
+workspace: D:\meetily\Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   D:\meetily\llama-helper\Cargo.toml
+workspace: D:\meetily\Cargo.toml
+warning: unused import: `std::io::Read`
+   --> frontend\src-tauri\build\ffmpeg.rs:210:9
+    |
+210 |     use std::io::Read;
+    |         ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `meetily` (build script) generated 1 warning
+   Compiling meetily v0.5.0 (D:\meetily\frontend\src-tauri)
+warning: meetily@0.5.0: 🚀 Building Meetily for: windows
+warning: meetily@0.5.0: ⚠️  Windows: Using CPU-only mode (no GPU or BLAS acceleration)
+warning: meetily@0.5.0: 💡 For NVIDIA GPU: cargo build --release --features cuda
+warning: meetily@0.5.0: 💡 For AMD/Intel GPU: cargo build --release --features vulkan
+warning: meetily@0.5.0: 💡 For CPU optimization: cargo build --release --features openblas
+warning: meetily@0.5.0: 🎯 NVIDIA GPU detected! Consider rebuilding with --features cuda
+warning: meetily@0.5.0: 📊 Performance: CPU-only builds are significantly slower than GPU/BLAS builds
+warning: meetily@0.5.0: 📚 See README.md for GPU/BLAS setup instructions
+warning: meetily@0.5.0: 🎬 Checking FFmpeg binary for target: x86_64-pc-windows-msvc
+warning: meetily@0.5.0: 🔍 Found cached FFmpeg binary: ffmpeg-x86_64-pc-windows-msvc.exe
+warning: meetily@0.5.0: ✅ FFmpeg verification passed: ffmpeg version 8.0.1-essentials_build-www.gyan.dev Copyright (c) 2000-2025 the FFmpeg developers
+warning: meetily@0.5.0: ✅ FFmpeg binary already cached and verified: ffmpeg-x86_64-pc-windows-msvc.exe
+warning: unused import: `Manager`
+ --> frontend\src-tauri\src\audio\recording_saver.rs:5:42
+  |
+5 | use tauri::{AppHandle, Runtime, Emitter, Manager};
+  |                                          ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::str::FromStr`
+  --> frontend\src-tauri\src\llm_postprocess.rs:18:5
+   |
+18 | use std::str::FromStr;
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::os::windows::process::CommandExt`
+  --> frontend\src-tauri\src\summary\summary_engine\sidecar.rs:16:5
+   |
+16 | use std::os::windows::process::CommandExt;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `chunk_duration`
+   --> frontend\src-tauri\src\audio\transcription\worker.rs:586:9
+    |
+586 |     let chunk_duration = chunk.data.len() as f64 / chunk.sample_rate as f64;
+    |         ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_chunk_duration`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `idx`
+   --> frontend\src-tauri\src\audio\transcription\worker.rs:795:10
+    |
+795 |     for (idx, &split_time) in split_points.iter().enumerate() {
+    |          ^^^ help: if this is intentional, prefix it with an underscore: `_idx`
+
+warning: unused variable: `start`
+   --> frontend\src-tauri\src\audio\transcription\worker.rs:909:17
+    |
+909 |             let start = elapsed;
+    |                 ^^^^^ help: if this is intentional, prefix it with an underscore: `_start`
+
+warning: field `recording_sender` is never read
+   --> frontend\src-tauri\src\audio\pipeline.rs:193:5
+    |
+186 | pub struct AudioCapture {
+    |            ------------ field in this struct
+...
+193 |     recording_sender: Option<mpsc::UnboundedSender<AudioChunk>>,
+    |     ^^^^^^^^^^^^^^^^
+    |
+    = note: `AudioCapture` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `state` is never read
+   --> frontend\src-tauri\src\audio\pipeline.rs:675:5
+    |
+672 | pub struct AudioPipeline {
+    |            ------------- field in this struct
+...
+675 |     state: Arc<RecordingState>,
+    |     ^^^^^
+
+warning: function `resolve_reference_path` is never used
+  --> frontend\src-tauri\src\diarization\voice_references.rs:37:4
+   |
+37 | fn resolve_reference_path(relative_path: &str) -> Result<PathBuf> {
+   |    ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: fields `status`, `created_at`, and `resolved_at` are never read
+   --> frontend\src-tauri\src\database\repositories\voice_reference.rs:317:5
+    |
+309 | struct RawSuggestion {
+    |        ------------- fields in this struct
+...
+317 |     status: String,
+    |     ^^^^^^
+318 |     created_at: String,
+    |     ^^^^^^^^^^
+319 |     resolved_at: Option<String>,
+    |     ^^^^^^^^^^^
+
+warning: function `build_glossary_block` is never used
+   --> frontend\src-tauri\src\llm_postprocess.rs:134:4
+    |
+134 | fn build_glossary_block() -> Option<String> {
+    |    ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `is_transient_error` is never used
+  --> frontend\src-tauri\src\summary\failover.rs:20:15
+   |
+20 | pub(crate) fn is_transient_error(msg: &str) -> bool {
+   |               ^^^^^^^^^^^^^^^^^^
+
+warning: function `get_builtin_templates` is never used
+  --> frontend\src-tauri\src\summary\templates\defaults.rs:30:8
+   |
+30 | pub fn get_builtin_templates() -> Vec<(&'static str, &'static str)> {
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused implementer of `futures_util::Future` that must be used
+   --> frontend\src-tauri\src\audio\recording_saver.rs:122:9
+    |
+122 |         crate::hotword_stats::record_segment(&segment.text);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: futures do nothing unless you `.await` or poll them
+    = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: `meetily` (lib) generated 14 warnings (run `cargo fix --lib -p meetily` to apply 4 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 21.25s

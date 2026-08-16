@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useRef } from 'react';
 import { useSidebar } from './Sidebar/SidebarProvider';
 import { invoke } from '@tauri-apps/api/core';
@@ -141,7 +142,6 @@ export function ModelSettingsModal({
   const [hasAutoFetched, setHasAutoFetched] = useState<boolean>(false);
   const hasSyncedFromParent = useRef<boolean>(false);
   const hasLoadedInitialConfig = useRef<boolean>(false);
-  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState<boolean>(true); // Default to true
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isEndpointSectionCollapsed, setIsEndpointSectionCollapsed] = useState<boolean>(true); // Collapsed by default
   const [ollamaNotInstalled, setOllamaNotInstalled] = useState<boolean>(false); // Track if Ollama is not installed
@@ -211,7 +211,7 @@ export function ModelSettingsModal({
       })) as string;
       setApiKey(data || '');
     } catch (err) {
-      console.error('Error fetching API key:', err);
+      logger.error('Error fetching API key:', err);
       setApiKey(null);
     }
   };
@@ -277,7 +277,7 @@ export function ModelSettingsModal({
               data.apiKey = apiKeyData;
               setApiKey(apiKeyData);
             } catch (err) {
-              console.error('Failed to fetch API key:', err);
+              logger.error('Failed to fetch API key:', err);
             }
           }
 
@@ -301,34 +301,18 @@ export function ModelSettingsModal({
                 setCustomTopP(customConfig.topP?.toString() || '');
               }
             } catch (err) {
-              console.error('Failed to fetch custom OpenAI config:', err);
+              logger.error('Failed to fetch custom OpenAI config:', err);
             }
           }
         }
       } catch (error) {
-        console.error('Failed to fetch model config:', error);
+        logger.error('Failed to fetch model config:', error);
         hasLoadedInitialConfig.current = true; // Mark as loaded even on error
       }
     };
 
     fetchModelConfig();
   }, [skipInitialFetch, setModelConfig]);
-
-  // Fetch auto-generate setting on mount
-  useEffect(() => {
-    const fetchAutoGenerateSetting = async () => {
-      try {
-        const enabled = (await invoke('api_get_auto_generate_setting')) as boolean;
-        setAutoGenerateEnabled(enabled);
-        console.log('Auto-generate setting loaded:', enabled);
-      } catch (err) {
-        console.error('Failed to fetch auto-generate setting:', err);
-        // Keep default value (true) on error
-      }
-    };
-
-    fetchAutoGenerateSetting();
-  }, []);
 
   // Sync ollamaEndpoint state when modelConfig.ollamaEndpoint changes from parent
   useEffect(() => {
@@ -346,7 +330,7 @@ export function ModelSettingsModal({
   // Sync custom OpenAI state from modelConfig (context or props)
   useEffect(() => {
     if (modelConfig.provider === 'custom-openai') {
-      console.log('Syncing custom OpenAI fields from ConfigContext:', {
+      logger.log('Syncing custom OpenAI fields from ConfigContext:', {
         endpoint: modelConfig.customOpenAIEndpoint,
         model: modelConfig.customOpenAIModel,
         hasApiKey: !!modelConfig.customOpenAIApiKey,
@@ -455,7 +439,7 @@ export function ModelSettingsModal({
       if (!silent) {
         toast.error(errorMsg);
       }
-      console.error('Error loading models:', err);
+      logger.error('Error loading models:', err);
     } finally {
       setIsLoadingOllama(false);
     }
@@ -495,7 +479,7 @@ export function ModelSettingsModal({
       const data = (await invoke('get_openrouter_models')) as OpenRouterModel[];
       setOpenRouterModels(data);
     } catch (err) {
-      console.error('Error loading OpenRouter models:', err);
+      logger.error('Error loading OpenRouter models:', err);
       setOpenRouterError(
         err instanceof Error ? err.message : 'Failed to load OpenRouter models'
       );
@@ -519,7 +503,7 @@ export function ModelSettingsModal({
         }
       }
     } catch (err) {
-      console.error('Error loading Built-in AI models:', err);
+      logger.error('Error loading Built-in AI models:', err);
       toast.error('Failed to load Built-in AI models');
     }
   };
@@ -535,7 +519,7 @@ export function ModelSettingsModal({
       const data = (await invoke('get_openai_models', { apiKey: key })) as OpenAIModel[];
       setOpenaiModels(data.map((m) => m.id));
     } catch (err) {
-      console.error('Error loading OpenAI models:', err);
+      logger.error('Error loading OpenAI models:', err);
       setOpenaiModels([]); // Will use fallback via modelOptions
     } finally {
       setIsLoadingOpenAI(false);
@@ -553,7 +537,7 @@ export function ModelSettingsModal({
       const data = (await invoke('get_anthropic_models', { apiKey: key })) as AnthropicModel[];
       setClaudeModels(data.map((m) => m.id));
     } catch (err) {
-      console.error('Error loading Claude models:', err);
+      logger.error('Error loading Claude models:', err);
       setClaudeModels([]); // Will use fallback via modelOptions
     } finally {
       setIsLoadingClaude(false);
@@ -571,7 +555,7 @@ export function ModelSettingsModal({
       const data = (await invoke('get_groq_models', { apiKey: key })) as GroqModel[];
       setGroqModels(data.map((m) => m.id));
     } catch (err) {
-      console.error('Error loading Groq models:', err);
+      logger.error('Error loading Groq models:', err);
       setGroqModels([]); // Will use fallback via modelOptions
     } finally {
       setIsLoadingGroq(false);
@@ -627,9 +611,9 @@ export function ModelSettingsModal({
           temperature: customTemperature ? parseFloat(customTemperature) : null,
           topP: customTopP ? parseFloat(customTopP) : null,
         });
-        console.log('Custom OpenAI config saved successfully');
+        logger.log('Custom OpenAI config saved successfully');
       } catch (err) {
-        console.error('Failed to save custom OpenAI config:', err);
+        logger.error('Failed to save custom OpenAI config:', err);
         toast.error('Failed to save custom OpenAI configuration');
         return;
       }
@@ -652,7 +636,7 @@ export function ModelSettingsModal({
       model: modelConfig.provider === 'custom-openai' ? customOpenAIModel.trim() : modelConfig.model,
     };
     setModelConfig(updatedConfig);
-    console.log('ModelSettingsModal - handleSave - Updated ModelConfig:', updatedConfig);
+    logger.log('ModelSettingsModal - handleSave - Updated ModelConfig:', updatedConfig);
 
     // Persist confirmed model choice to per-provider cache
     if (updatedConfig.model) {
@@ -728,7 +712,7 @@ export function ModelSettingsModal({
       // This respects the database as the single source of truth
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to download model';
-      console.error('Error downloading model:', err);
+      logger.error('Error downloading model:', err);
 
       // Check if Ollama is not installed and show appropriate error
       if (isOllamaNotInstalledError(errorMsg)) {
@@ -761,7 +745,7 @@ export function ModelSettingsModal({
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to delete model';
       toast.error(errorMsg);
-      console.error('Error deleting model:', err);
+      logger.error('Error deleting model:', err);
     }
   };
 
@@ -777,7 +761,7 @@ export function ModelSettingsModal({
     for (const modelName of previous) {
       if (!current.has(modelName)) {
         // Download completed, refresh models list
-        console.log(`[ModelSettingsModal] Download completed for ${modelName}, refreshing list`);
+        logger.log(`[ModelSettingsModal] Download completed for ${modelName}, refreshing list`);
         fetchOllamaModels(true);
         break; // Only refresh once even if multiple completed
       }
@@ -866,7 +850,7 @@ export function ModelSettingsModal({
                       setCustomTopP(config.topP?.toString() || '');
                     }
                   }).catch((err) => {
-                    console.error('Failed to load custom OpenAI config:', err);
+                    logger.error('Failed to load custom OpenAI config:', err);
                   });
                 }
               }}
@@ -1372,25 +1356,6 @@ export function ModelSettingsModal({
           </div>
         )}
       </div>
-
-      {/* Auto-generate summaries toggle */}
-      {/* <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <Label htmlFor="auto-generate" className="text-base font-medium">
-              Auto-generate summaries
-            </Label>
-            <p className="text-sm text-muted-foreground mt-1">
-              Automatically generate summary when opening meetings without one
-            </p>
-          </div>
-          <Switch
-            id="auto-generate"
-            checked={autoGenerateEnabled}
-            onCheckedChange={setAutoGenerateEnabled}
-          />
-        </div>
-      </div> */}
 
       <div className="mt-6 flex justify-end">
         <AppButton

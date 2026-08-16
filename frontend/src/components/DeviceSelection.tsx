@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -56,9 +57,9 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
       setError(null);
       const result = await invoke<AudioDevice[]>('get_audio_devices');
       setDevices(result);
-      console.log('Fetched audio devices:', result);
+      logger.log('Fetched audio devices:', result);
     } catch (err) {
-      console.error('Failed to fetch audio devices:', err);
+      logger.error('Failed to fetch audio devices:', err);
       setError('Failed to load audio devices. Please check your system audio settings.');
     } finally {
       setLoading(false);
@@ -88,7 +89,7 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
           setAudioLevels(newLevels);
         });
       } catch (err) {
-        console.error('Failed to setup audio level listener:', err);
+        logger.error('Failed to setup audio level listener:', err);
       }
     };
 
@@ -150,7 +151,7 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
       device_category: metadata.category,
       is_bluetooth: metadata.isBluetooth.toString(),
       has_system_audio: (!!selectedDevices.systemDevice).toString()
-    }).catch(err => console.error('Failed to track microphone selection:', err));
+    }).catch(err => logger.error('Failed to track microphone selection:', err));
   };
 
   // Handle system audio device selection
@@ -167,7 +168,7 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
       device_category: metadata.category,
       is_bluetooth: metadata.isBluetooth.toString(),
       has_microphone: (!!selectedDevices.micDevice).toString()
-    }).catch(err => console.error('Failed to track system audio selection:', err));
+    }).catch(err => logger.error('Failed to track system audio selection:', err));
   };
 
   // Start audio level monitoring
@@ -183,9 +184,9 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
       await invoke('start_audio_level_monitoring', { deviceNames });
       setIsMonitoring(true);
       setShowLevels(true);
-      console.log('Started audio level monitoring for input devices:', deviceNames);
+      logger.log('Started audio level monitoring for input devices:', deviceNames);
     } catch (err) {
-      console.error('Failed to start audio level monitoring:', err);
+      logger.error('Failed to start audio level monitoring:', err);
       setError('Failed to start audio level monitoring');
     }
   };
@@ -196,9 +197,9 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
       await invoke('stop_audio_level_monitoring');
       setIsMonitoring(false);
       setAudioLevels(new Map());
-      console.log('Stopped audio level monitoring');
+      logger.log('Stopped audio level monitoring');
     } catch (err) {
-      console.error('Failed to stop audio level monitoring:', err);
+      logger.error('Failed to stop audio level monitoring:', err);
     }
   };
 

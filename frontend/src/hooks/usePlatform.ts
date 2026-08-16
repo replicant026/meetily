@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect } from 'react';
 
 export type Platform = 'macos' | 'windows' | 'linux' | 'unknown';
@@ -65,7 +66,7 @@ export function usePlatform(): Platform {
             setCurrentPlatform('unknown');
         }
       } catch (error) {
-        console.warn('[usePlatform] Tauri platform detection failed, using user agent:', error);
+        logger.warn('[usePlatform] Tauri platform detection failed, using user agent:', error);
         setCurrentPlatform(detectPlatformFromUserAgent());
       }
     }

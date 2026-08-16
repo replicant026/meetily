@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { FolderOpen } from 'lucide-react';
@@ -39,13 +40,13 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
         const prefs = await invoke<RecordingPreferences>('get_recording_preferences');
         setPreferences(prefs);
       } catch (error) {
-        console.error('Failed to load recording preferences:', error);
+        logger.error('Failed to load recording preferences:', error);
         // If loading fails, get default folder path
         try {
           const defaultPath = await invoke<string>('get_default_recordings_folder_path');
           setPreferences(prev => ({ ...prev, save_folder: defaultPath }));
         } catch (defaultError) {
-          console.error('Failed to get default folder path:', defaultError);
+          logger.error('Failed to get default folder path:', defaultError);
         }
       } finally {
         setLoading(false);
@@ -64,7 +65,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
         const show = await store.get<boolean>('show_recording_notification') ?? true;
         setShowRecordingNotification(show);
       } catch (error) {
-        console.error('Failed to load notification preference:', error);
+        logger.error('Failed to load notification preference:', error);
       }
     };
     loadNotificationPref();
@@ -102,7 +103,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
     try {
       await invoke('open_recordings_folder');
     } catch (error) {
-      console.error('Failed to open recordings folder:', error);
+      logger.error('Failed to open recordings folder:', error);
     }
   };
 
@@ -118,7 +119,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
         enabled: enabled.toString()
       });
     } catch (error) {
-      console.error('Failed to save notification preference:', error);
+      logger.error('Failed to save notification preference:', error);
       toast.error(t('recording.preference_save_failed'));
     }
   };
@@ -136,7 +137,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
         description: `Mic: ${micDevice}, Audio: ${systemDevice}`
       });
     } catch (error) {
-      console.error('Failed to save recording preferences:', error);
+      logger.error('Failed to save recording preferences:', error);
       toast.error(t("recording.devices_save_failed"), {
         description: error instanceof Error ? error.message : String(error)
       });

@@ -17,7 +17,8 @@
     "close": "关闭",
     "confirm": "确认",
     "back": "返回",
-    "next": "下一步"
+    "next": "下一步",
+    "copy": "复制"
   },
   "status": {
     "loading": "加载中...",
@@ -37,5 +38,77 @@
     "drop_audio_title": "拖放音频文件导入",
     "onboarding_complete_setup": "请先完成设置",
     "onboarding_complete_description": "您需要完成新手引导才能开始录制。"
+  },
+  "audio_level_meter": {"active": "活跃", "inactive": "未活跃"},
+  "confidence": {
+    "high": "高置信度",
+    "good": "良好置信度",
+    "medium": "中等置信度",
+    "low": "低置信度",
+    "confidence_title": "{percent}% 置信度 - {label}",
+    "aria_label": "转写置信度：{percent}%"
+  },
+  "console": {
+    "label": "开发者控制台",
+    "toggle_button": "切换控制台",
+    "description": "显示或隐藏开发者控制台窗口。在 Windows 上，控制控制台窗口；在 macOS 上，打开终端并显示应用日志。"
+  },
+  "info": {"about": "关于", "about_title": "关于 Meetily"},
+  "model_download": {
+    "finalizing": "完成中...",
+    "downloading": "正在下载 {model}",
+    "percent_complete": "已完成 {percent}%",
+    "downloading_status": "下载中...",
+    "completed_loading": "✓ 下载完成，正在加载模型...",
+    "models_available": "📦 {downloaded} / {total} 个模型可用",
+    "total_size": "💾 共 {size}",
+    "local_no_internet": "✓ 模型本地运行 - 转写无需联网"
+  },
+  "confirmation": {"delete_title": "确认删除"},
+  "summary_updater": {
+    "saving_title": "保存中",
+    "save_changes_title": "保存更改",
+    "saving": "保存中...",
+    "copy_summary_title": "复制摘要"
+  },
+  "chunk_progress": {
+    "processing_progress": "处理进度",
+    "paused": "已暂停",
+    "pause": "暂停",
+    "resume": "继续",
+    "calculating": "计算中...",
+    "chunks_completed": "{completed} / {total} 个分段已完成",
+    "completed": "已完成",
+    "processing": "处理中",
+    "pending": "待处理",
+    "failed": "失败",
+    "estimated_time_remaining": "预计剩余时间：{time}",
+    "recent_chunks": "最近分段（{shown} / {total}）",
+    "chunk_label": "分段 {id}",
+    "processing_complete": "处理完成！全部 {count} 个分段已转写。",
+    "mini_processing": "处理中",
+    "mini_chunks": "{completed} / {total} 个分段",
+    "processing_count": "（{count} 个处理中）",
+    "error": "错误：{message}"
+  },
+  "onboarding": {
+    "ready": {
+      "title": "一切就绪",
+      "description": "Meetily 已准备好录制、转写和总结。",
+      "transcription_ready": "转写引擎已就绪",
+      "transcription_downloading": "转写引擎正在后台下载",
+      "summary_ready": "摘要引擎已就绪",
+      "summary_downloading": "摘要引擎正在后台下载",
+      "start_button": "开始使用 Meetily"
+    },
+    "welcome": {
+      "title": "欢迎使用 Meetily",
+      "description": "录制。转写。总结。全部在你的设备上。",
+      "feature_data": "你的数据从不离开设备",
+      "feature_summaries": "智能摘要与洞察",
+      "feature_offline": "离线运行，无需云端",
+      "get_started": "开始使用",
+      "takes_less": "耗时不到 3 分钟"
+    }
   }
 }

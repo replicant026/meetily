@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 "use client";
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
@@ -42,7 +43,7 @@ export function BluetoothPlaybackWarning({
           setIsDismissed(false); // Reset dismissal when switching to non-BT device
         }
       } catch (error) {
-        console.error('Failed to check audio output device:', error);
+        logger.error('Failed to check audio output device:', error);
         // Fail silently - don't show warning if we can't detect device
         setIsBluetoothActive(false);
       }

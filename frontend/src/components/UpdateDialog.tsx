@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
@@ -37,7 +38,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
           setError(t('update.no_longer'));
         }
       }).catch((err) => {
-        console.error('Failed to get update object:', err);
+        logger.error('Failed to get update object:', err);
         setError(redactLocalPaths(t('update.prepare_failed', { message: err.message || 'Unknown error' })));
       });
     } else {
@@ -100,7 +101,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
       onOpenChange(false);
       await relaunch();
     } catch (err: any) {
-      console.error('Update failed:', err);
+      logger.error('Update failed:', err);
       setError(redactLocalPaths(err.message || 'Failed to download or install update'));
       setIsDownloading(false);
       toast.error(t('update.failed_toast', { message: err.message || 'Unknown error' }));

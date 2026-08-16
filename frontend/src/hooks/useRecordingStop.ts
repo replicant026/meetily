@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -84,7 +85,7 @@ export function useRecordingStop(
 
     const setupRecordingStoppedListener = async () => {
       try {
-        console.log('Setting up recording-stopped listener for navigation...');
+        logger.log('Setting up recording-stopped listener for navigation...');
         unlistenFn = await listen<{
           message: string;
           folder_path?: string;
@@ -104,16 +105,16 @@ export function useRecordingStop(
           })();
 
         });
-        console.log('Recording stopped listener setup complete');
+        logger.log('Recording stopped listener setup complete');
       } catch (error) {
-        console.error('Failed to setup recording stopped listener:', error);
+        logger.error('Failed to setup recording stopped listener:', error);
       }
     };
 
     setupRecordingStoppedListener();
 
     return () => {
-      console.log('Cleaning up recording stopped listener...');
+      logger.log('Cleaning up recording stopped listener...');
       if (unlistenFn) {
         unlistenFn();
       }
@@ -139,53 +140,47 @@ export function useRecordingStop(
     const stopStartTime = Date.now();
 
     try {
-      console.log('Post-stop processing (new implementation)...', {
+      logger.log('Post-stop processing (new implementation)...', {
         stop_initiated_at: new Date(stopStartTime).toISOString(),
         current_transcript_count: transcriptsRef.current.length
       });
 
       // Note: stop_recording is already called by RecordingControls.stopRecordingAction
       // This function only handles post-stop processing (transcription wait, API call, navigation)
-      console.log('Recording already stopped by RecordingControls, processing transcription...');
+      logger.log('Recording already stopped by RecordingControls, processing transcription...');
 
       // Wait for transcription to complete
       setStatus(RecordingStatus.PROCESSING_TRANSCRIPTS, tSummary('status.waiting_for_transcription'));
-      console.log('Waiting for transcription to complete...');
+      logger.log('Waiting for transcription to complete...');
 
       const MAX_WAIT_TIME = 60000; // 60 seconds maximum wait (increased for longer processing)
       const POLL_INTERVAL = 500; // Check every 500ms
       let elapsedTime = 0;
       let transcriptionComplete = false;
 
-      // Listen for transcription-complete event
-      const unlistenComplete = await listen('transcription-complete', () => {
-        console.log('Received transcription-complete event');
-        transcriptionComplete = true;
-      });
-
       // Poll for transcription status
       while (elapsedTime < MAX_WAIT_TIME && !transcriptionComplete) {
         try {
           const status = await transcriptService.getTranscriptionStatus();
-          console.log('Transcription status:', status);
+          logger.log('Transcription status:', status);
 
           // Check if transcription is complete
           if (!status.is_processing && status.chunks_in_queue === 0) {
-            console.log('Transcription complete - no active processing and no chunks in queue');
+            logger.log('Transcription complete - no active processing and no chunks in queue');
             transcriptionComplete = true;
             break;
           }
 
           // If no activity for more than 8 seconds and no chunks in queue, consider it done (increased from 5s to 8s)
           if (status.last_activity_ms > 8000 && status.chunks_in_queue === 0) {
-            console.log('Transcription likely complete - no recent activity and empty queue');
+            logger.log('Transcription likely complete - no recent activity and empty queue');
             transcriptionComplete = true;
             break;
           }
 
           // Update user with current status
           if (status.chunks_in_queue > 0) {
-            console.log(`Processing ${status.chunks_in_queue} remaining audio chunks...`);
+            logger.log(`Processing ${status.chunks_in_queue} remaining audio chunks...`);
             setStatus(RecordingStatus.PROCESSING_TRANSCRIPTS, tSummary('status.processing_chunks', { count: status.chunks_in_queue }));
           }
 
@@ -193,27 +188,23 @@ export function useRecordingStop(
           await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
           elapsedTime += POLL_INTERVAL;
         } catch (error) {
-          console.error('Error checking transcription status:', error);
+          logger.error('Error checking transcription status:', error);
           break;
         }
       }
 
-      // Clean up listener
-      console.log('🧹 CLEANUP: Cleaning up transcription-complete listener');
-      unlistenComplete();
-
       if (!transcriptionComplete && elapsedTime >= MAX_WAIT_TIME) {
-        console.warn('⏰ Transcription wait timeout reached after', elapsedTime, 'ms');
+        logger.warn('⏰ Transcription wait timeout reached after', elapsedTime, 'ms');
       } else {
-        console.log('✅ Transcription completed after', elapsedTime, 'ms');
+        logger.log('✅ Transcription completed after', elapsedTime, 'ms');
         // Wait longer for any late transcript segments (increased from 1s to 4s)
-        console.log('⏳ Waiting for late transcript segments...');
+        logger.log('⏳ Waiting for late transcript segments...');
         await new Promise(resolve => setTimeout(resolve, 4000));
       }
 
       // Final buffer flush: process ALL remaining transcripts regardless of timing
       const flushStartTime = Date.now();
-      console.log('🔄 Final buffer flush: forcing processing of any remaining transcripts...', {
+      logger.log('🔄 Final buffer flush: forcing processing of any remaining transcripts...', {
         flush_started_at: new Date(flushStartTime).toISOString(),
         time_since_stop: flushStartTime - stopStartTime,
         current_transcript_count: transcriptsRef.current.length
@@ -221,7 +212,7 @@ export function useRecordingStop(
       setStatus(RecordingStatus.PROCESSING_TRANSCRIPTS, tSummary('status.flushing'));
       flushBuffer();
       const flushEndTime = Date.now();
-      console.log('✅ Final buffer flush completed', {
+      logger.log('✅ Final buffer flush completed', {
         flush_duration: flushEndTime - flushStartTime,
         total_time_since_stop: flushEndTime - stopStartTime,
         final_transcript_count: transcriptsRef.current.length
@@ -230,7 +221,7 @@ export function useRecordingStop(
       // NOTE: Status remains PROCESSING_TRANSCRIPTS until we start saving
 
       // Wait a bit more to ensure all transcript state updates have been processed
-      console.log('Waiting for transcript state updates to complete...');
+      logger.log('Waiting for transcript state updates to complete...');
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Save to SQLite
@@ -247,7 +238,7 @@ export function useRecordingStop(
         const folderPath = sessionStorage.getItem('last_recording_folder_path');
         const savedMeetingName = sessionStorage.getItem('last_recording_meeting_name');
 
-        console.log('💾 Saving COMPLETE transcripts to database...', {
+        logger.log('💾 Saving COMPLETE transcripts to database...', {
           transcript_count: freshTranscripts.length,
           meeting_name: savedMeetingName || meetingTitle,
           folder_path: folderPath,
@@ -264,7 +255,7 @@ export function useRecordingStop(
 
           const meetingId = responseData.meeting_id;
           if (!meetingId) {
-            console.error('No meeting_id in response:', responseData);
+            logger.error('No meeting_id in response:', responseData);
             throw new Error('No meeting ID received from save operation');
           }
 
@@ -272,7 +263,7 @@ export function useRecordingStop(
           try {
             shouldDetectSummaryLanguage = !(await applyPinnedSummaryLanguageToMeeting(meetingId));
           } catch (error) {
-            console.warn('Failed to apply pinned summary language preference for new meeting:', error);
+            logger.warn('Failed to apply pinned summary language preference for new meeting:', error);
             toast.warning('Could not apply default summary language', {
               description: 'The meeting was saved, but the default summary language was not applied.',
             });
@@ -285,16 +276,16 @@ export function useRecordingStop(
                 freshTranscripts.map(t => t.text)
               );
             } catch (error) {
-              console.warn('Failed to detect summary language for new meeting:', error);
+              logger.warn('Failed to detect summary language for new meeting:', error);
               toast.warning('Could not detect summary language', {
                 description: 'The meeting was saved, but Auto could not detect the summary language.',
               });
             }
           }
 
-          console.log('✅ Successfully saved COMPLETE meeting with ID:', meetingId);
-          console.log('   Transcripts:', freshTranscripts.length);
-          console.log('   folder_path:', folderPath);
+          logger.log('✅ Successfully saved COMPLETE meeting with ID:', meetingId);
+          logger.log('   Transcripts:', freshTranscripts.length);
+          logger.log('   folder_path:', folderPath);
 
           // Trigger offline diarization now that meeting_id exists in DB.
           // This is fire-and-forget: diarization runs async in Rust and
@@ -304,7 +295,7 @@ export function useRecordingStop(
               meetingId,
               meetingFolder: folderPath,
             }).catch((err: unknown) =>
-              console.warn('Failed to trigger post-save diarization:', err)
+              logger.warn('Failed to trigger post-save diarization:', err)
             );
           }
 
@@ -327,10 +318,10 @@ export function useRecordingStop(
                 id: meetingId,
                 title: meetingData.title
               });
-              console.log('✅ Current meeting set:', meetingData.title);
+              logger.log('✅ Current meeting set:', meetingData.title);
             }
           } catch (error) {
-            console.warn('Could not fetch meeting details, using ID only:', error);
+            logger.warn('Could not fetch meeting details, using ID only:', error);
             setCurrentMeeting({ id: meetingId, title: savedMeetingName || meetingTitle || 'New Meeting' });
           }
 
@@ -406,12 +397,12 @@ export function useRecordingStop(
               });
             }
           } catch (analyticsError) {
-            console.error('Failed to track meeting completion analytics:', analyticsError);
+            logger.error('Failed to track meeting completion analytics:', analyticsError);
             // Don't block user flow on analytics errors
           }
 
         } catch (saveError) {
-          console.error('Failed to save meeting to database:', saveError);
+          logger.error('Failed to save meeting to database:', saveError);
           setStatus(RecordingStatus.ERROR, saveError instanceof Error ? saveError.message : 'Unknown error');
           toast.error('Failed to save meeting', {
             description: saveError instanceof Error ? saveError.message : 'Unknown error'
@@ -427,7 +418,7 @@ export function useRecordingStop(
       // isRecording already set to false at function start
       setIsRecordingDisabled(false);
     } catch (error) {
-      console.error('Error in handleRecordingStop:', error);
+      logger.error('Error in handleRecordingStop:', error);
       setStatus(RecordingStatus.ERROR, error instanceof Error ? error.message : 'Unknown error');
       // isRecording already set to false at function start
       setIsRecordingDisabled(false);

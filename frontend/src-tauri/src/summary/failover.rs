@@ -16,26 +16,6 @@ pub struct ChainEntry {
     pub custom_openai_endpoint: Option<String>,
 }
 
-/// Whether a failure message indicates a transient error worth switching to next chain provider.
-pub(crate) fn is_transient_error(msg: &str) -> bool {
-    let lower = msg.to_lowercase();
-    if lower.contains("timeout")
-        || lower.contains("timed out")
-        || lower.contains("connect")
-        || lower.contains("network")
-        || lower.contains("request error")
-    {
-        return true;
-    }
-    if lower.contains("api request failed (5")
-        || lower.contains("api request failed (429")
-        || lower.contains("returned 5")
-        || lower.contains("returned 429")
-    {
-        return true;
-    }
-    false
-}
 /// Typed counterpart of `is_transient_error` for `LLMError`. Used after
 /// `generate_summary` is upgraded to return the typed enum (PR-42-iv-c).
 fn is_transient_llm_error(e: &LLMError) -> bool {
@@ -140,28 +120,28 @@ mod tests {
 
     #[test]
     fn is_transient_matches_5xx_and_timeouts() {
-        assert!(is_transient_error("LLM returned 500 (attempt 1/4)"));
-        assert!(is_transient_error("LLM returned 502"));
-        assert!(is_transient_error("LLM returned 503 Service Unavailable"));
-        assert!(is_transient_error("LLM API request failed (504): gateway timeout"));
-        assert!(is_transient_error("LLM API request failed (429): rate limit"));
-        assert!(is_transient_error("LLM request error (attempt 1/4): operation timed out"));
-        assert!(is_transient_error("LLM request error: connection refused"));
+        assert!(is_transient_llm_error(&LLMError::ServerError { status: 500, body: "LLM returned 500 (attempt 1/4)".to_string() }));
+        assert!(is_transient_llm_error(&LLMError::ServerError { status: 502, body: "LLM returned 502".to_string() }));
+        assert!(is_transient_llm_error(&LLMError::ServerError { status: 503, body: "LLM returned 503 Service Unavailable".to_string() }));
+        assert!(is_transient_llm_error(&LLMError::ServerError { status: 504, body: "LLM API request failed (504): gateway timeout".to_string() }));
+        assert!(is_transient_llm_error(&LLMError::ServerError { status: 429, body: "LLM API request failed (429): rate limit".to_string() }));
+        assert!(is_transient_llm_error(&LLMError::Network("operation timed out".to_string())));
+        assert!(is_transient_llm_error(&LLMError::Network("connection refused".to_string())));
     }
 
     #[test]
     fn is_transient_rejects_4xx() {
-        assert!(!is_transient_error("LLM API request failed (401): invalid api key"));
-        assert!(!is_transient_error("LLM API request failed (403): forbidden"));
-        assert!(!is_transient_error("LLM API request failed (400): bad request"));
-        assert!(!is_transient_error("LLM API request failed (404): not found"));
+        assert!(!is_transient_llm_error(&LLMError::ClientError { status: 401, body: "invalid api key".to_string() }));
+        assert!(!is_transient_llm_error(&LLMError::ClientError { status: 403, body: "forbidden".to_string() }));
+        assert!(!is_transient_llm_error(&LLMError::ClientError { status: 400, body: "bad request".to_string() }));
+        assert!(!is_transient_llm_error(&LLMError::ClientError { status: 404, body: "not found".to_string() }));
     }
 
     #[test]
     fn is_transient_defaults_to_terminal_for_unknown() {
-        assert!(!is_transient_error("Failed to parse LLM response: unexpected token"));
-        assert!(!is_transient_error("Summary generation was cancelled"));
-        assert!(!is_transient_error("Provider not supported: foo"));
+        assert!(!is_transient_llm_error(&LLMError::JsonParse("unexpected token".to_string())));
+        assert!(!is_transient_llm_error(&LLMError::Cancelled));
+        assert!(!is_transient_llm_error(&LLMError::Other("foo".to_string())));
     }
 
     #[tokio::test]

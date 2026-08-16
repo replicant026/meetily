@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode, useRef } from 'react';
@@ -203,7 +204,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         setError('');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load Ollama models');
-        console.error('Error loading models:', err);
+        logger.error('Error loading models:', err);
       }
     };
     loadModels();
@@ -215,7 +216,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       try {
         const config = await configService.getTranscriptConfig();
         if (config) {
-          console.log('[ConfigContext] Loaded saved transcript config:', config);
+          logger.log('[ConfigContext] Loaded saved transcript config:', config);
           setTranscriptModelConfig({
             provider: config.provider || 'parakeet',
             model: config.model || 'parakeet-tdt-0.6b-v3-int8',
@@ -223,7 +224,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (error) {
-        console.error('[ConfigContext] Failed to load transcript config:', error);
+        logger.error('[ConfigContext] Failed to load transcript config:', error);
       }
     };
     loadTranscriptConfig();
@@ -234,10 +235,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     if (selectedLanguage) {
       invoke('set_language_preference', { language: selectedLanguage })
         .then(() => {
-          console.log('[ConfigContext] Synced language preference to Rust on startup:', selectedLanguage);
+          logger.log('[ConfigContext] Synced language preference to Rust on startup:', selectedLanguage);
         })
         .catch(err => {
-          console.error('[ConfigContext] Failed to sync language preference to Rust on startup:', err);
+          logger.error('[ConfigContext] Failed to sync language preference to Rust on startup:', err);
         });
     }
   }, []); 
@@ -254,7 +255,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
               const customConfig = await configService.getCustomOpenAIConfig();
               if (customConfig) {
                 // Merge custom config fields into modelConfig
-                console.log('[ConfigContext] Loading custom OpenAI config:', {
+                logger.log('[ConfigContext] Loading custom OpenAI config:', {
                   endpoint: customConfig.endpoint,
                   model: customConfig.model,
                 });
@@ -282,7 +283,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
                 return; // Early return
               }
             } catch (err) {
-              console.error('[ConfigContext] Failed to fetch custom OpenAI config:', err);
+              logger.error('[ConfigContext] Failed to fetch custom OpenAI config:', err);
             }
           }
 
@@ -303,7 +304,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch saved model config in ConfigContext:', error);
+        logger.error('Failed to fetch saved model config in ConfigContext:', error);
       }
     };
     fetchModelConfig();
@@ -327,9 +328,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           openai: keys[2],
           openrouter: keys[3],
         });
-        console.log('[ConfigContext] Loaded provider API keys');
+        logger.log('[ConfigContext] Loaded provider API keys');
       } catch (error) {
-        console.error('[ConfigContext] Failed to load provider API keys:', error);
+        logger.error('[ConfigContext] Failed to load provider API keys:', error);
       }
     };
 
@@ -341,7 +342,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const setupListener = async () => {
       const { listen } = await import('@tauri-apps/api/event');
       const unlisten = await listen<ModelConfig>('model-config-updated', (event) => {
-        console.log('[ConfigContext] Received model-config-updated event:', event.payload);
+        logger.log('[ConfigContext] Received model-config-updated event:', event.payload);
         setModelConfig(event.payload);
 
         // Update provider-specific key when config changes
@@ -370,10 +371,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             micDevice: prefs.preferred_mic_device,
             systemDevice: prefs.preferred_system_device
           });
-          console.log('Loaded device preferences:', prefs);
+          logger.log('Loaded device preferences:', prefs);
         }
       } catch (error) {
-        console.log('No device preferences found or failed to load:', error);
+        logger.log('No device preferences found or failed to load:', error);
       }
     };
     loadDevicePreferences();
@@ -395,7 +396,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           settingsLoadedRef.current = true;
         }
       } catch (error) {
-        console.error('[ConfigContext] Failed to load app settings:', error);
+        logger.error('[ConfigContext] Failed to load app settings:', error);
         if (!cancelled) {
           setAppSettings(DEFAULT_SETTINGS);
           setSettingsError(null); // non-fatal, use defaults
@@ -423,7 +424,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       await store.save();
       setSettingsError(null);
     } catch (error) {
-      console.error('[ConfigContext] Failed to persist app settings, rolling back:', error);
+      logger.error('[ConfigContext] Failed to persist app settings, rolling back:', error);
       setAppSettings(previous); // rollback
       setSettingsError(error instanceof Error ? error.message : 'Failed to save settings');
     }
@@ -467,7 +468,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       Analytics.track('beta_feature_toggled', {
         feature: featureKey,
         enabled: enabled.toString(),
-      }).catch(err => console.error('Failed to track beta feature toggle:', err));
+      }).catch(err => logger.error('Failed to track beta feature toggle:', err));
 
       return updated;
     });
@@ -499,7 +500,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         settings = await invoke<NotificationSettings>('get_notification_settings');
         setNotificationSettings(settings);
       } catch (notifError) {
-        console.error('[ConfigContext] Failed to load notification settings:', notifError);
+        logger.error('[ConfigContext] Failed to load notification settings:', notifError);
         // Use default values if notification settings fail to load
         setNotificationSettings(null);
       }
@@ -520,7 +521,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       // Mark as loaded
       preferencesLoadedRef.current = true;
     } catch (error) {
-      console.error('[ConfigContext] Failed to load preferences:', error);
+      logger.error('[ConfigContext] Failed to load preferences:', error);
     } finally {
       isLoadingRef.current = false;
       setIsLoadingPreferences(false);
@@ -533,7 +534,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       await invoke('set_notification_settings', { settings });
       setNotificationSettings(settings);
     } catch (error) {
-      console.error('[ConfigContext] Failed to update notification settings:', error);
+      logger.error('[ConfigContext] Failed to update notification settings:', error);
       throw error; // Re-throw so component can handle error
     }
   }, []);
@@ -546,7 +547,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     }
     // Sync with Rust in-memory state for live recording
     invoke('set_language_preference', { language: lang }).catch(err =>
-      console.error('Failed to sync language preference to Rust:', err)
+      logger.error('Failed to sync language preference to Rust:', err)
     );
   }, []);
 

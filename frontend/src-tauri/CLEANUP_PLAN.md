@@ -30,14 +30,14 @@ After analyzing the src-tauri codebase, I've identified several areas requiring 
 ### Phase 1: Remove Dead Code & Legacy Systems
 **Priority: High | Risk: Low | Estimated: 2-3 hours**
 
-1. **Remove legacy file**
-   - Delete `lib_old_complex.rs` after ensuring no active dependencies
-   - Update any remaining references
+1. **Remove legacy file** ✅
+   - ~~Delete `lib_old_complex.rs` after ensuring no active dependencies~~
+   - ~~Update any remaining references~~
 
-2. **Consolidate audio systems**
-   - Evaluate audio_v2 completion status
-   - Either complete audio_v2 migration or remove incomplete modules
-   - Maintain single, clear audio system architecture
+2. **Consolidate audio systems** ✅
+   - ~~Evaluate audio_v2 completion status~~
+   - ~~Either complete audio_v2 migration or remove incomplete modules~~
+   - ~~Maintain single, clear audio system architecture~~
 
 3. **Clean up TODO markers**
    - Address or document 20+ TODO/FIXME comments

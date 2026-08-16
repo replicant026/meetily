@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { invoke } from '@tauri-apps/api/core';
@@ -17,7 +18,7 @@ const MAX_HOTWORD_CHARS = 500;
 
 
 export interface TranscriptModelProps {
-    provider: 'localWhisper' | 'parakeet' | 'deepgram' | 'elevenLabs' | 'groq' | 'openai';
+    provider: 'localWhisper' | 'parakeet' | 'deepgram' | 'elevenLabs' | 'groq' | 'openai' | 'mistral';
     model: string;
     apiKey?: string | null;
 }
@@ -67,7 +68,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                 setSavedHotwords(loaded);
             })
             .catch((error) => {
-                console.error('Failed to load transcription hotwords:', error);
+                logger.error('Failed to load transcription hotwords:', error);
                 if (active) setHotwordsLoadFailed(true);
             })
             .finally(() => {
@@ -89,7 +90,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                 const value = await store.get<boolean>('auto_postprocess_enabled');
                 if (active) setAutoPostprocessEnabled(value ?? true);
             } catch (error) {
-                console.error('Failed to load auto_postprocess_enabled:', error);
+                logger.error('Failed to load auto_postprocess_enabled:', error);
                 if (active) setAutoPostprocessLoadFailed(true);
             } finally {
                 if (active) setIsLoadingAutoPostprocess(false);
@@ -106,7 +107,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
             await store.set('auto_postprocess_enabled', next);
             await store.save();
         } catch (error) {
-            console.error('Failed to save auto_postprocess_enabled:', error);
+            logger.error('Failed to save auto_postprocess_enabled:', error);
             setAutoPostprocessEnabled(previous);
             toast.error(t('transcript.auto_postprocess_save_failed'));
         }
@@ -126,7 +127,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
             setSavedHotwords(normalized);
             toast.success(t('transcript.hotwords_save_success'));
         } catch (error) {
-            console.error('Failed to save transcription hotwords:', error);
+            logger.error('Failed to save transcription hotwords:', error);
             toast.error(t('transcript.hotwords_save_failed'));
         } finally {
             setIsSavingHotwords(false);
@@ -140,19 +141,20 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
 
             setApiKey(data || '');
         } catch (err) {
-            console.error('Error fetching API key:', err);
+            logger.error('Error fetching API key:', err);
             setApiKey(null);
         }
     };
     const modelOptions = {
         localWhisper: [], // Model selection handled by ModelManager component
         parakeet: [], // Model selection handled by ParakeetModelManager component
-        deepgram: ['nova-2-phonecall'],
+        deepgram: ['nova-2-phonecall', 'nova-3'],
         elevenLabs: ['eleven_multilingual_v2'],
-        groq: ['llama-3.3-70b-versatile'],
+        groq: ['whisper-large-v3-turbo'],
         openai: ['gpt-4o'],
+        mistral: ['voxtral-large-latest', 'voxtral-small-latest'],
     };
-    const requiresApiKey = transcriptModelConfig.provider === 'deepgram' || transcriptModelConfig.provider === 'elevenLabs' || transcriptModelConfig.provider === 'openai' || transcriptModelConfig.provider === 'groq';
+    const requiresApiKey = transcriptModelConfig.provider === 'deepgram' || transcriptModelConfig.provider === 'elevenLabs' || transcriptModelConfig.provider === 'openai' || transcriptModelConfig.provider === 'groq' || transcriptModelConfig.provider === 'mistral';
 
     const handleInputClick = () => {
         if (isApiKeyLocked) {
@@ -217,9 +219,10 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                                 <SelectContent>
                                     <SelectItem value="parakeet">⚡ Parakeet (Recommended - Real-time / Accurate)</SelectItem>
                                     <SelectItem value="localWhisper">🏠 Local Whisper (High Accuracy)</SelectItem>
-                                    {/* <SelectItem value="deepgram">☁️ Deepgram (Backup)</SelectItem>
-                                    <SelectItem value="elevenLabs">☁️ ElevenLabs</SelectItem>
-                                    <SelectItem value="groq">☁️ Groq</SelectItem>
+                                    <SelectItem value="groq">☁️ Groq (Fast Cloud Whisper)</SelectItem>
+                                    <SelectItem value="deepgram">☁️ Deepgram Nova-3 (Cloud STT)</SelectItem>
+                                    <SelectItem value="mistral">☁️ Mistral Voxtral (Cloud STT)</SelectItem>
+                                    {/* <SelectItem value="elevenLabs">☁️ ElevenLabs</SelectItem>
                                     <SelectItem value="openai">☁️ OpenAI</SelectItem> */}
                                 </SelectContent>
                             </Select>
@@ -482,7 +485,7 @@ function SpeakerRecognitionBlock() {
         // Load known speaker names from backend
         invoke<string[]>('list_speaker_names')
             .then((names) => setSpeakers(names))
-            .catch((e) => console.warn('Failed to load speaker names:', e));
+            .catch((e) => logger.warn('Failed to load speaker names:', e));
     }, []);
 
     const handleDelete = async (name: string) => {
@@ -490,7 +493,7 @@ function SpeakerRecognitionBlock() {
             await invoke<number>('delete_speaker_profile', { displayName: name });
             setSpeakers((prev) => prev.filter((n) => n !== name));
         } catch (e) {
-            console.warn('Failed to delete speaker:', e);
+            logger.warn('Failed to delete speaker:', e);
         }
     };
 

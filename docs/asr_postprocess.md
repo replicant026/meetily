@@ -1,3 +1,5 @@
+> **⚠️ Legacy Documentation**: This document describes the archived Python backend implementation. The current Rust-native implementation is in `frontend/src-tauri/src/llm_postprocess.rs`. See [llm_postprocess.md](llm_postprocess.md) for current documentation.
+
 # Transcript Postprocess (Wave 12 PR-42-i)
 
 ## Overview

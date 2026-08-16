@@ -56,7 +56,8 @@ fn select_reference_window_long_span_clamps_to_8s() {
 fn waveform_has_fixed_peak_count_and_bounded_values() {
     let peaks = build_waveform_peaks(&vec![0.5, -1.0, 0.25, 0.0], 32);
     assert_eq!(peaks.len(), 32);
-    assert!(peaks.iter().all(|p| *p <= 255));
+    // peaks are u8 so always in range; verify they're not all zero (signal was non-trivial)
+    assert!(peaks.iter().any(|p| *p > 0));
 }
 
 #[test]

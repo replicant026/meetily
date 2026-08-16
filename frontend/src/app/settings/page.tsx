@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useEffect } from 'react';
@@ -45,7 +46,7 @@ export default function SettingsPage() {
           });
         }
       } catch (error) {
-        console.error('Failed to load transcript config:', error);
+        logger.error('Failed to load transcript config:', error);
       }
     };
     loadTranscriptConfig();

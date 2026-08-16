@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -36,7 +37,7 @@ export function OrphanCheckpointListener() {
       }
     })().catch((e) => {
       // Non-fatal: dialog simply will not appear this session.
-      console.warn('orphan-checkpoints listener failed', e);
+      logger.warn('orphan-checkpoints listener failed', e);
     });
 
     return () => {

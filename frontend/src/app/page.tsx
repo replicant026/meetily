@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -81,7 +82,7 @@ export default function Home() {
           status === RecordingStatus.STOPPING ||
           status === RecordingStatus.PROCESSING_TRANSCRIPTS ||
           status === RecordingStatus.SAVING) {
-          console.log('Skipping recovery check - recording in progress or processing');
+          logger.log('Skipping recovery check - recording in progress or processing');
           return;
         }
 
@@ -89,21 +90,21 @@ export default function Home() {
         try {
           await indexedDBService.deleteOldMeetings(7);
         } catch (error) {
-          console.warn('闂傚倸鍊搁崐椋庣矆娓氣偓閹潡宕惰閺嬫牠鏌￠崶鈺佹瀻闁搞劍妫冮幃妤呮濞戞瑦鍠愮紓?Failed to clean up old meetings:', error);
+          logger.warn('闂傚倸鍊搁崐椋庣矆娓氣偓閹潡宕惰閺嬫牠鏌￠崶鈺佹瀻闁搞劍妫冮幃妤呮濞戞瑦鍠愮紓?Failed to clean up old meetings:', error);
         }
 
         // 2. Clean up saved meetings (24+ hours after save)
         try {
           await indexedDBService.deleteSavedMeetings(24);
         } catch (error) {
-          console.warn('闂傚倸鍊搁崐椋庣矆娓氣偓閹潡宕惰閺嬫牠鏌￠崶鈺佹瀻闁搞劍妫冮幃妤呮濞戞瑦鍠愮紓?Failed to clean up saved meetings:', error);
+          logger.warn('闂傚倸鍊搁崐椋庣矆娓氣偓閹潡宕惰閺嬫牠鏌￠崶鈺佹瀻闁搞劍妫冮幃妤呮濞戞瑦鍠愮紓?Failed to clean up saved meetings:', error);
         }
 
         // 3. Always check for recoverable meetings on startup
         // Don't skip based on sessionStorage - we need to check every time
         await checkForRecoverableTranscripts();
       } catch (error) {
-        console.error('Failed to perform startup checks:', error);
+        logger.error('Failed to perform startup checks:', error);
       }
     };
 

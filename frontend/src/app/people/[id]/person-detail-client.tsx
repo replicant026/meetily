@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -31,7 +32,7 @@ export function PersonDetailClient({ id }: PersonDetailClientProps) {
       setPerson(p);
       setAllPeople(people);
     } catch (e) {
-      console.warn('Failed to load person:', e);
+      logger.warn('Failed to load person:', e);
       setError(tSpeakers('detail.no_selection'));
     } finally {
       setLoading(false);

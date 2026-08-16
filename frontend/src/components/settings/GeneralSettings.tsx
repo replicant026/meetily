@@ -121,7 +121,7 @@ export function GeneralSettings() {
             <div className="flex items-center gap-2">
               <span>{t('preference.storage.database')}: {storageLocations.database}</span>
               <button
-                onClick={() => invoke('open_path', { pathStr: storageLocations.database })}
+                onClick={() => invoke('open_database_folder')}
                 className="text-[rgb(var(--app-accent))] hover:underline"
                 aria-label={t('preference.storage.open_folder')}
               >

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { invoke } from '@tauri-apps/api/core';
@@ -32,7 +33,7 @@ export function useSpeakerNames(meetingId: string | null | undefined) {
         setAllNames(map);
       })
       .catch((e) => {
-        console.warn('Failed to load speaker names from backend:', e);
+        logger.warn('Failed to load speaker names from backend:', e);
         // Fallback to empty — transcript view will show "Speaker N"
       })
       .finally(() => {
@@ -51,7 +52,7 @@ export function useSpeakerNames(meetingId: string | null | undefined) {
     if (!trimmedName) {
       // Remove name — delete from backend
       invoke<number>('delete_speaker_profile', { displayName: speakerId })
-        .catch((e) => console.warn('Failed to delete speaker profile:', e));
+        .catch((e) => logger.warn('Failed to delete speaker profile:', e));
 
       setAllNames((current) => {
         const next = { ...current };
@@ -66,7 +67,7 @@ export function useSpeakerNames(meetingId: string | null | undefined) {
       meetingId,
       oldSpeaker: speakerId,
       newName: trimmedName,
-    }).catch((e) => console.warn('Failed to rename speaker in meeting:', e));
+    }).catch((e) => logger.warn('Failed to rename speaker in meeting:', e));
 
     setAllNames((current) => ({
       ...current,

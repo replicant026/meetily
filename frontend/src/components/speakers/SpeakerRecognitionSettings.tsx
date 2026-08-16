@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -25,7 +26,7 @@ export function SpeakerRecognitionSettings() {
         setLockChannels(prefs.lockAudioChannels);
         setMinQuality(prefs.minimumReferenceQuality);
       })
-      .catch((e) => console.warn('Failed to load recognition prefs:', e))
+      .catch((e) => logger.warn('Failed to load recognition prefs:', e))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);

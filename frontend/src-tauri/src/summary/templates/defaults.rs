@@ -24,21 +24,6 @@ pub const PROJECT_REVIEW: &str = include_str!("../../../templates/project_review
 /// All-hands/company meeting template
 pub const ALL_HANDS: &str = include_str!("../../../templates/all_hands.json");
 
-/// Registry of all built-in templates
-///
-/// Maps template identifiers to their embedded JSON content
-pub fn get_builtin_templates() -> Vec<(&'static str, &'static str)> {
-    vec![
-        ("daily_standup", DAILY_STANDUP),
-        ("standard_meeting", STANDARD_MEETING),
-        ("1_on_1", ONE_ON_ONE),
-        ("retrospective", RETROSPECTIVE),
-        ("brainstorm", BRAINSTORM),
-        ("project_review", PROJECT_REVIEW),
-        ("all_hands", ALL_HANDS),
-    ]
-}
-
 /// Get a built-in template by identifier
 ///
 /// # Arguments
@@ -78,7 +63,8 @@ mod tests {
 
     #[test]
     fn test_builtin_templates_valid_json() {
-        for (id, content) in get_builtin_templates() {
+        for id in list_builtin_template_ids() {
+            let content = get_builtin_template(id).expect("template must exist");
             let result = serde_json::from_str::<serde_json::Value>(content);
             assert!(
                 result.is_ok(),
@@ -103,7 +89,6 @@ mod tests {
 
     #[test]
     fn test_builtin_template_count() {
-        assert_eq!(get_builtin_templates().len(), 7);
         assert_eq!(list_builtin_template_ids().len(), 7);
     }
 }

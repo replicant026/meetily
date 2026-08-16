@@ -1,7 +1,7 @@
 {
     "app": {"name":"Meetily","tagline":"Privacy-first AI meeting assistant"},
     "nav": {"home":"Início","meetings":"Reuniões","settings":"Configurações","notes":"Notas"},
-    "actions": {"save":"Salvar","cancel":"Cancelar","delete":"Excluir","edit":"Editar","close":"Fechar","confirm":"Confirmar","back":"Voltar","next":"Próximo"},
+    "actions": {"save":"Salvar","cancel":"Cancelar","delete":"Excluir","edit":"Editar","close":"Fechar","confirm":"Confirmar","back":"Voltar","next":"Próximo","copy":"Copiar"},
     "status": {"loading":"Carregando...","saving":"Salvando...","success":"Sucesso","failed":"Falha"},
     "recovery": {
         "success_title": "Reunião recuperada com sucesso!",
@@ -15,5 +15,77 @@
         "drop_audio_title": "Solte o arquivo de áudio para importar",
         "onboarding_complete_setup": "Conclua a configuração primeiro",
         "onboarding_complete_description": "Você precisa finalizar a introdução antes de começar a gravar."
+    },
+    "audio_level_meter": {"active": "Ativo", "inactive": "Inativo"},
+    "confidence": {
+        "high": "Alta confiança",
+        "good": "Boa confiança",
+        "medium": "Confiança média",
+        "low": "Baixa confiança",
+        "confidence_title": "{percent}% de confiança - {label}",
+        "aria_label": "Confiança da transcrição: {percent}%"
+    },
+    "console": {
+        "label": "Console do Desenvolvedor",
+        "toggle_button": "Alternar Console",
+        "description": "Mostrar ou ocultar a janela do console do desenvolvedor. No Windows, controla a janela do console. No macOS, abre o Terminal com os logs do app."
+    },
+    "info": {"about": "Sobre", "about_title": "Sobre o Meetily"},
+    "model_download": {
+        "finalizing": "Finalizando...",
+        "downloading": "Baixando {model}",
+        "percent_complete": "{percent}% concluído",
+        "downloading_status": "Baixando...",
+        "completed_loading": "✓ Download concluído, carregando modelo...",
+        "models_available": "📦 {downloaded} de {total} modelos disponíveis",
+        "total_size": "💾 {size} total",
+        "local_no_internet": "✓ Os modelos executam localmente - não é necessário internet para transcrição"
+    },
+    "confirmation": {"delete_title": "Confirmar Exclusão"},
+    "summary_updater": {
+        "saving_title": "Salvando",
+        "save_changes_title": "Salvar Alterações",
+        "saving": "Salvando...",
+        "copy_summary_title": "Copiar Resumo"
+    },
+    "chunk_progress": {
+        "processing_progress": "Progresso do Processamento",
+        "paused": "Pausado",
+        "pause": "Pausar",
+        "resume": "Retomar",
+        "calculating": "Calculando...",
+        "chunks_completed": "{completed} de {total} fragmentos concluídos",
+        "completed": "Concluído",
+        "processing": "Processando",
+        "pending": "Pendente",
+        "failed": "Falhou",
+        "estimated_time_remaining": "Tempo restante estimado: {time}",
+        "recent_chunks": "Fragmentos Recentes ({shown} de {total})",
+        "chunk_label": "Fragmento {id}",
+        "processing_complete": "Processamento concluído! Todos os {count} fragmentos foram transcritos.",
+        "mini_processing": "Processando",
+        "mini_chunks": "{completed} / {total} fragmentos",
+        "processing_count": "({count} processando)",
+        "error": "Erro: {message}"
+    },
+    "onboarding": {
+        "ready": {
+            "title": "Tudo pronto",
+            "description": "O Meetily está pronto para gravar, transcrever e resumir.",
+            "transcription_ready": "Motor de transcrição pronto",
+            "transcription_downloading": "Motor de transcrição baixando em segundo plano",
+            "summary_ready": "Motor de resumo pronto",
+            "summary_downloading": "Motor de resumo baixando em segundo plano",
+            "start_button": "Começar a usar o Meetily"
+        },
+        "welcome": {
+            "title": "Bem-vindo ao Meetily",
+            "description": "Grave. Transcreva. Resuma. Tudo no seu dispositivo.",
+            "feature_data": "Seus dados nunca saem do seu dispositivo",
+            "feature_summaries": "Resumos e insights inteligentes",
+            "feature_offline": "Funciona offline, sem nuvem necessária",
+            "get_started": "Começar",
+            "takes_less": "Leva menos de 3 minutos"
+        }
     }
 }

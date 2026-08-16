@@ -17,7 +17,8 @@
     "close": "닫기",
     "confirm": "확인",
     "back": "뒤로",
-    "next": "다음"
+    "next": "다음",
+    "copy": "복사"
   },
   "status": {
     "loading": "불러오는 중...",
@@ -37,5 +38,77 @@
     "drop_audio_title": "오디오 파일을 드롭하여 가져오기",
     "onboarding_complete_setup": "먼저 설정을 완료하세요",
     "onboarding_complete_description": "녹음을 시작하려면 온보딩을 완료해야 합니다."
+  },
+  "audio_level_meter": {"active": "활성", "inactive": "비활성"},
+  "confidence": {
+    "high": "높은 신뢰도",
+    "good": "양호한 신뢰도",
+    "medium": "보통 신뢰도",
+    "low": "낮은 신뢰도",
+    "confidence_title": "{percent}% 신뢰도 - {label}",
+    "aria_label": "전사 신뢰도: {percent}%"
+  },
+  "console": {
+    "label": "개발자 콘솔",
+    "toggle_button": "콘솔 전환",
+    "description": "개발자 콘솔 창을 표시하거나 숨깁니다. Windows에서는 콘솔 창을 제어하고, macOS에서는 앱 로그가 표시된 터미널을 엽니다."
+  },
+  "info": {"about": "정보", "about_title": "Meetily 정보"},
+  "model_download": {
+    "finalizing": "마무리 중...",
+    "downloading": "{model} 다운로드 중",
+    "percent_complete": "{percent}% 완료",
+    "downloading_status": "다운로드 중...",
+    "completed_loading": "✓ 다운로드 완료, 모델 로드 중...",
+    "models_available": "📦 {total}개 중 {downloaded}개 모델 사용 가능",
+    "total_size": "💾 총 {size}",
+    "local_no_internet": "✓ 모델은 로컬에서 실행 - 전사에 인터넷 불필요"
+  },
+  "confirmation": {"delete_title": "삭제 확인"},
+  "summary_updater": {
+    "saving_title": "저장 중",
+    "save_changes_title": "변경 사항 저장",
+    "saving": "저장 중...",
+    "copy_summary_title": "요약 복사"
+  },
+  "chunk_progress": {
+    "processing_progress": "처리 진행률",
+    "paused": "일시 정지됨",
+    "pause": "일시 정지",
+    "resume": "계속",
+    "calculating": "계산 중...",
+    "chunks_completed": "{total}개 중 {completed}개 청크 완료",
+    "completed": "완료",
+    "processing": "처리 중",
+    "pending": "대기 중",
+    "failed": "실패",
+    "estimated_time_remaining": "예상 남은 시간: {time}",
+    "recent_chunks": "최근 청크 ({total}개 중 {shown}개)",
+    "chunk_label": "청크 {id}",
+    "processing_complete": "처리 완료! 모든 {count}개 청크가 전사되었습니다.",
+    "mini_processing": "처리 중",
+    "mini_chunks": "{completed} / {total}개 청크",
+    "processing_count": "({count}개 처리 중)",
+    "error": "오류: {message}"
+  },
+  "onboarding": {
+    "ready": {
+      "title": "모든 준비 완료",
+      "description": "Meetily가 녹음, 전사, 요약할 준비가 되었습니다.",
+      "transcription_ready": "전사 엔진 준비 완료",
+      "transcription_downloading": "전사 엔진 백그라운드 다운로드 중",
+      "summary_ready": "요약 엔진 준비 완료",
+      "summary_downloading": "요약 엔진 백그라운드 다운로드 중",
+      "start_button": "Meetily 사용 시작"
+    },
+    "welcome": {
+      "title": "Meetily에 오신 것을 환영합니다",
+      "description": "녹음. 전사. 요약. 모두 당신의 기기에서.",
+      "feature_data": "데이터가 기기에서 나가지 않습니다",
+      "feature_summaries": "지능형 요약 및 인사이트",
+      "feature_offline": "오프라인 작동, 클라우드 불필요",
+      "get_started": "시작하기",
+      "takes_less": "3분 미만 소요"
+    }
   }
 }

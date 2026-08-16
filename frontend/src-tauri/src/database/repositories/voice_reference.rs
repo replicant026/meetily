@@ -314,9 +314,9 @@ struct RawSuggestion {
     confidence: f32,
     reference_id: Option<String>,
     segment_ids_json: String,
-    status: String,
-    created_at: String,
-    resolved_at: Option<String>,
+    _status: String,
+    _created_at: String,
+    _resolved_at: Option<String>,
 }
 
 impl RawSuggestion {

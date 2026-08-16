@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useEffect, useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -61,11 +62,11 @@ export function DownloadProgressStep() {
   const handleRetryDownload = async () => {
     // Prevent multiple simultaneous retries
     if (retryingRef.current) {
-      console.log('[DownloadProgressStep] Retry already in progress, ignoring');
+      logger.log('[DownloadProgressStep] Retry already in progress, ignoring');
       return;
     }
 
-    console.log('[DownloadProgressStep] Retrying Parakeet download');
+    logger.log('[DownloadProgressStep] Retrying Parakeet download');
     retryingRef.current = true;
 
     // Reset error state
@@ -82,7 +83,7 @@ export function DownloadProgressStep() {
       await invoke('parakeet_retry_download', { modelName: PARAKEET_MODEL });
       // Progress events will update state
     } catch (error) {
-      console.error('[DownloadProgressStep] Retry failed:', error);
+      logger.error('[DownloadProgressStep] Retry failed:', error);
       setParakeetState((prev) => ({
         ...prev,
         status: 'error',
@@ -104,11 +105,11 @@ export function DownloadProgressStep() {
   const handleRetrySummaryDownload = async () => {
     // Prevent multiple simultaneous retries
     if (retryingSummaryRef.current) {
-      console.log('[DownloadProgressStep] Summary retry already in progress, ignoring');
+      logger.log('[DownloadProgressStep] Summary retry already in progress, ignoring');
       return;
     }
 
-    console.log('[DownloadProgressStep] Retrying summary model download');
+    logger.log('[DownloadProgressStep] Retrying summary model download');
     retryingSummaryRef.current = true;
 
     // Reset error state
@@ -130,7 +131,7 @@ export function DownloadProgressStep() {
       }
       await invoke('builtin_ai_download_model', { modelName });
     } catch (error) {
-      console.error('[DownloadProgressStep] Summary retry failed:', error);
+      logger.error('[DownloadProgressStep] Summary retry failed:', error);
       setSummaryState((prev) => ({
         ...prev,
         status: 'error',
@@ -175,7 +176,7 @@ export function DownloadProgressStep() {
       includeParakeet: true,
       includeSummary: false,
     }).catch((error) => {
-      console.error('Failed to start Parakeet download:', error);
+      logger.error('Failed to start Parakeet download:', error);
       if (!parakeetDownloaded) {
         setParakeetState((prev) => ({ ...prev, status: 'error', error: String(error) }));
       }
@@ -320,7 +321,7 @@ export function DownloadProgressStep() {
           summaryModel: selectedSummaryModel,
         });
       } catch (error) {
-        console.error('Failed to start summary model download:', error);
+        logger.error('Failed to start summary model download:', error);
         setSummaryState((prev) => ({ ...prev, status: 'error', error: String(error) }));
       }
     }
@@ -333,7 +334,7 @@ export function DownloadProgressStep() {
       const actuallyAvailable = await invoke<boolean>('parakeet_has_available_models');
 
       if (actuallyAvailable && !parakeetDownloaded) {
-        console.log('[DownloadProgressStep] Model available but state not updated');
+        logger.log('[DownloadProgressStep] Model available but state not updated');
         setParakeetDownloaded(true);
         setParakeetState((prev) => ({
           ...prev,
@@ -347,7 +348,7 @@ export function DownloadProgressStep() {
         return;
       }
     } catch (error) {
-      console.warn('[DownloadProgressStep] Failed to verify model:', error);
+      logger.warn('[DownloadProgressStep] Failed to verify model:', error);
     }
 
     // Check if downloads are complete for toast notification
