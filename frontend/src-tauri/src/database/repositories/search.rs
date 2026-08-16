@@ -86,14 +86,21 @@ impl SearchRepository {
 
     /// Sanitize a user query string for FTS5 MATCH with OR semantics.
     /// Used by chat/RAG where any word matching is acceptable.
+    /// Filters out short tokens (< 3 chars) to avoid stopwords like "o", "de", "que".
     fn sanitize_fts_query_or(query: &str) -> String {
-        let words = Self::filter_tokens(query.split_whitespace().collect());
+        let words: Vec<&str> = query
+            .split_whitespace()
+            .filter(|w| w.len() >= 3 && w.chars().any(|c| c.is_alphanumeric()))
+            .collect();
         if words.is_empty() {
             return String::new();
         }
         words
             .iter()
-            .map(|word| format!("\"{}\"*", word))
+            .map(|word| {
+                let escaped = word.replace('"', "\"\"");
+                format!("\"{}\"*", escaped)
+            })
             .collect::<Vec<_>>()
             .join(" OR ")
     }

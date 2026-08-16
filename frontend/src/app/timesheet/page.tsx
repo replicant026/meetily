@@ -34,16 +34,20 @@ interface FormData {
   isExtra: boolean;
 }
 
-const emptyForm: FormData = {
-  meetingId: '',
-  client: '',
-  project: '',
-  description: '',
-  date: new Date().toISOString().split('T')[0],
-  startTime: '09:00',
-  endTime: '10:00',
-  isExtra: false,
-};
+function makeEmptyForm(): FormData {
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return {
+    meetingId: '',
+    client: '',
+    project: '',
+    description: '',
+    date,
+    startTime: '09:00',
+    endTime: '10:00',
+    isExtra: false,
+  };
+}
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
