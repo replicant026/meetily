@@ -11,6 +11,7 @@ import sidebarEn from "../../locales/en-US/sidebar.json";
 import speakersEn from "../../locales/en-US/speakers.json";
 import meetingWorkspaceEn from "../../locales/en-US/meetingWorkspace.json";
 import homeEn from "../../locales/en-US/home.json";
+import chatEn from "../../locales/en-US/chat.json";
 import commonEnGb from "../../locales/en-GB/common.json";
 import recordingEnGb from "../../locales/en-GB/recording.json";
 import transcriptEnGb from "../../locales/en-GB/transcript.json";
@@ -21,6 +22,7 @@ import sidebarEnGb from "../../locales/en-GB/sidebar.json";
 import speakersEnGb from "../../locales/en-GB/speakers.json";
 import meetingWorkspaceEnGb from "../../locales/en-GB/meetingWorkspace.json";
 import homeEnGb from "../../locales/en-GB/home.json";
+import chatEnGb from "../../locales/en-GB/chat.json";
 import commonZhCn from "../../locales/zh-CN/common.json";
 import recordingZhCn from "../../locales/zh-CN/recording.json";
 import transcriptZhCn from "../../locales/zh-CN/transcript.json";
@@ -31,6 +33,7 @@ import sidebarZhCn from "../../locales/zh-CN/sidebar.json";
 import speakersZhCn from "../../locales/zh-CN/speakers.json";
 import meetingWorkspaceZhCn from "../../locales/zh-CN/meetingWorkspace.json";
 import homeZhCn from "../../locales/zh-CN/home.json";
+import chatZhCn from "../../locales/zh-CN/chat.json";
 import commonZhTw from "../../locales/zh-TW/common.json";
 import recordingZhTw from "../../locales/zh-TW/recording.json";
 import transcriptZhTw from "../../locales/zh-TW/transcript.json";
@@ -41,6 +44,7 @@ import sidebarZhTw from "../../locales/zh-TW/sidebar.json";
 import speakersZhTw from "../../locales/zh-TW/speakers.json";
 import meetingWorkspaceZhTw from "../../locales/zh-TW/meetingWorkspace.json";
 import homeZhTw from "../../locales/zh-TW/home.json";
+import chatZhTw from "../../locales/zh-TW/chat.json";
 import commonJaJp from "../../locales/ja-JP/common.json";
 import recordingJaJp from "../../locales/ja-JP/recording.json";
 import transcriptJaJp from "../../locales/ja-JP/transcript.json";
@@ -51,6 +55,7 @@ import sidebarJaJp from "../../locales/ja-JP/sidebar.json";
 import speakersJaJp from "../../locales/ja-JP/speakers.json";
 import meetingWorkspaceJaJp from "../../locales/ja-JP/meetingWorkspace.json";
 import homeJaJp from "../../locales/ja-JP/home.json";
+import chatJaJp from "../../locales/ja-JP/chat.json";
 import commonKoKr from "../../locales/ko-KR/common.json";
 import recordingKoKr from "../../locales/ko-KR/recording.json";
 import transcriptKoKr from "../../locales/ko-KR/transcript.json";
@@ -61,6 +66,7 @@ import sidebarKoKr from "../../locales/ko-KR/sidebar.json";
 import speakersKoKr from "../../locales/ko-KR/speakers.json";
 import meetingWorkspaceKoKr from "../../locales/ko-KR/meetingWorkspace.json";
 import homeKoKr from "../../locales/ko-KR/home.json";
+import chatKoKr from "../../locales/ko-KR/chat.json";
 import commonPtBR from "../../locales/pt-BR/common.json";
 import recordingPtBR from "../../locales/pt-BR/recording.json";
 import transcriptPtBR from "../../locales/pt-BR/transcript.json";
@@ -71,6 +77,7 @@ import sidebarPtBR from "../../locales/pt-BR/sidebar.json";
 import speakersPtBR from "../../locales/pt-BR/speakers.json";
 import meetingWorkspacePtBR from "../../locales/pt-BR/meetingWorkspace.json";
 import homePtBR from "../../locales/pt-BR/home.json";
+import chatPtBR from "../../locales/pt-BR/chat.json";
 
 /**
  * Read the user stored UI language via the get_ui_language Tauri command
@@ -108,6 +115,7 @@ type Messages = {
   speakers: typeof speakersEn;
   meetingWorkspace: typeof meetingWorkspaceEn;
   home: typeof homeEn;
+  chat: typeof chatEn;
 };
 
 const MESSAGES: Record<Locale, Messages> = {
@@ -122,6 +130,7 @@ const MESSAGES: Record<Locale, Messages> = {
     speakers: speakersEn,
     meetingWorkspace: meetingWorkspaceEn,
     home: homeEn,
+    chat: chatEn,
   },
   "en-GB": {
     common: commonEnGb,
@@ -134,6 +143,7 @@ const MESSAGES: Record<Locale, Messages> = {
     speakers: speakersEnGb,
     meetingWorkspace: meetingWorkspaceEnGb,
     home: homeEnGb,
+    chat: chatEnGb,
   },
   "zh-CN": {
     common: commonZhCn,
@@ -146,6 +156,7 @@ const MESSAGES: Record<Locale, Messages> = {
     speakers: speakersZhCn,
     meetingWorkspace: meetingWorkspaceZhCn,
     home: homeZhCn,
+    chat: chatZhCn,
   },
   "zh-TW": {
     common: commonZhTw,
@@ -158,6 +169,7 @@ const MESSAGES: Record<Locale, Messages> = {
     speakers: speakersZhTw,
     meetingWorkspace: meetingWorkspaceZhTw,
     home: homeZhTw,
+    chat: chatZhTw,
   },
   "ja-JP": {
     common: commonJaJp,
@@ -170,6 +182,7 @@ const MESSAGES: Record<Locale, Messages> = {
     speakers: speakersJaJp,
     meetingWorkspace: meetingWorkspaceJaJp,
     home: homeJaJp,
+    chat: chatJaJp,
   },
   "pt-BR": {
     common: commonPtBR,
@@ -182,6 +195,7 @@ const MESSAGES: Record<Locale, Messages> = {
     speakers: speakersPtBR,
     meetingWorkspace: meetingWorkspacePtBR,
     home: homePtBR,
+    chat: chatPtBR,
   },
   "ko-KR": {
     common: commonKoKr,
@@ -194,6 +208,7 @@ const MESSAGES: Record<Locale, Messages> = {
     speakers: speakersKoKr,
     meetingWorkspace: meetingWorkspaceKoKr,
     home: homeKoKr,
+    chat: chatKoKr,
   },
 };
 
