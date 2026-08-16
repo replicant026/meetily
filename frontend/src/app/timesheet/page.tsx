@@ -121,8 +121,11 @@ export default function TimesheetPage() {
       setShowForm(false);
       loadEntries();
       loadClients();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to save entry:', e);
+      const msg = typeof e === 'string' ? e : e?.message || 'Failed to save entry';
+      // Show error to user via alert (sonner not imported in this page)
+      window.alert(msg);
     }
   };
 
