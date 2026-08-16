@@ -606,6 +606,48 @@ pub fn run() {
                 }
             });
 
+            // Initialize meeting auto-detection on Windows (if enabled in config)
+            #[cfg(target_os = "windows")]
+            {
+                let app_handle_for_detection = _app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    use tauri_plugin_store::StoreExt;
+                    let store = match app_handle_for_detection.store("detection.json") {
+                        Ok(s) => s,
+                        Err(e) => {
+                            log::warn!("Failed to access detection store: {}", e);
+                            return;
+                        }
+                    };
+                    let config: crate::detection::MeetingDetectionConfig =
+                        if let Some(value) = store.get(DETECTION_STORE_KEY) {
+                            serde_json::from_value(value.clone()).unwrap_or_default()
+                        } else {
+                            crate::detection::MeetingDetectionConfig::default()
+                        };
+                    if !config.enabled {
+                        log::info!("Meeting auto-detection is disabled");
+                        return;
+                    }
+                    log::info!(
+                        "Starting meeting auto-detection: enabled={}, auto_record={}, min_call={}s",
+                        config.enabled, config.auto_record, config.min_call_seconds
+                    );
+                    let (mut detector, mut rx) = crate::detection::windows::WindowsMeetingDetector::new(config);
+                    detector.start();
+                    // Consume detection events (log them; auto-recording integration is future work)
+                    tokio::spawn(async move {
+                        while let Some(event) = rx.recv().await {
+                            log::info!(
+                                "Detection event: type={}, confidence={:.1}",
+                                event.event_type, event.confidence
+                            );
+                            // TODO: wire auto-recording start when event fires
+                        }
+                    });
+                });
+            }
+
             // Trigger system audio permission request on startup (similar to microphone permission)
             // #[cfg(target_os = "macos")]
             // {

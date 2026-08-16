@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, MessageSquare, Clock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -9,9 +9,10 @@ import { cn } from '@/lib/utils';
 
 interface SidebarActionsProps {
   meetingsCount: number;
+  onOpenChat?: () => void;
 }
 
-export function SidebarActions({ meetingsCount }: SidebarActionsProps) {
+export function SidebarActions({ meetingsCount, onOpenChat }: SidebarActionsProps) {
   const t = useTranslations('sidebar');
 
   return (
@@ -56,6 +57,48 @@ export function SidebarActions({ meetingsCount }: SidebarActionsProps) {
         </TooltipTrigger>
         <TooltipContent side="right" sideOffset={8}>
           {t('nav.import_audio')}
+        </TooltipContent>
+      </Tooltip>
+
+      {onOpenChat && (
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onOpenChat}
+              aria-label="Chat"
+              className={cn(
+                'flex min-h-[40px] w-full items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-2.5 text-sm transition-colors',
+                'text-[rgb(var(--app-muted-fg))]',
+                'hover:bg-[rgb(var(--app-muted))]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent))]',
+              )}
+            >
+              <MessageSquare className="h-5 w-5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            Chat
+          </TooltipContent>
+        </Tooltip>
+      )}
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Link
+            href="/timesheet"
+            aria-label="Timesheet"
+            className={cn(
+              'flex min-h-[40px] w-full items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-2.5 text-sm transition-colors',
+              'text-[rgb(var(--app-muted-fg))]',
+              'hover:bg-[rgb(var(--app-muted))]',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent))]',
+            )}
+          >
+            <Clock className="h-5 w-5 shrink-0" />
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>
+          Timesheet
         </TooltipContent>
       </Tooltip>
     </div>

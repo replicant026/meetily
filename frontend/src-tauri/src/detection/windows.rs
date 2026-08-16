@@ -23,6 +23,11 @@ impl WindowsMeetingDetector {
     }
 
     pub fn start(&mut self) {
+        // Don't start detection if disabled
+        if !self.config.enabled {
+            return;
+        }
+
         let (stop_tx, mut stop_rx) = tokio::sync::oneshot::channel();
         self.stop_tx = Some(stop_tx);
 

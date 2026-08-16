@@ -1,5 +1,6 @@
 use sqlx::SqlitePool;
 use serde::Serialize;
+use log::info;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,7 +18,14 @@ impl SearchRepository {
     /// Initialize FTS5 virtual table for full-text search.
     /// Content-backed (not contentless) so snippet(), DELETE, and column reads work.
     /// Safe to call repeatedly (IF NOT EXISTS).
+    /// On first creation (existing DB with data), runs a one-time reindex.
     pub async fn ensure_fts(pool: &SqlitePool) -> Result<(), sqlx::Error> {
+        // Check if table already exists
+        let table_exists: Option<(String,)> =
+            sqlx::query_as("SELECT name FROM sqlite_master WHERE type='table' AND name='meetings_fts'")
+                .fetch_optional(pool)
+                .await?;
+
         sqlx::query(
             "CREATE VIRTUAL TABLE IF NOT EXISTS meetings_fts USING fts5(
                 meeting_id,
@@ -27,6 +35,20 @@ impl SearchRepository {
         )
         .execute(pool)
         .await?;
+
+        // If table was just created (didn't exist before), do a one-time reindex
+        if table_exists.is_none() {
+            let count: Option<(i64,)> =
+                sqlx::query_as("SELECT COUNT(*) FROM transcripts")
+                    .fetch_optional(pool)
+                    .await?;
+            if let Some((n,)) = count {
+                if n > 0 {
+                    log::info!("FTS5 table created on existing DB with {} transcripts, running initial reindex", n);
+                    let _ = Self::reindex(pool).await;
+                }
+            }
+        }
 
         Ok(())
     }
@@ -86,6 +108,7 @@ impl SearchRepository {
     }
 
     /// Rebuild the FTS index from scratch by copying all transcripts into it.
+    /// Aggregates all transcript segments per meeting into a single FTS row.
     /// Returns the number of rows inserted.
     pub async fn reindex(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
         // Clear existing index
@@ -95,9 +118,11 @@ impl SearchRepository {
 
         let res = sqlx::query(
             "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
-             SELECT abs(random()) % 9223372036854775807, m.id, COALESCE(m.title, ''), t.transcript
-             FROM transcripts t
-             JOIN meetings m ON m.id = t.meeting_id",
+             SELECT m.rowid, m.id, COALESCE(m.title, ''),
+                    GROUP_CONCAT(t.transcript, ' ')
+             FROM meetings m
+             LEFT JOIN transcripts t ON t.meeting_id = m.id
+             GROUP BY m.id",
         )
         .execute(pool)
         .await?;

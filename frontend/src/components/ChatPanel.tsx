@@ -107,7 +107,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
               <div
                 className={`max-w-[85%] rounded-lg p-3 ${
                   msg.role === 'user'
-                    ? 'bg-[rgb(var(--app-primary))] text-white'
+                    ? 'bg-[rgb(var(--app-accent))] text-[rgb(var(--app-accent-fg))]'
                     : 'bg-[rgb(var(--app-muted))]'
                 }`}
               >

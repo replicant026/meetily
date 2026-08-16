@@ -13,6 +13,7 @@ export function useSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const requestIdRef = useRef(0);
 
   const search = useCallback(async (query: string) => {
     if (debounceRef.current) {
@@ -25,18 +26,27 @@ export function useSearch() {
     }
 
     debounceRef.current = setTimeout(async () => {
+      // Increment request ID to track this search
+      const currentRequestId = ++requestIdRef.current;
       setIsSearching(true);
       try {
         const res = await invoke<SearchResult[]>('search_meetings', {
           query: query.trim(),
           limit: 20,
         });
-        setResults(res);
+        // Only update results if this is still the latest request
+        if (currentRequestId === requestIdRef.current) {
+          setResults(res);
+        }
       } catch (e) {
         console.error('Search failed:', e);
-        setResults([]);
+        if (currentRequestId === requestIdRef.current) {
+          setResults([]);
+        }
       } finally {
-        setIsSearching(false);
+        if (currentRequestId === requestIdRef.current) {
+          setIsSearching(false);
+        }
       }
     }, 300);
   }, []);

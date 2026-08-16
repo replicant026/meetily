@@ -4,6 +4,7 @@ import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { SidebarNavigation } from './SidebarNavigation';
 import { SidebarActions } from './SidebarActions';
 import { SidebarSearchDialog } from './SidebarSearchDialog';
+import { ChatPanel } from '@/components/ChatPanel';
 import { useMeetingDirectory } from '@/hooks/useMeetingDirectory';
 
 interface AppShellProps {
@@ -13,6 +14,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const directory = useMeetingDirectory();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Ctrl/Cmd+K to open search
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -41,12 +43,18 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Actions: new recording, import, etc. */}
         <div className="w-full p-2">
-          <SidebarActions meetingsCount={directory.meetings.length} />
+          <SidebarActions
+            meetingsCount={directory.meetings.length}
+            onOpenChat={() => setChatOpen(true)}
+          />
         </div>
       </aside>
 
       {/* Search dialog */}
       <SidebarSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Chat panel */}
+      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
 
       {/* Main content area */}
       <main className="flex-1 min-w-0 overflow-y-auto">{children}</main>
