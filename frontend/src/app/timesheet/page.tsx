@@ -124,8 +124,8 @@ export default function TimesheetPage() {
     } catch (e: any) {
       console.error('Failed to save entry:', e);
       const msg = typeof e === 'string' ? e : e?.message || 'Failed to save entry';
-      // Show error to user via alert (sonner not imported in this page)
-      window.alert(msg);
+      // Show error to user via toast (sonner is mounted globally in layout.tsx)
+      import('sonner').then(({ toast }) => toast.error(msg));
     }
   };
 

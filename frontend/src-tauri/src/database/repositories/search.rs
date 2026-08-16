@@ -55,16 +55,24 @@ impl SearchRepository {
     }
 
     /// Sanitize a user query string for FTS5 MATCH.
-    /// Wraps the entire query in double-quotes so special FTS5 characters
-    /// (", *, :, ^, AND/OR, parentheses) are treated as literals.
+    /// Splits into words, quotes each independently, and appends * to the
+    /// last token for prefix matching (partial-as-you-type search).
     fn sanitize_fts_query(query: &str) -> String {
-        // Split into words, quote each independently so FTS5 matches all words
-        // without requiring an exact phrase.
-        query
-            .split_whitespace()
-            .map(|word| {
+        let words: Vec<&str> = query.split_whitespace().collect();
+        if words.is_empty() {
+            return String::new();
+        }
+        words
+            .iter()
+            .enumerate()
+            .map(|(i, word)| {
                 let escaped = word.replace('"', "\"\"");
-                format!("\"{}\"", escaped)
+                if i == words.len() - 1 {
+                    // Last token: prefix match (partial typing)
+                    format!("\"{}\"*", escaped)
+                } else {
+                    format!("\"{}\"", escaped)
+                }
             })
             .collect::<Vec<_>>()
             .join(" ")
@@ -169,7 +177,7 @@ impl SearchRepository {
             hash = hash.wrapping_mul(0x100000001b3); // FNV prime
         }
         // FTS5 rowids must be positive; clear sign bit (no abs overflow)
-        ((hash & 0x7FFFFFFFFFFFFFFF) as i64) + 1
+        ((hash & 0x7FFFFFFFFFFFFFFF) % 0x7FFFFFFFFFFFFFFF) as i64 + 1
     }
 
     /// Add a single transcript to the FTS index (call after insert).
