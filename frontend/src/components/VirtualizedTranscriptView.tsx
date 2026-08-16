@@ -565,12 +565,12 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
         if (!activeSearchSegmentId) return;
         if (useVirtualization) {
             const idx = segments.findIndex(s => s.id === activeSearchSegmentId);
-            if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center', behavior: 'smooth' });
+            if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center', behavior: 'auto' });
         } else {
             const el = document.getElementById(`segment-${activeSearchSegmentId}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (el) el.scrollIntoView({ block: 'center' });
         }
-    }, [activeSearchSegmentId, useVirtualization]);
+    }, [activeSearchSegmentId, useVirtualization, segments, virtualizer]);
 
     return (
         <div ref={scrollRef} className="flex flex-col h-full overflow-y-auto px-4 py-2">
