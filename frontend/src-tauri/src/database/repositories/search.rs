@@ -78,7 +78,24 @@ impl SearchRepository {
             .join(" ")
     }
 
-    /// Full-text search across all meetings.
+    /// Sanitize a user query string for FTS5 MATCH with OR semantics.
+    /// Used by chat/RAG where any word matching is acceptable.
+    fn sanitize_fts_query_or(query: &str) -> String {
+        let words: Vec<&str> = query.split_whitespace().collect();
+        if words.is_empty() {
+            return String::new();
+        }
+        words
+            .iter()
+            .map(|word| {
+                let escaped = word.replace('"', "\"\"");
+                format!("\"{}\"*", escaped)
+            })
+            .collect::<Vec<_>>()
+            .join(" OR ")
+    }
+
+    /// Full-text search across all meetings with AND semantics.
     /// Returns ranked snippets with «» delimiters for matched terms.
     pub async fn search(
         pool: &SqlitePool,
@@ -98,7 +115,56 @@ impl SearchRepository {
                     f.meeting_title,
                     snippet(meetings_fts, 2, '«', '»', '…', 40),
                     COALESCE(
-                        (SELECT t.timestamp FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
+                        (SELECT COALESCE(t.timestamp, '') FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
+                        ''
+                    ),
+                    rank
+             FROM meetings_fts f
+             WHERE meetings_fts MATCH ?1
+             ORDER BY rank
+             LIMIT ?2",
+        )
+        .bind(safe_query)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(
+                |(meeting_id, meeting_title, snippet, timestamp, rank)| {
+                    MeetingSearchResult {
+                        meeting_id,
+                        meeting_title,
+                        snippet,
+                        timestamp,
+                        rank,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    /// Full-text search across all meetings with OR semantics.
+    /// Used by chat/RAG where any matching word is relevant.
+    pub async fn search_or(
+        pool: &SqlitePool,
+        query: &str,
+        limit: u32,
+    ) -> Result<Vec<MeetingSearchResult>, sqlx::Error> {
+        let limit = limit.clamp(1, 100) as i64;
+        let safe_query = Self::sanitize_fts_query_or(query);
+
+        if safe_query.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let rows = sqlx::query_as::<_, (String, String, String, String, f64)>(
+            "SELECT f.meeting_id,
+                    f.meeting_title,
+                    snippet(meetings_fts, 2, '«', '»', '…', 40),
+                    COALESCE(
+                        (SELECT COALESCE(t.timestamp, '') FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
                         ''
                     ),
                     rank

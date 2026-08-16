@@ -35,8 +35,8 @@ pub async fn chat_about_meetings<R: Runtime>(
 ) -> Result<ChatResponse, String> {
     let pool = state.db_manager.pool();
 
-    // 1. Search for relevant meetings
-    let results = SearchRepository::search(pool, &question, 5)
+    // 1. Search for relevant meetings (use OR semantics for natural language questions)
+    let results = SearchRepository::search_or(pool, &question, 5)
         .await
         .map_err(|e| format!("Search failed: {}", e))?;
 

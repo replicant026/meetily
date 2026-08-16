@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Plus, Trash2, Check, Clock, Edit2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -124,8 +125,7 @@ export default function TimesheetPage() {
     } catch (e: any) {
       console.error('Failed to save entry:', e);
       const msg = typeof e === 'string' ? e : e?.message || 'Failed to save entry';
-      // Show error to user via toast (sonner is mounted globally in layout.tsx)
-      import('sonner').then(({ toast }) => toast.error(msg));
+      toast.error(msg);
     }
   };
 
