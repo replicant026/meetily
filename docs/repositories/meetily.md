@@ -25,18 +25,23 @@ Meetily captura áudio do microfone e do sistema, transcreve localmente via Whis
 
 ## Pontos de Entrada
 
+Entradas ativas do projeto (excluindo código arquivado/legado listado abaixo da tabela):
+
 | Arquivo | Função |
 |---------|--------|
 | `frontend/src-tauri/src/main.rs` | Entry point Tauri → `app_lib::run()` |
 | `frontend/src-tauri/src/lib.rs` | Registro de Tauri commands & state |
 | `llama-helper/src/main.rs` | Servidor helper LLM local |
-| `backend/app/main.py` | Backend FastAPI (arquivado/legado) |
 | `frontend/src/app/page.tsx` | Página principal React |
 | `frontend/src/components/Sidebar/index.tsx` | Navegação lateral |
 | `frontend/src/components/MainContent/index.tsx` | Área de conteúdo principal |
 | `frontend/src/components/AISummary/index.tsx` | Geração de resumo IA |
 | `frontend/src/components/TranscriptRecovery/index.ts` | Recuperação de transcrição |
 | `frontend/src/components/ImportAudio/index.ts` | Importação de áudio |
+
+Entradas históricas (arquivadas, não suportadas — ver AGENTS.md):
+- `backend/app/main.py` — Backend FastAPI legado
+- `backend/whisper-custom/server/server.cpp` — Servidor Whisper C++ legado
 
 ## Arquitetura
 
