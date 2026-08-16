@@ -490,6 +490,21 @@ async fn run_retranscription<R: Runtime>(
     tx.commit().await
         .map_err(|e| anyhow!("Failed to commit transaction: {}", e))?;
 
+    // Re-sync FTS5 index for this meeting (fire-and-forget, non-fatal)
+    {
+        let full_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
+        let _ = crate::database::repositories::search::SearchRepository::remove_meeting(pool, &meeting_id).await;
+        // Look up meeting title for FTS
+        if let Ok(Some((title,))) = sqlx::query_as::<_, (String,)>("SELECT title FROM meetings WHERE id = ?1")
+            .bind(&meeting_id)
+            .fetch_optional(pool)
+            .await {
+            let _ = crate::database::repositories::search::SearchRepository::index_transcript(
+                pool, &meeting_id, &title, &full_text,
+            ).await;
+        }
+    }
+
     info!(
         "Updated {} transcripts for meeting {} in transaction",
         segments.len(),

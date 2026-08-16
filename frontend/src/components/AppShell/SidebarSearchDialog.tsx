@@ -10,7 +10,8 @@ interface SearchResult {
   meetingId: string;
   meetingTitle: string;
   snippet: string;
-  timestamp: number | null;
+  timestamp: string;
+  rank: number;
 }
 
 interface SidebarSearchDialogProps {
@@ -45,7 +46,7 @@ export function SidebarSearchDialog({ open, onClose }: SidebarSearchDialogProps)
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const found = await invoke<SearchResult[]>('api_search_transcripts', { query: query.trim() });
+        const found = await invoke<SearchResult[]>('search_meetings', { query: query.trim(), limit: 20 });
         setResults(found);
       } catch {
         setResults([]);

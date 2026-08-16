@@ -2,7 +2,7 @@
 import { logger } from "@/lib/logger";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronRight, File, Settings, ChevronLeftCircle, ChevronRightCircle, Calendar, StickyNote, Home, Trash2, Mic, Square, Plus, Search, Pencil, NotebookPen, SearchIcon, X, Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, File, Settings, ChevronLeftCircle, ChevronRightCircle, Calendar, StickyNote, Home, Trash2, Mic, Square, Plus, Search, Pencil, NotebookPen, SearchIcon, X, Upload, MessageSquare, Clock } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSidebar } from './SidebarProvider';
 import type { CurrentMeeting } from '@/components/Sidebar/SidebarProvider';
@@ -31,6 +31,7 @@ import Logo from '../Logo';
 import Info from '../Info';
 import { useTranslations } from "next-intl";
 import { ComplianceNotification } from '../ComplianceNotification';
+import { ChatPanel } from '../ChatPanel';
 import { Input } from '../ui/input';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group';
 
@@ -107,6 +108,7 @@ const Sidebar: React.FC = () => {
 
 
   const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; itemId: string | null }>({ isOpen: false, itemId: null });
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     // Note: Don't set hardcoded defaults - let DB be the source of truth
@@ -265,7 +267,7 @@ const Sidebar: React.FC = () => {
     // If we have search results, highlight matching meetings
     if (searchResults.length > 0) {
       // Get the IDs of meetings that matched in transcripts
-      const matchedMeetingIds = new Set(searchResults.map(result => result.id));
+      const matchedMeetingIds = new Set(searchResults.map(result => result.meetingId));
 
       return sidebarItems
         .map(folder => {
@@ -551,7 +553,7 @@ const Sidebar: React.FC = () => {
   // Find matching transcript snippet for a meeting item
   const findMatchingSnippet = (itemId: string) => {
     if (!searchQuery.trim() || !searchResults.length) return null;
-    return searchResults.find(result => result.id === itemId);
+    return searchResults.find(result => result.meetingId === itemId);
   };
 
   const renderItem = (item: SidebarItem, depth = 0) => {
@@ -648,7 +650,7 @@ const Sidebar: React.FC = () => {
               {/* Show transcript match snippet if available */}
               {hasTranscriptMatch && (
                 <div className="mt-1 ml-8 text-xs text-gray-500 bg-yellow-50 p-1.5 rounded border border-yellow-100 line-clamp-2">
-                  <span className="font-medium text-yellow-600">Match:</span> {matchingResult.matchContext}
+                  <span className="font-medium text-yellow-600">Match:</span> {matchingResult.snippet}
                 </div>
               )}
             </div>
@@ -812,6 +814,20 @@ const Sidebar: React.FC = () => {
               <Settings className="w-4 h-4 mr-2" />
               <span>{t("nav.settings")}</span>
             </button>
+            <button
+              onClick={() => setShowChat(true)}
+              className="w-full flex items-center justify-center px-3 py-1.5 mb-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors shadow-sm"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              <span>Chat</span>
+            </button>
+            <button
+              onClick={() => router.push('/timesheet')}
+              className="w-full flex items-center justify-center px-3 py-1.5 mb-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors shadow-sm"
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              <span>Timesheet</span>
+            </button>
             <Info isCollapsed={isCollapsed} />
             <div className="w-full flex items-center justify-center px-3 py-1 text-xs text-gray-400">
               v0.4.0
@@ -827,6 +843,9 @@ const Sidebar: React.FC = () => {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteModalState({ isOpen: false, itemId: null })}
       />
+
+      {/* Chat Panel */}
+      <ChatPanel open={showChat} onClose={() => setShowChat(false)} />
 
       {/* Edit Meeting Title Modal */}
       <Dialog open={editModalState.isOpen} onOpenChange={(open) => {

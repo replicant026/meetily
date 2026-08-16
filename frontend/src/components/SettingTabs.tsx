@@ -3,6 +3,7 @@ import { useTranslations } from 'next-intl';
 import { ModelConfig, ModelSettingsModal } from "./ModelSettingsModal"
 import { TranscriptModelProps, TranscriptSettings } from "./TranscriptSettings"
 import { RecordingSettings, RecordingPreferences } from "./RecordingSettings"
+import { DetectionSettings } from "./DetectionSettings"
 import { About } from "./About";
 
 interface SettingTabsProps {
@@ -39,6 +40,7 @@ export function SettingTabs({
     <TabsTrigger value="transcriptSettings">{t('tabs.transcript')}</TabsTrigger>
     <TabsTrigger value="modelSettings">{t('tabs.summary')}</TabsTrigger>
     <TabsTrigger value="recordingSettings">{t('preference.title')}</TabsTrigger>
+    <TabsTrigger value="detectionSettings">Detection</TabsTrigger>
     <TabsTrigger value="about">{t('tabs.about')}</TabsTrigger>
   </TabsList>
   <TabsContent value="modelSettings">
@@ -58,6 +60,9 @@ onSave={onSave}
   </TabsContent>
   <TabsContent value="recordingSettings">
     <RecordingSettings />
+  </TabsContent>
+  <TabsContent value="detectionSettings">
+    <DetectionSettings />
   </TabsContent>
   <TabsContent value="about">
     <About />

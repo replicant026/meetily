@@ -39,6 +39,16 @@ impl DatabaseManager {
 
         sqlx::migrate!("./migrations").run(&pool).await?;
 
+        // Initialize FTS5 search index (idempotent)
+        if let Err(e) = super::repositories::search::SearchRepository::ensure_fts(&pool).await {
+            log::warn!("Failed to initialize FTS5 search index: {} (non-fatal)", e);
+        }
+
+        // Initialize timesheet table (idempotent)
+        if let Err(e) = crate::timesheet::repository::TimesheetRepository::ensure_table(&pool).await {
+            log::warn!("Failed to initialize timesheet table: {} (non-fatal)", e);
+        }
+
         Ok(DatabaseManager { pool })
     }
 

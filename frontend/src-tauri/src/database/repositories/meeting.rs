@@ -362,7 +362,13 @@ async fn delete_meeting_with_transaction(
         .execute(&mut *transaction)
         .await?;
 
-    // 4. Finally, delete the meeting
+    // 4. Remove from FTS index (fire-and-forget, non-fatal)
+    let _ = sqlx::query("DELETE FROM meetings_fts WHERE meeting_id = ?1")
+        .bind(meeting_id)
+        .execute(&mut *transaction)
+        .await;
+
+    // 5. Finally, delete the meeting
     let result = sqlx::query("DELETE FROM meetings WHERE id = ?")
         .bind(meeting_id)
         .execute(&mut *transaction)

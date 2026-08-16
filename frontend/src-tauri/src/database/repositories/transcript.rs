@@ -79,6 +79,12 @@ impl TranscriptsRepository {
         // Commit the transaction
         transaction.commit().await?;
 
+        // Sync FTS5 index (fire-and-forget, non-fatal)
+        let full_text: String = transcripts.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
+        let _ = crate::database::repositories::search::SearchRepository::index_transcript(
+            pool, &meeting_id, meeting_title, &full_text,
+        ).await;
+
         Ok(meeting_id)
     }
 
