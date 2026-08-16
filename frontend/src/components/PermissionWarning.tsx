@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 'use client';
+import { logger } from "@/lib/logger";
 import React from 'react';
 import { AlertTriangle, Mic, Speaker, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

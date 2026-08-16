@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 "use client";
+import { logger } from "@/lib/logger";
 
 import { useEffect } from "react";
 import type { PartialBlock, Block } from "@blocknote/core";

@@ -51,15 +51,6 @@ impl AudioCaptureBackend {
         }
     }
 
-    /// Convert to string (lowercase)
-    pub fn to_string(&self) -> String {
-        match self {
-            AudioCaptureBackend::ScreenCaptureKit => "screencapturekit".to_string(),
-            #[cfg(target_os = "macos")]
-            AudioCaptureBackend::CoreAudio => "coreaudio".to_string(),
-        }
-    }
-
     /// Get all available backends for current platform
     pub fn available_backends() -> Vec<Self> {
         #[cfg(target_os = "macos")]
@@ -154,10 +145,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_backend_to_string() {
-        assert_eq!(AudioCaptureBackend::ScreenCaptureKit.to_string(), "screencapturekit");
+    fn test_backend_display_name() {
+        assert_eq!(AudioCaptureBackend::ScreenCaptureKit.to_string(), "ScreenCaptureKit");
         #[cfg(target_os = "macos")]
-        assert_eq!(AudioCaptureBackend::CoreAudio.to_string(), "coreaudio");
+        assert_eq!(AudioCaptureBackend::CoreAudio.to_string(), "Core Audio");
     }
 
     #[test]

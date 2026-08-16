@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 'use client';
+import { logger } from "@/lib/logger";
 
 import React, { useEffect, ReactNode, useRef, useState, createContext } from 'react';
 import Analytics from '@/lib/analytics';

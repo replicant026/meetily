@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 'use client';
+import { logger } from "@/lib/logger";
 
 import React, { useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';

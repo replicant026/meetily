@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 "use client";
+import { logger } from "@/lib/logger";
 
 import { ModelConfig, ModelSettingsModal } from '@/components/ModelSettingsModal';
 import {

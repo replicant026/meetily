@@ -203,12 +203,15 @@ async fn delete_reference_removes_only_managed_file() {
     .await
     .unwrap();
 
-    // Write audio files on disk
-    let alice_dir = tmp.path().join(&alice);
+    // Write audio files on disk. Compare against references_dir() (not
+    // tmp.path()) because OnceLock may already be set by a parallel test to a
+    // different tempdir.
+    let base = references_dir().unwrap();
+    let alice_dir = base.join(&alice);
     std::fs::create_dir_all(&alice_dir).unwrap();
     std::fs::write(alice_dir.join("ref-a.wav"), b"RIFF fake").unwrap();
 
-    let bob_dir = tmp.path().join(&bob);
+    let bob_dir = base.join(&bob);
     std::fs::create_dir_all(&bob_dir).unwrap();
     std::fs::write(bob_dir.join("ref-b.wav"), b"RIFF fake").unwrap();
 

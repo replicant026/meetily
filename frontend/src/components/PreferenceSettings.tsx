@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 "use client"
+import { logger } from "@/lib/logger";
 
 import { useEffect, useState, useRef } from "react"
 import { Switch } from "./ui/switch"

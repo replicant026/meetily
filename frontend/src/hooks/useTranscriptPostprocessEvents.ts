@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 'use client';
+import { logger } from "@/lib/logger";
 
 // Wave 23 / PR-42-iii: streaming LLM postprocess events.
 //

@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 'use client';
+import { logger } from "@/lib/logger";
 
 import { invoke } from '@tauri-apps/api/core';
 import { appDataDir } from '@tauri-apps/api/path';

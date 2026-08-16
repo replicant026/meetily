@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 "use client"
+import { logger } from "@/lib/logger";
 import { useSidebar } from "@/components/Sidebar/SidebarProvider";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { Transcript, Summary } from "@/types";
