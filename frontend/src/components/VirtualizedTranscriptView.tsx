@@ -501,17 +501,6 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
         return matchingSegments[Math.min(activeMatchIndex, matchingSegments.length - 1)]?.id;
     }, [searchOpen, searchQuery, activeMatchIndex, matchingSegments]);
 
-    useEffect(() => {
-        if (!activeSearchSegmentId) return;
-        if (useVirtualization) {
-            const idx = segments.findIndex(s => s.id === activeSearchSegmentId);
-            if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center', behavior: 'smooth' });
-        } else {
-            const el = document.getElementById(`segment-${activeSearchSegmentId}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }, [activeSearchSegmentId, useVirtualization]);
-
     // Infinite scroll: IntersectionObserver to trigger loading more
     useEffect(() => {
         if (!onLoadMore || !hasMore || isLoadingMore || isRecording || segments.length === 0) {
@@ -570,6 +559,18 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
 
     // Use simple rendering for small lists, virtualization for large lists
     const useVirtualization = segments.length >= VIRTUALIZATION_THRESHOLD;
+
+    // Scroll active search match into view
+    useEffect(() => {
+        if (!activeSearchSegmentId) return;
+        if (useVirtualization) {
+            const idx = segments.findIndex(s => s.id === activeSearchSegmentId);
+            if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center', behavior: 'smooth' });
+        } else {
+            const el = document.getElementById(`segment-${activeSearchSegmentId}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [activeSearchSegmentId, useVirtualization]);
 
     return (
         <div ref={scrollRef} className="flex flex-col h-full overflow-y-auto px-4 py-2">

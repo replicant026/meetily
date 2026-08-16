@@ -44,7 +44,7 @@ impl AudioCaptureBackend {
     /// Get backend from string
     pub fn from_string(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
-            "screencapturekit" | "screencapturekit" => Some(AudioCaptureBackend::ScreenCaptureKit),
+            "screencapturekit" | "screen capturekit" => Some(AudioCaptureBackend::ScreenCaptureKit),
             #[cfg(target_os = "macos")]
             "coreaudio" | "core_audio" | "core audio" => {
                 Some(AudioCaptureBackend::CoreAudio)
