@@ -26,6 +26,7 @@ export function useSearch() {
 
     if (!query.trim()) {
       setResults([]);
+      setIsSearching(false);
       return;
     }
 

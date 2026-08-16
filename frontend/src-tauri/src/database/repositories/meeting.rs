@@ -292,6 +292,10 @@ impl MeetingsRepository {
             return Ok(false);
         }
         transaction.commit().await?;
+
+        // Sync FTS index title (fire-and-forget, non-fatal)
+        let _ = SearchRepository::update_title(pool, meeting_id, new_title).await;
+
         Ok(true)
     }
 
@@ -325,6 +329,10 @@ impl MeetingsRepository {
             .await?;
 
         transaction.commit().await?;
+
+        // Sync FTS index title (fire-and-forget, non-fatal)
+        let _ = SearchRepository::update_title(pool, meeting_id, new_title).await;
+
         Ok(true)
     }
 }

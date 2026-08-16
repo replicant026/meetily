@@ -4,7 +4,9 @@
     "meetings": "Meetings",
     "import_audio": "Import Audio",
     "notes": "Meeting Notes",
-    "settings": "Settings"
+    "settings": "Settings",
+    "chat": "Chat",
+    "timesheet": "Timesheet"
   },
   "meeting_list": {
     "list": "Meeting list",

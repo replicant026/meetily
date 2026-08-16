@@ -1,5 +1,5 @@
 {
-    "nav": {"home":"Início","meetings":"Reuniões","import_audio":"Importar Áudio","notes":"Notas da Reunião","settings":"Configurações"},
+    "nav": {"home":"Início","meetings":"Reuniões","import_audio":"Importar Áudio","notes":"Notas da Reunião","settings":"Configurações","chat":"Chat","timesheet":"Controle de Horas"},
     "meeting_list": {
         "list": "Lista de reuniões",
         "no_meetings": "Nenhuma reunião ainda",

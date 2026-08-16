@@ -80,10 +80,15 @@ impl SearchRepository {
         let limit = limit.clamp(1, 100) as i64;
         let safe_query = Self::sanitize_fts_query(query);
 
+        // Return empty results for empty queries instead of passing invalid MATCH
+        if safe_query.is_empty() {
+            return Ok(vec![]);
+        }
+
         let rows = sqlx::query_as::<_, (String, String, String, String, f64)>(
             "SELECT f.meeting_id,
                     f.meeting_title,
-                    snippet(meetings_fts, 2, '<mark>', '</mark>', '...', 40),
+                    snippet(meetings_fts, 2, '«', '»', '…', 40),
                     COALESCE(
                         (SELECT t.timestamp FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
                         ''
@@ -155,14 +160,16 @@ impl SearchRepository {
     }
 
     /// Derive a deterministic rowid from a meeting_id string.
-    /// Uses a simple hash so re-indexing the same meeting replaces the old row.
+    /// Uses FNV-1a (stable across Rust versions, unlike DefaultHasher).
     pub fn meeting_rowid(meeting_id: &str) -> i64 {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        let mut hasher = DefaultHasher::new();
-        meeting_id.hash(&mut hasher);
+        // FNV-1a 64-bit — deterministic and stable across Rust versions
+        let mut hash: u64 = 0xcbf29ce484222325; // FNV offset basis
+        for byte in meeting_id.as_bytes() {
+            hash ^= *byte as u64;
+            hash = hash.wrapping_mul(0x100000001b3); // FNV prime
+        }
         // FTS5 rowids must be positive; mask off sign bit
-        (hasher.finish() as i64).abs() % 9223372036854775807 + 1
+        (hash as i64).abs() % 9223372036854775807 + 1
     }
 
     /// Add a single transcript to the FTS index (call after insert).
@@ -199,6 +206,21 @@ impl SearchRepository {
     pub async fn remove_meeting(pool: &SqlitePool, meeting_id: &str) -> Result<(), sqlx::Error> {
         let rowid = Self::meeting_rowid(meeting_id);
         sqlx::query("DELETE FROM meetings_fts WHERE rowid = ?1")
+            .bind(rowid)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Update only the meeting_title in the FTS index (call after rename).
+    pub async fn update_title(
+        pool: &SqlitePool,
+        meeting_id: &str,
+        new_title: &str,
+    ) -> Result<(), sqlx::Error> {
+        let rowid = Self::meeting_rowid(meeting_id);
+        sqlx::query("UPDATE meetings_fts SET meeting_title = ?1 WHERE rowid = ?2")
+            .bind(new_title)
             .bind(rowid)
             .execute(pool)
             .await?;

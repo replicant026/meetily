@@ -123,8 +123,8 @@ pub async fn chat_about_meetings<R: Runtime>(
         if provider == LLMProvider::CustomOpenAI {
             match settings.get_custom_openai_config() {
                 Some(cfg) => {
-                    // Strip trailing /v1 to avoid double /v1/v1/chat/completions
-                    let endpoint = cfg.endpoint.trim_end_matches("/v1").trim_end_matches('/').to_string();
+                    // Strip trailing slashes first, then /v1, then any remaining slash
+                    let endpoint = cfg.endpoint.trim_end_matches('/').trim_end_matches("/v1").trim_end_matches('/').to_string();
                     (
                         Some(endpoint),
                         cfg.api_key.unwrap_or_default(),
