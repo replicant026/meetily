@@ -2,7 +2,7 @@
 
 ## Overview
 
-Camada de persistência SQLite — gerencia ciclo de vida do banco, operações CRUD via repositórios, e提供 transações seguras para todos os dados do Meetily.
+Camada de persistência SQLite — gerencia ciclo de vida do banco, operações CRUD via repositórios, e fornece transações seguras para todos os dados do Meetily.
 
 ## Key Components
 
@@ -39,7 +39,7 @@ Camada de persistência SQLite — gerencia ciclo de vida do banco, operações 
 | `SettingsRepository` | `settings` | upsert provider/model/API keys, custom OpenAI config |
 | `SpeakerRepository` | `speaker_people`, `speaker_voice_references` | match embedding (cosine), CRUD speakers |
 | `VoiceReferenceRepository` | `speaker_voice_references` | create/list/update voice refs, embedding bytes |
-| `WorkspaceRepository` | `meeting_notes`, `action_states` | notes CRUD, action item states |
+| `WorkspaceRepository` | `meeting_workspace_notes`, `meeting_action_states` | notes CRUD, action item states |
 | `TranscriptChunksRepository` | `transcript_chunks` | chunks CRUD para processamento |
 
 ### `commands.rs`

@@ -61,7 +61,7 @@ Tauri IPC → Rust Backend (audio, transcription, storage)
 
 - **Thin wrappers**: most modules = TypeScript types + `invoke()` calls. Business logic lives in Rust.
 - **Parallel transcription APIs**: `WhisperAPI` (whisper.cpp) & `ParakeetAPI` (NVIDIA NeMo) share identical patterns but independent command namespaces.
-- **Analytics isolation**: `Analytics` class owns its own init lifecycle, persistent storage (`analytics.json`), and device detection — no dependency on other lib/ modules.
-- **Entry points are leaves**: 6 entry-point files import nothing from sibling lib/ modules (only external deps: `@tauri-apps/*`, `date-fns`, `next-intl`, `@blocknote/core`).
+- **Analytics isolation**: `Analytics` class owns its own init lifecycle, persistent storage (`analytics.json`), and device detection — depends only on `@/lib/logger` (shared logging utility).
+- **Entry points are leaves**: 6 entry-point files import only `@/lib/logger` from sibling lib/ modules, plus external deps (`@tauri-apps/*`, `date-fns`, `next-intl`, `@blocknote/core`).
 - **Edge connectors are bridges**: `whisper.ts` & `parakeet.ts` define types consumed by Rust event handlers + UI components — the cross-boundary contract.
 - **No shared state**: each module is stateless or self-contained (Analytics singleton is the sole exception).

@@ -16,7 +16,7 @@ Entry point legado — servidor Whisper customizado. Importa modelos de transcri
 
 ### Step 3: Entry point Rust — `llama-helper/src/main.rs`
 
-Entry point Rust — binário auxiliar para LLM. Demonstra o padrão Tauri: Rust backend com `main()` → `app_lib::run()`. Relação com Step 2: enquanto Step 2 é o servidor C++ legado, Step 3 mostra como o projeto migrou para Rust. Ambos alimentam `whisper.ts` (Step 5) — um direto, outro via Tauri IPC.
+Binário standalone para inferência LLM local via llama_cpp_2. Lê requests JSON sobre stdin, escreve respostas sobre stdout — protocolo de stdio, não Tauri. Não chama `app_lib::run()`. Relação com Step 2: enquanto Step 2 é o servidor C++ legado de transcrição Whisper, Step 3 mostra a camada de LLM em Rust (geração de texto, não transcrição). `whisper.ts` (Step 5) não consome este helper — usa Tauri commands de transcrição diretamente.
 
 ### Step 4: Benchmark ASR — `scripts/asr_benchmark/benchmark.py`
 

@@ -16,7 +16,7 @@ Meetily captura áudio (mic + sistema), transcreve localmente via Whisper/Parake
 - `frontend/src-tauri/src/audio/pipeline.rs::AudioPipeline::new` cria pipeline
 - `AudioMixerRingBuffer::new` inicializa buffers mic + system (600ms window)
 - Dois streams paralelos:
-  - `capture/microphone.rs` → stream de mic
+  - `audio/stream.rs` → stream de mic (via cpal)
   - `capture/system.rs` → stream de system audio (WASAPI/BlackHole)
 - `AudioMixerRingBuffer::add_samples` sincroniza streams assíncronos
 
@@ -53,7 +53,7 @@ Meetily captura áudio (mic + sistema), transcreve localmente via Whisper/Parake
 ### Fase 7: Persistência
 
 - `database/mod.rs` gerencia SQLite local
-- Tabelas: meetings, transcripts, summaries, voice_references
+- Tabelas: meetings, transcripts, summary_processes, speaker_voice_references
 - Caminhos via Tauri path APIs (cross-platform)
 - Modelos em `~/Library/Application Support/Meetily/models/` (macOS) ou `%APPDATA%\Meetily\models\` (Windows)
 

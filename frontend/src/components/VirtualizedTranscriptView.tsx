@@ -503,9 +503,14 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
 
     useEffect(() => {
         if (!activeSearchSegmentId) return;
-        const el = document.getElementById(`segment-${activeSearchSegmentId}`);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, [activeSearchSegmentId]);
+        if (useVirtualization) {
+            const idx = segments.findIndex(s => s.id === activeSearchSegmentId);
+            if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center', behavior: 'smooth' });
+        } else {
+            const el = document.getElementById(`segment-${activeSearchSegmentId}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [activeSearchSegmentId, useVirtualization]);
 
     // Infinite scroll: IntersectionObserver to trigger loading more
     useEffect(() => {

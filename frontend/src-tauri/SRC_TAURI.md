@@ -3,10 +3,10 @@
 ## Overview
 `src-tauri` é a camada de integração de infraestrutura do Tauri — gerencia adaptadores de provedores LLM, utilitários de console, estado global do app, e processamento pós-transcrição. Consuma configurações de API e áudio cru; produza respostas formatadas de modelo e comandos de UI.
 
-## Public API Summary
-- **Anthropic Adapter**: `get_anthropic_models()`, `clear_cache()`, `is_chat_model()` — discovery & cache de modelos Claude.
-- **Groq Adapter**: `fetch_groq_models()` — busca metadados de chat-capable models via REST.
-- **OpenAI Adapter**: `get_openai_models()`, `get_fallback_models()` — discovery de modelos OpenAI w/ fallback local.
+## API Summary
+- **Anthropic Adapter**: `get_anthropic_models()`, `clear_cache()` — discovery & cache de modelos Claude.
+- **Groq Adapter**: `get_groq_models()` — busca metadados de chat-capable models via REST.
+- **OpenAI Adapter**: `get_openai_models()`, `clear_cache()` — discovery de modelos OpenAI.
 - **Ollama Metadata**: 9 public symbols — parsing de modelos Ollama locais (depende de 37 módulos internos).
 - **OpenRouter**: `get_openrouter_models()` — discovery de modelos OpenRouter.
 - **Console Utils**: `hide_console()`, `show_console()`, `toggle_console()` — controle de console Windows via `SW_HIDE`/`SW_SHOW`.

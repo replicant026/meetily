@@ -35,7 +35,7 @@ Meetily captura áudio do microfone e do sistema, transcreve localmente via Whis
 | `frontend/src/components/Sidebar/index.tsx` | Navegação lateral |
 | `frontend/src/components/MainContent/index.tsx` | Área de conteúdo principal |
 | `frontend/src/components/AISummary/index.tsx` | Geração de resumo IA |
-| `frontend/src/components/TranscriptRecovery/index.tsx` | Recuperação de transcrição |
+| `frontend/src/components/TranscriptRecovery/index.ts` | Recuperação de transcrição |
 | `frontend/src/components/ImportAudio/index.ts` | Importação de áudio |
 
 ## Arquitetura
@@ -86,9 +86,9 @@ frontend/src-tauri/src/
 │   │   ├── speakers.rs       # default_output_device
 │   │   └── platform/         # windows.rs, macos.rs, linux.rs
 │   ├── capture/              # Captura de streams
-│   │   ├── microphone.rs     # Stream de microfone
 │   │   ├── system.rs         # Stream de áudio do sistema
-│   │   └── core_audio.rs     # macOS ScreenCaptureKit
+│   │   ├── core_audio.rs     # macOS ScreenCaptureKit
+│   │   └── backend_config.rs # Configuração de backend
 │   ├── pipeline.rs           # Mixing & VAD
 │   ├── recording_manager.rs  # Coordenação de gravação
 │   └── recording_saver.rs    # Escrita de arquivos
@@ -149,8 +149,8 @@ app.emit("transcript-update", payload)?;
 
 | Métrica | Valor |
 |---------|-------|
-| Arquivos | 644 |
-| LOC Total | 142.747 |
+| Arquivos | ~717 |
+| LOC Total | ~231.000 |
 | Dependências Circulares | 7 |
 | Hotspots (churn + complexidade) | 0 |
 | Mais alterados (90d) | `page-content.tsx`, `CHANGELOG.md`, `request.ts` |

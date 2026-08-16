@@ -415,7 +415,7 @@ This repository is indexed by Repowise. Use the Repowise MCP tools for codebase 
 
 Last indexed: 2026-08-16 (commit 2e5fb1569b8414bfd26389a42c3a129dfd2aba2c). Confidence: 100%.
 ### Architecture
-Escrito em docs/repositories/meetily.md. **Estrutura:**
+Meetily é um assistente de reunião com IA focado em privacidade: captura áudio (mic + sistema), transcreve localmente via Whisper/Parakeet, diariza falantes, gera resumos via LLM local/externo, e persiste tudo em SQLite local — sem nuvem. Detalhes completos em `docs/repositories/meetily.md`.
 ### Key Modules
 | Module | Purpose | Owner |
 |--------|---------|-------|

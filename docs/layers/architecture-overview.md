@@ -172,9 +172,9 @@ User click "Stop" (Frontend)
   → emit("recording-stopped")
 
 User clicks "Summarize" (Frontend)
-  → invoke('generate_summary')
+  → invoke('api_get_summary')
   → summary/processor.rs → LLM call (Ollama/OpenAI/etc)
-  → emit("summary-update") → Frontend
+  → emit("summary-updated") → Frontend
 ```
 
 ## Ciclos Fortemente Conectados

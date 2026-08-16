@@ -44,10 +44,21 @@ impl AudioCaptureBackend {
     /// Get backend from string
     pub fn from_string(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
-            "screencapturekit" => Some(AudioCaptureBackend::ScreenCaptureKit),
+            "screencapturekit" | "screencapturekit" => Some(AudioCaptureBackend::ScreenCaptureKit),
             #[cfg(target_os = "macos")]
-            "coreaudio" | "core_audio" => Some(AudioCaptureBackend::CoreAudio),
+            "coreaudio" | "core_audio" | "core audio" => {
+                Some(AudioCaptureBackend::CoreAudio)
+            }
             _ => None,
+        }
+    }
+
+    /// Get stable serializable identifier (lowercase, used for persistence and IPC)
+    pub fn as_id(&self) -> &'static str {
+        match self {
+            AudioCaptureBackend::ScreenCaptureKit => "screencapturekit",
+            #[cfg(target_os = "macos")]
+            AudioCaptureBackend::CoreAudio => "coreaudio",
         }
     }
 
@@ -149,6 +160,36 @@ mod tests {
         assert_eq!(AudioCaptureBackend::ScreenCaptureKit.to_string(), "ScreenCaptureKit");
         #[cfg(target_os = "macos")]
         assert_eq!(AudioCaptureBackend::CoreAudio.to_string(), "Core Audio");
+    }
+
+    #[test]
+    fn test_backend_as_id() {
+        assert_eq!(AudioCaptureBackend::ScreenCaptureKit.as_id(), "screencapturekit");
+        #[cfg(target_os = "macos")]
+        assert_eq!(AudioCaptureBackend::CoreAudio.as_id(), "coreaudio");
+    }
+
+    #[test]
+    fn test_backend_from_string_accepts_display_form() {
+        assert_eq!(
+            AudioCaptureBackend::from_string("ScreenCaptureKit"),
+            Some(AudioCaptureBackend::ScreenCaptureKit)
+        );
+        assert_eq!(
+            AudioCaptureBackend::from_string("ScreenCapturekit"),
+            Some(AudioCaptureBackend::ScreenCaptureKit)
+        );
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(
+                AudioCaptureBackend::from_string("Core Audio"),
+                Some(AudioCaptureBackend::CoreAudio)
+            );
+            assert_eq!(
+                AudioCaptureBackend::from_string("core audio"),
+                Some(AudioCaptureBackend::CoreAudio)
+            );
+        }
     }
 
     #[test]

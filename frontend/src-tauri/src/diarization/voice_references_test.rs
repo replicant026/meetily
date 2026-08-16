@@ -146,7 +146,10 @@ fn reference_window_duration_ms_is_correct() {
 #[tokio::test]
 async fn delete_reference_removes_only_managed_file() {
     let tmp = tempfile::tempdir().unwrap();
-    set_references_dir(tmp.path().to_path_buf());
+    // Use a unique subdirectory under tmp to avoid OnceLock collisions with
+    // parallel tests that may already hold the global references_dir().
+    let test_dir = tmp.path().join("test_managed_file");
+    set_references_dir(test_dir.clone());
 
     let pool = test_pool().await;
 
@@ -203,9 +206,8 @@ async fn delete_reference_removes_only_managed_file() {
     .await
     .unwrap();
 
-    // Write audio files on disk. Compare against references_dir() (not
-    // tmp.path()) because OnceLock may already be set by a parallel test to a
-    // different tempdir.
+    // Write audio files on disk under the test-specific directory.
+    // Use references_dir() because OnceLock may already be set by a parallel test.
     let base = references_dir().unwrap();
     let alice_dir = base.join(&alice);
     std::fs::create_dir_all(&alice_dir).unwrap();
