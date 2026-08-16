@@ -54,12 +54,14 @@ impl TimesheetRepository {
     ) -> Result<Vec<TimesheetEntry>, sqlx::Error> {
         let entries = match month {
             Some(m) => {
-                // Escape SQL LIKE wildcards in the month parameter
-                let escaped = m.replace('%', "\\%").replace('_', "\\_");
+                // Validate month format strictly as YYYY-MM to prevent LIKE wildcard injection
+                if !m.chars().all(|c| c.is_ascii_digit() || c == '-') || m.len() != 7 {
+                    return Ok(vec![]);
+                }
                 sqlx::query_as::<_, TimesheetEntry>(
-                    "SELECT * FROM timesheet_entries WHERE date LIKE ?1 ESCAPE '\\\\' ORDER BY date, start_time",
+                    "SELECT * FROM timesheet_entries WHERE date LIKE ?1 ORDER BY date, start_time",
                 )
-                .bind(format!("{}%", escaped))
+                .bind(format!("{}%", m))
                 .fetch_all(pool)
                 .await?
             }

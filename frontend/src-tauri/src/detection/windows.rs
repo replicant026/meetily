@@ -99,6 +99,27 @@ impl WindowsMeetingDetector {
 /// Check Windows registry for active microphone usage.
 /// Enumerates per-app subkeys under CapabilityAccessManager\ConsentStore\microphone.
 /// An app is actively capturing audio when its `LastUsedTimeStop` value is 0.
+/// Recursively check a registry key and its subkeys for active mic usage.
+#[cfg(target_os = "windows")]
+fn check_key_recursive(key: &winreg::RegKey) -> bool {
+    use winreg::enums::*;
+    // Check this key's LastUsedTimeStop
+    if let Ok(val) = key.get_value::<u64, _>("LastUsedTimeStop") {
+        if val == 0 {
+            return true;
+        }
+    }
+    // Recurse into child keys (e.g. NonPackaged\<app-path>)
+    for sub_name in key.enum_keys().filter_map(|r| r.ok()) {
+        if let Ok(sub) = key.open_subkey_with_flags(&sub_name, KEY_READ) {
+            if check_key_recursive(&sub) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 #[cfg(target_os = "windows")]
 fn check_mic_usage() -> bool {
     use winreg::enums::*;
@@ -108,14 +129,10 @@ fn check_mic_usage() -> bool {
     let base_path = r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone";
 
     if let Ok(key) = hkcu.open_subkey_with_flags(base_path, KEY_READ) {
-        // Enumerate subkeys (app-specific entries like "NonPackaged", "Teams", etc.)
         for subkey_name in key.enum_keys().filter_map(|r| r.ok()) {
             if let Ok(subkey) = key.open_subkey_with_flags(&subkey_name, KEY_READ) {
-                // LastUsedTimeStop == 0 means the app is currently using the mic
-                if let Ok(val) = subkey.get_value::<u64, _>("LastUsedTimeStop") {
-                    if val == 0 {
-                        return true;
-                    }
+                if check_key_recursive(&subkey) {
+                    return true;
                 }
             }
         }
