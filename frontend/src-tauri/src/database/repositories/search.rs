@@ -168,8 +168,8 @@ impl SearchRepository {
             hash ^= *byte as u64;
             hash = hash.wrapping_mul(0x100000001b3); // FNV prime
         }
-        // FTS5 rowids must be positive; mask off sign bit
-        (hash as i64).abs() % 9223372036854775807 + 1
+        // FTS5 rowids must be positive; clear sign bit (no abs overflow)
+        ((hash & 0x7FFFFFFFFFFFFFFF) as i64) + 1
     }
 
     /// Add a single transcript to the FTS index (call after insert).

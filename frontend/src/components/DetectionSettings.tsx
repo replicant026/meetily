@@ -16,7 +16,7 @@ interface DetectionConfig {
 }
 
 const defaultConfig: DetectionConfig = {
-  enabled: true,
+  enabled: false,
   autoRecord: true,
   browserTitles: ['Meet', 'Microsoft Teams', 'Zoom', 'Webex'],
   minCallSeconds: 30,
