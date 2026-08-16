@@ -641,14 +641,19 @@ pub fn run() {
             // Restore persisted macOS audio backend from preferences (one-time at startup)
             #[cfg(target_os = "macos")]
             {
-                if let Ok(prefs) = tauri::async_runtime::block_on(
+                match tauri::async_runtime::block_on(
                     crate::audio::recording_preferences::load_recording_preferences(&_app.handle())
                 ) {
-                    if let Some(ref backend_str) = prefs.system_audio_backend {
-                        if let Some(backend) = crate::audio::capture::AudioCaptureBackend::from_string(backend_str) {
-                            log::info!("Restoring audio backend from preferences: {:?}", backend);
-                            crate::audio::capture::set_current_backend(backend);
+                    Ok(prefs) => {
+                        if let Some(ref backend_str) = prefs.system_audio_backend {
+                            if let Some(backend) = crate::audio::capture::AudioCaptureBackend::from_string(backend_str) {
+                                log::info!("Restoring audio backend from preferences: {:?}", backend);
+                                crate::audio::capture::set_current_backend(backend);
+                            }
                         }
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to load recording preferences for backend restore: {}", e);
                     }
                 }
             }
