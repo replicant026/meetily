@@ -119,20 +119,37 @@ pub async fn chat_about_meetings<R: Runtime>(
     };
 
     // Get CustomOpenAI config if applicable
-    let (custom_openai_endpoint, custom_openai_key) =
+    let (custom_openai_endpoint, custom_openai_key, custom_openai_model, custom_max_tokens, custom_temperature, custom_top_p) =
         if provider == LLMProvider::CustomOpenAI {
             match settings.get_custom_openai_config() {
-                Some(cfg) => (Some(cfg.endpoint), cfg.api_key.unwrap_or_default()),
-                None => (None, String::new()),
+                Some(cfg) => {
+                    // Strip trailing /v1 to avoid double /v1/v1/chat/completions
+                    let endpoint = cfg.endpoint.trim_end_matches("/v1").trim_end_matches('/').to_string();
+                    (
+                        Some(endpoint),
+                        cfg.api_key.unwrap_or_default(),
+                        Some(cfg.model),
+                        cfg.max_tokens.map(|v| v as u32),
+                        cfg.temperature,
+                        cfg.top_p,
+                    )
+                }
+                None => (None, String::new(), None, None, None, None),
             }
         } else {
-            (None, String::new())
+            (None, String::new(), None, None, None, None)
         };
 
     let final_api_key = if provider == LLMProvider::CustomOpenAI {
         custom_openai_key
     } else {
         api_key
+    };
+
+    let final_model = if let Some(m) = custom_openai_model {
+        m
+    } else {
+        settings.model
     };
 
     // Get app data dir for BuiltInAI
@@ -147,15 +164,15 @@ pub async fn chat_about_meetings<R: Runtime>(
     let answer = generate_summary(
         &client,
         &provider,
-        &settings.model,
+        &final_model,
         &final_api_key,
         &system_prompt,
         &user_prompt,
         ollama_endpoint.as_deref(),
         custom_openai_endpoint.as_deref(),
-        None,   // max_tokens
-        None,   // temperature
-        None,   // top_p
+        custom_max_tokens,
+        custom_temperature,
+        custom_top_p,
         app_data_dir.as_ref(),
         None,   // cancellation_token
     )

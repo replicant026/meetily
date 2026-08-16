@@ -65,7 +65,7 @@ export function SidebarActions({ meetingsCount, onOpenChat }: SidebarActionsProp
           <TooltipTrigger asChild>
             <button
               onClick={onOpenChat}
-              aria-label="Chat"
+              aria-label={t('nav.chat')}
               className={cn(
                 'flex min-h-[40px] w-full items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-2.5 text-sm transition-colors',
                 'text-[rgb(var(--app-muted-fg))]',
@@ -77,7 +77,7 @@ export function SidebarActions({ meetingsCount, onOpenChat }: SidebarActionsProp
             </button>
           </TooltipTrigger>
           <TooltipContent side="right" sideOffset={8}>
-            Chat
+            {t('nav.chat')}
           </TooltipContent>
         </Tooltip>
       )}
@@ -86,7 +86,7 @@ export function SidebarActions({ meetingsCount, onOpenChat }: SidebarActionsProp
         <TooltipTrigger asChild>
           <Link
             href="/timesheet"
-            aria-label="Timesheet"
+            aria-label={t('nav.timesheet')}
             className={cn(
               'flex min-h-[40px] w-full items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-2.5 text-sm transition-colors',
               'text-[rgb(var(--app-muted-fg))]',
@@ -98,7 +98,7 @@ export function SidebarActions({ meetingsCount, onOpenChat }: SidebarActionsProp
           </Link>
         </TooltipTrigger>
         <TooltipContent side="right" sideOffset={8}>
-          Timesheet
+          {t('nav.timesheet')}
         </TooltipContent>
       </Tooltip>
     </div>

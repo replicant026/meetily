@@ -635,15 +635,18 @@ pub fn run() {
                     );
                     let (mut detector, mut rx) = crate::detection::windows::WindowsMeetingDetector::new(config);
                     detector.start();
-                    // Consume detection events (log them; auto-recording integration is future work)
+                    // Consume detection events — detector must live in the same task as rx
+                    // so that dropping it doesn't fire the oneshot stop channel.
                     tokio::spawn(async move {
                         while let Some(event) = rx.recv().await {
                             log::info!(
                                 "Detection event: type={}, confidence={:.1}",
                                 event.event_type, event.confidence
                             );
-                            // TODO: wire auto-recording start when event fires
+                            // TODO: When auto-record feature is implemented, call start_recording command here
                         }
+                        // Keep detector alive for the lifetime of the polling loop
+                        drop(detector);
                     });
                 });
             }

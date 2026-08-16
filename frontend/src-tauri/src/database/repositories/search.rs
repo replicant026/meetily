@@ -1,6 +1,5 @@
 use sqlx::SqlitePool;
 use serde::Serialize;
-use log::info;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,7 +44,9 @@ impl SearchRepository {
             if let Some((n,)) = count {
                 if n > 0 {
                     log::info!("FTS5 table created on existing DB with {} transcripts, running initial reindex", n);
-                    let _ = Self::reindex(pool).await;
+                    if let Err(e) = Self::reindex(pool).await {
+                        log::warn!("FTS5 initial reindex failed: {}", e);
+                    }
                 }
             }
         }
@@ -57,9 +58,16 @@ impl SearchRepository {
     /// Wraps the entire query in double-quotes so special FTS5 characters
     /// (", *, :, ^, AND/OR, parentheses) are treated as literals.
     fn sanitize_fts_query(query: &str) -> String {
-        // Escape any double-quotes inside the query by doubling them
-        let escaped = query.replace('"', "\"\"");
-        format!("\"{}\"", escaped)
+        // Split into words, quote each independently so FTS5 matches all words
+        // without requiring an exact phrase.
+        query
+            .split_whitespace()
+            .map(|word| {
+                let escaped = word.replace('"', "\"\"");
+                format!("\"{}\"", escaped)
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     /// Full-text search across all meetings.
@@ -116,23 +124,39 @@ impl SearchRepository {
             .execute(pool)
             .await?;
 
-        let res = sqlx::query(
-            "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
-             SELECT m.rowid, m.id, COALESCE(m.title, ''),
+        // Fetch aggregated transcripts per meeting
+        let rows = sqlx::query_as::<_, (String, String, Option<String>)>(
+            "SELECT m.id, COALESCE(m.title, ''),
                     GROUP_CONCAT(t.transcript, ' ')
              FROM meetings m
              LEFT JOIN transcripts t ON t.meeting_id = m.id
              GROUP BY m.id",
         )
-        .execute(pool)
+        .fetch_all(pool)
         .await?;
 
-        Ok(res.rows_affected())
+        let mut count: u64 = 0;
+        for (meeting_id, title, transcript) in &rows {
+            let rowid = Self::meeting_rowid(meeting_id);
+            sqlx::query(
+                "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
+                 VALUES (?1, ?2, ?3, ?4)",
+            )
+            .bind(rowid)
+            .bind(meeting_id)
+            .bind(title)
+            .bind(transcript.as_deref().unwrap_or(""))
+            .execute(pool)
+            .await?;
+            count += 1;
+        }
+
+        Ok(count)
     }
 
     /// Derive a deterministic rowid from a meeting_id string.
     /// Uses a simple hash so re-indexing the same meeting replaces the old row.
-    fn meeting_rowid(meeting_id: &str) -> i64 {
+    pub fn meeting_rowid(meeting_id: &str) -> i64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
         let mut hasher = DefaultHasher::new();

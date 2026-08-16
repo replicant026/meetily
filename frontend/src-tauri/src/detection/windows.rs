@@ -23,11 +23,6 @@ impl WindowsMeetingDetector {
     }
 
     pub fn start(&mut self) {
-        // Don't start detection if disabled
-        if !self.config.enabled {
-            return;
-        }
-
         let (stop_tx, mut stop_rx) = tokio::sync::oneshot::channel();
         self.stop_tx = Some(stop_tx);
 
@@ -35,8 +30,8 @@ impl WindowsMeetingDetector {
         let tx = self.event_tx.clone();
 
         tokio::spawn(async move {
-            let mut last_mic_state = false;
             let mut mic_start_time: Option<std::time::Instant> = None;
+            let mut grace_start_time: Option<std::time::Instant> = None;
             let mut call_detected = false;
 
             loop {
@@ -45,39 +40,47 @@ impl WindowsMeetingDetector {
                     _ = tokio::time::sleep(std::time::Duration::from_secs(2)) => {
                         let mic_in_use = check_mic_usage();
 
-                        if mic_in_use && !last_mic_state {
-                            // Mic just started
-                            mic_start_time = Some(std::time::Instant::now());
-                            call_detected = false;
-                            last_mic_state = true;
-                        } else if !mic_in_use && last_mic_state {
-                            // Mic just stopped — apply grace period before resetting
-                            let dominated = mic_start_time.map(|s| {
-                                s.elapsed().as_secs() >= config.min_call_seconds as u64
-                            }).unwrap_or(false);
-                            // If grace_seconds > 0 and we were in a call, keep state
-                            // for the grace window to avoid flickering
-                            if config.grace_seconds > 0 && dominated {
-                                // Keep mic_start_time; recheck on next tick
-                                last_mic_state = false;
+                        if mic_in_use {
+                            // Mic is active — cancel any grace period
+                            grace_start_time = None;
+
+                            // Record start time on first detection
+                            if mic_start_time.is_none() {
+                                mic_start_time = Some(std::time::Instant::now());
+                                call_detected = false;
+                            }
+
+                            // Check if call duration threshold reached
+                            if !call_detected {
+                                if let Some(start) = mic_start_time {
+                                    if start.elapsed().as_secs() >= config.min_call_seconds as u64 {
+                                        call_detected = true;
+                                        let _ = tx.send(DetectionEvent {
+                                            event_type: "meeting_detected".to_string(),
+                                            app_name: None,
+                                            timestamp: chrono::Utc::now().to_rfc3339(),
+                                            confidence: 0.8,
+                                        });
+                                    }
+                                }
+                            }
+                        } else {
+                            // Mic inactive
+                            if let Some(grace_start) = grace_start_time {
+                                // Grace timer is running — check if it expired
+                                if grace_start.elapsed().as_secs() >= config.grace_seconds as u64 {
+                                    mic_start_time = None;
+                                    call_detected = false;
+                                    grace_start_time = None;
+                                }
+                                // Otherwise still within grace, wait
+                            } else if mic_start_time.is_some() && config.grace_seconds > 0 {
+                                // Mic just went inactive — start grace timer
+                                grace_start_time = Some(std::time::Instant::now());
                             } else {
+                                // No active session, no grace needed — fully reset
                                 mic_start_time = None;
                                 call_detected = false;
-                                last_mic_state = false;
-                            }
-                        } else if mic_in_use && last_mic_state {
-                            // Mic still in use — check duration
-                            if let Some(start) = mic_start_time {
-                                let elapsed = start.elapsed().as_secs();
-                                if elapsed >= config.min_call_seconds as u64 && !call_detected {
-                                    call_detected = true;
-                                    let _ = tx.send(DetectionEvent {
-                                        event_type: "meeting_detected".to_string(),
-                                        app_name: None,
-                                        timestamp: chrono::Utc::now().to_rfc3339(),
-                                        confidence: 0.8,
-                                    });
-                                }
                             }
                         }
                     }
@@ -109,7 +112,7 @@ fn check_mic_usage() -> bool {
         for subkey_name in key.enum_keys().filter_map(|r| r.ok()) {
             if let Ok(subkey) = key.open_subkey_with_flags(&subkey_name, KEY_READ) {
                 // LastUsedTimeStop == 0 means the app is currently using the mic
-                if let Ok(val) = subkey.get_value::<u32, _>("LastUsedTimeStop") {
+                if let Ok(val) = subkey.get_value::<u64, _>("LastUsedTimeStop") {
                     if val == 0 {
                         return true;
                     }

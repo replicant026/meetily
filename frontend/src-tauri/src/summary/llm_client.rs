@@ -319,7 +319,6 @@ pub async fn generate_summary(
             "https://api.anthropic.com/v1/messages".to_string(),
             {
                 let mut h = header::HeaderMap::new();
-                h.insert("x-api-key", header::HeaderValue::from_static(""));
                 h.insert("anthropic-version", header::HeaderValue::from_static("2023-06-01"));
                 h
             },
@@ -346,14 +345,24 @@ pub async fn generate_summary(
         }
     };
 
-    // Add authorization header for non-Claude providers
-    if provider != &LLMProvider::Claude {
-        headers.insert(
-            header::AUTHORIZATION,
-            format!("Bearer {}", api_key)
-                .parse()
-                .map_err(|_| LLMError::Other("Invalid authorization header".to_string()))?,
-        );
+    // Add authorization header — Claude uses x-api-key, others use Authorization: Bearer
+    match provider {
+        LLMProvider::Claude => {
+            headers.insert(
+                "x-api-key",
+                api_key
+                    .parse()
+                    .map_err(|_| LLMError::Other("Invalid x-api-key header".to_string()))?,
+            );
+        }
+        _ => {
+            headers.insert(
+                header::AUTHORIZATION,
+                format!("Bearer {}", api_key)
+                    .parse()
+                    .map_err(|_| LLMError::Other("Invalid authorization header".to_string()))?,
+            );
+        }
     }
     headers.insert(
         header::CONTENT_TYPE,

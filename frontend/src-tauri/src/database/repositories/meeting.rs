@@ -1,5 +1,6 @@
 use crate::api::{MeetingDetails, MeetingTranscript};
 use crate::database::models::{MeetingModel, Transcript};
+use crate::database::repositories::search::SearchRepository;
 use chrono::Utc;
 use serde::Serialize;
 use sqlx::{Connection, Error as SqlxError, SqliteConnection, SqlitePool};
@@ -364,13 +365,7 @@ async fn delete_meeting_with_transaction(
 
     // 4. Remove from FTS index (fire-and-forget, non-fatal)
     //    Uses the same deterministic rowid as SearchRepository::remove_meeting.
-    let fts_rowid = {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        let mut h = DefaultHasher::new();
-        meeting_id.hash(&mut h);
-        (h.finish() as i64).abs() % 9223372036854775807 + 1
-    };
+    let fts_rowid = SearchRepository::meeting_rowid(meeting_id);
     let _ = sqlx::query("DELETE FROM meetings_fts WHERE rowid = ?1")
         .bind(fts_rowid)
         .execute(&mut *transaction)

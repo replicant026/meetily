@@ -20,14 +20,16 @@ export function useSearch() {
       clearTimeout(debounceRef.current);
     }
 
+    // Increment request ID before the early-return so empty queries
+    // invalidate any in-flight request instead of letting it overwrite.
+    const currentRequestId = ++requestIdRef.current;
+
     if (!query.trim()) {
       setResults([]);
       return;
     }
 
     debounceRef.current = setTimeout(async () => {
-      // Increment request ID to track this search
-      const currentRequestId = ++requestIdRef.current;
       setIsSearching(true);
       try {
         const res = await invoke<SearchResult[]>('search_meetings', {
@@ -52,13 +54,7 @@ export function useSearch() {
   }, []);
 
   const reindex = useCallback(async () => {
-    try {
-      const count = await invoke<number>('reindex_meetings');
-      return count;
-    } catch (e) {
-      console.error('Reindex failed:', e);
-      return 0;
-    }
+    return await invoke<number>('reindex_meetings');
   }, []);
 
   return { results, isSearching, search, reindex };
