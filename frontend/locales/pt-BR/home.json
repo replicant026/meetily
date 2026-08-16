@@ -1,0 +1,18 @@
+{
+  "quick_start_title": "Iniciar reunião",
+  "no_microphone": "Nenhum microfone detectado",
+  "start_recording": "Iniciar gravação",
+  "configure_audio": "Configurar áudio",
+  "recent_meetings": "Reuniões recentes",
+  "no_meetings_yet": "Nenhuma reunião ainda. Inicie uma gravação para criar uma.",
+  "has_summary": "Resumo disponível",
+  "needs_attention": "Precisa de atenção",
+  "recover": "Recuperar",
+  "processing": "Processando...",
+  "meetings_this_week": "Esta semana",
+  "summaries_ready": "Resumos",
+  "importRecording": "Importar uma gravação",
+  "importDescription": "Importe um arquivo de áudio para transcrever e resumir",
+  "importFile": "Importar arquivo",
+  "subtitle": "Suas reuniões, transcritas localmente"
+}

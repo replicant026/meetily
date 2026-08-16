@@ -65,6 +65,19 @@
         "auto_postprocess_label": "Auto LLM post-process",
         "auto_postprocess_help": "Rewrite each transcript segment through the configured LLM to fix homophones and preserve proper nouns.",
         "auto_postprocess_save_failed": "Failed to save LLM post-process setting",
+        "speaker_renamed": "{from} is now \"{to}\"",
+        "jump_to": "Jump to {time}",
+        "save_voice_profile": "Save voice profile",
+        "recording_paused": "Recording paused",
+        "listening_for_speech": "Listening for speech…",
+        "click_resume": "Click resume to continue recording",
+        "speak_to_see": "Speak to see live transcription",
+        "loading_more": "Loading more…",
+        "showing_segments": "Showing {loaded} of {total} segments",
+        "listening": "Listening…",
+        "welcome": "Welcome to Meetily!",
+        "start_recording_hint": "Start recording to see live transcription",
+        "enrolling_voice": "Enrolling voice for {speakerId}…",
         "auto_postprocess_load_failed": "Failed to load LLM post-process setting",
         "speaker_rename_placeholder": "Enter name (e.g. Alice)",
         "speaker_rename_save": "Save",
@@ -286,7 +299,9 @@
         "cancel": "Cancel",
         "confirm_delete": "Are you sure you want to delete this interrupted meeting? This action cannot be undone.",
         "alert_recover_failed": "Failed to recover meeting",
-        "alert_delete_failed": "Failed to delete meeting"
+        "alert_delete_failed": "Failed to delete meeting",
+        "recovery_type_full": "Full recovery: transcripts and audio available",
+        "recovery_type_transcript_only": "Transcript-only recovery: audio recording not available"
     },
     "diarization_enable": "Enable speaker diarization",
     "diarization_min_speakers": "Minimum speakers",
@@ -297,5 +312,131 @@
     "diarization_model_status_failed": "Failed; using realtime-only mode",
     "diarization_model_status_disabled": "Disabled",
     "diarization_load_error": "Failed to load diarization settings.",
-    "diarization_loading": "Loading diarization settings..."
+    "diarization_loading": "Loading diarization settings...",
+    "app_settings": {
+        "save_failed": "Failed to save settings",
+        "loading": "Loading settings...",
+        "sections": {
+            "general": "General",
+            "audio": "Audio",
+            "recordings": "Recordings",
+            "shortcuts": "Shortcuts",
+            "notifications": "Notifications",
+            "transcription": "Transcription",
+            "speakers": "Speakers",
+            "llms": "LLMs",
+            "summaries": "Summaries",
+            "export": "Export",
+            "advanced": "Advanced"
+        },
+        "general": {
+            "theme_label": "Theme",
+            "theme_system": "System",
+            "theme_light": "Light",
+            "theme_dark": "Dark",
+            "scale_label": "Interface Scale",
+            "sidebar_label": "Sidebar",
+            "sidebar_fixed": "Always visible",
+            "sidebar_auto_hide": "Auto-hide",
+            "start_with_system": "Start with system",
+            "start_with_system_desc": "Launch Meetily when your computer starts",
+            "start_hidden": "Start hidden",
+            "start_hidden_desc": "Start in the background without opening the window",
+            "language_label": "Language",
+            "analytics_consent": "Share anonymous usage data"
+        },
+        "recordings": {
+            "retention_label": "Retention",
+            "retention_desc": "Automatically delete old recordings after the selected period",
+            "retention_never": "Never",
+            "retention_7d": "7 days",
+            "retention_30d": "30 days",
+            "retention_90d": "90 days",
+            "name_pattern_label": "File name pattern",
+            "name_pattern_desc": "Use {date}, {time}, and {title} as placeholders"
+        },
+        "shortcuts": {
+            "toggle_recording": "Toggle recording",
+            "capture_screen": "Capture screen",
+            "press_keys": "Press shortcut keys...",
+            "conflict": "This shortcut is already in use",
+            "clear": "Clear"
+        },
+        "notifications": {
+            "enabled_label": "Enable notifications",
+            "recording_started": "Recording started",
+            "recording_stopped": "Recording stopped",
+            "update_available": "Update available",
+            "update_installed": "Update installed",
+            "suppress_during_recording": "Suppress during recording"
+        },
+        "speakers": {
+            "matching_label": "Speaker matching",
+            "matching_off": "Disabled",
+            "matching_suggest": "Suggest",
+            "matching_automatic": "Automatic",
+            "matching_desc": "How Meetily matches speakers across meetings",
+            "lock_channels": "Lock audio channels",
+            "lock_channels_desc": "Prevent speakers from being moved between microphone and system audio"
+        },
+        "llms": {
+            "add_provider": "Add Provider",
+            "add_provider_hint": "Provider management coming soon",
+            "no_providers": "No LLM providers configured yet.",
+            "status_connected": "Connected",
+            "status_disconnected": "Disconnected",
+            "status_unknown": "Unknown"
+        },
+        "summaries": {
+            "auto_generate": "Auto-generate summaries",
+            "auto_generate_desc": "Generate a summary automatically when recording stops",
+            "include_chapters": "Include chapters",
+            "include_chapters_desc": "Break the summary into chapters",
+            "include_action_items": "Include action items",
+            "include_action_items_desc": "Extract action items from the meeting",
+            "default_language": "Default summary language",
+            "default_language_desc": "Language for summary generation",
+            "language_auto": "Auto-detect",
+            "system_prompt": "System prompt",
+            "system_prompt_desc": "Custom instructions for the summary generator",
+            "default_tab": "Default detail tab",
+            "default_tab_desc": "Which tab to show when opening meeting details",
+            "default_tab_summary": "Summary",
+            "default_tab_transcript": "Transcript"
+        },
+        "export": {
+            "name_pattern_label": "Export file name",
+            "date_format_label": "Date format",
+            "date_format_iso": "ISO 8601",
+            "date_format_local": "Local format",
+            "yaml_metadata": "Include YAML metadata",
+            "inline_metadata": "Inline metadata in document",
+            "auto_export": "Auto-export",
+            "auto_export_desc": "Export automatically after a meeting is saved"
+        },
+        "advanced": {
+            "title": "Experimental",
+            "description": "These features are experimental and may change or be removed."
+        }
+    },
+    "export": {
+        "name_pattern": "File Name Pattern",
+        "name_pattern_desc": "Pattern for exported file names. Use {meeting_name} and {date}.",
+        "preview": "Preview",
+        "date_format": "Date Format",
+        "date_format_desc": "Format for dates in exported files",
+        "locale_format": "System Locale",
+        "custom_format": "Custom",
+        "yaml_metadata": "YAML Metadata",
+        "yaml_metadata_desc": "Include meeting metadata as YAML frontmatter",
+        "metadata_position": "Metadata Position",
+        "metadata_position_desc": "Where to place metadata in the exported file",
+        "frontmatter": "Frontmatter (top of file)",
+        "inline": "Inline (at end)",
+        "auto_export": "Auto-export",
+        "auto_export_desc": "Automatically export after meeting ends and transcription completes. Local only — no external calls."
+    },
+    "advanced": {
+        "experimental_warning": "These features are experimental and may not work as expected. Use at your own risk."
+    }
 }

@@ -17,33 +17,7 @@ use log::{debug, warn, info};
 use super::device_detection::InputDeviceKind;
 
 /// Configuration flags for audio processing features
-pub const RNNOISE_APPLY_ENABLED: bool = false;  // Default: disabled (Whisper handles noise well)
-
-/// Timestamp for audio samples (reserved for future use)
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
-struct Timestamp {
-    instant: Instant,
-    sample_count: u64,
-}
-
-#[allow(dead_code)]
-impl Timestamp {
-    fn new() -> Self {
-        Self {
-            instant: Instant::now(),
-            sample_count: 0,
-        }
-    }
-
-    fn advance(&mut self, samples: usize) {
-        self.sample_count += samples as u64;
-    }
-
-    fn elapsed(&self) -> Duration {
-        self.instant.elapsed()
-    }
-}
+pub const RNNOISE_APPLY_ENABLED: bool = true;  // Default: enabled (reduces background noise 10-15 dB)
 
 /// Audio chunk with timestamp information
 #[derive(Debug, Clone)]
@@ -280,9 +254,11 @@ impl AudioMixer {
     /// - When mic is silent, allow full system audio
     /// - Use RMS to detect speech activity
     fn mix(&mut self, mic: &[f32], system: &[f32]) -> Vec<f32> {
-        assert_eq!(mic.len(), system.len(), "Mic and system audio must have same length");
+        let len = mic.len().min(system.len());
+        let mic = &mic[..len];
+        let system = &system[..len];
 
-        let mut result = Vec::with_capacity(mic.len());
+        let mut result = Vec::with_capacity(len);
 
         if self.adaptive_ducking {
             // Calculate RMS for mic to detect speech

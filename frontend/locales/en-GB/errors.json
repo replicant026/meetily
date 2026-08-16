@@ -8,5 +8,8 @@
   "update_available": "An update is available.",
   "update_failed": "Update failed. Please try again later.",
   "recovery_failed": "Failed to recover meeting. Please try again.",
-  "unknown_error": "Unknown error occurred"
+  "unknown_error": "Unknown error occurred",
+  "error_boundary_title": "Something went wrong",
+  "error_boundary_description": "An unexpected error occurred. Reloading usually fixes this.",
+  "error_boundary_reset": "Reload App"
 }

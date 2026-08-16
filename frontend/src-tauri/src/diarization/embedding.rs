@@ -1,4 +1,4 @@
-use super::{EmbeddingBuffer, WindowedEmbedding, EMBEDDING_DIM};
+use super::{EmbeddingBuffer, WindowedEmbedding};
 use anyhow::{anyhow, Result};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -24,18 +24,28 @@ fn models_dir() -> PathBuf {
     p
 }
 
-/// Path to the CAM++ ONNX embedding model.
+/// Path to the WeSpeaker VoxBlink2 ONNX embedding model (multilingual).
 fn embedding_model_path() -> PathBuf {
+    models_dir().join("voxblink2_samresnet34.onnx")
+}
+
+/// Fallback: path to the old CAM++ ONNX embedding model.
+fn embedding_model_fallback_path() -> PathBuf {
     models_dir().join("3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx")
 }
 
 /// Path to the pyannote segmentation ONNX model.
-fn segmentation_model_path() -> PathBuf {
+pub(crate) fn segmentation_model_path() -> PathBuf {
     models_dir().join("sherpa-onnx-pyannote-segmentation-3-0").join("model.onnx")
 }
 
 /// Remote URLs for model download.
 fn embedding_model_url() -> String {
+    "https://wenet.org.cn/downloads?models=wespeaker&version=voxblink2_samresnet34.onnx".to_string()
+}
+
+/// Fallback URL for the old CAM++ model.
+fn embedding_model_fallback_url() -> String {
     "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx".to_string()
 }
 
@@ -48,12 +58,22 @@ fn segmentation_model_url() -> String {
 // ---------------------------------------------------------------------------
 
 /// Ensure both models exist on disk. Downloads them lazily on first use.
+/// Tries VoxBlink2 (multilingual) first, falls back to CAM++ (Chinese) if download fails.
 pub async fn ensure_models_available() -> Result<()> {
     let emb_path = embedding_model_path();
     if !emb_path.exists() {
-        log::info!("Downloading diarization embedding model to {}", emb_path.display());
-        download_file(&embedding_model_url(), &emb_path).await?;
-        log::info!("Embedding model downloaded successfully");
+        log::info!("Downloading VoxBlink2 embedding model to {}", emb_path.display());
+        match download_file(&embedding_model_url(), &emb_path).await {
+            Ok(()) => log::info!("VoxBlink2 embedding model downloaded successfully"),
+            Err(e) => {
+                log::warn!("VoxBlink2 download failed ({}), trying CAM++ fallback", e);
+                let fallback = embedding_model_fallback_path();
+                if !fallback.exists() {
+                    download_file(&embedding_model_fallback_url(), &fallback).await?;
+                    log::info!("CAM++ fallback embedding model downloaded");
+                }
+            }
+        }
     }
 
     let seg_path = segmentation_model_path();
@@ -101,19 +121,36 @@ async fn download_tarbz2(url: &str, dest_dir: &Path) -> Result<()> {
 
 /// Initialize the sherpa-onnx speaker embedding extractor.
 /// Returns Ok(true) if loaded successfully, Ok(false) if models unavailable.
+/// Tries VoxBlink2 first, falls back to CAM++ if dimension mismatch.
 pub fn init_extractor() -> Result<bool> {
     if EXTRACTOR.get().is_some() {
         return Ok(true);
     }
 
+    // Try primary model (VoxBlink2)
     let emb_path = embedding_model_path();
-    if !emb_path.exists() {
-        MODEL_STATUS.store(2, Ordering::SeqCst);
-        return Ok(false);
+    if emb_path.exists() {
+        if let Ok(true) = try_load_extractor(&emb_path) {
+            return Ok(true);
+        }
     }
 
+    // Fallback to CAM++ if VoxBlink2 unavailable or wrong dimension
+    let fallback = embedding_model_fallback_path();
+    if fallback.exists() {
+        if let Ok(true) = try_load_extractor(&fallback) {
+            log::warn!("Using CAM++ fallback model (192-dim) instead of VoxBlink2 (256-dim)");
+            return Ok(true);
+        }
+    }
+
+    MODEL_STATUS.store(2, Ordering::SeqCst);
+    Ok(false)
+}
+
+fn try_load_extractor(model_path: &Path) -> Result<bool> {
     let config = sherpa_onnx::SpeakerEmbeddingExtractorConfig {
-        model: Some(emb_path.to_string_lossy().into_owned()),
+        model: Some(model_path.to_string_lossy().into_owned()),
         num_threads: 2,
         debug: false,
         provider: Some("cpu".into()),
@@ -122,21 +159,17 @@ pub fn init_extractor() -> Result<bool> {
     match sherpa_onnx::SpeakerEmbeddingExtractor::create(&config) {
         Some(extractor) => {
             let dim = extractor.dim();
-            if dim as usize != EMBEDDING_DIM {
-                log::warn!(
-                    "Embedding dim mismatch: expected {}, got {}",
-                    EMBEDDING_DIM, dim
-                );
-                // Still accept — just log the mismatch
-            }
+            // ponytail: dimension gate removed — tracker/cosine-similarity is
+            // dimension-agnostic; offline reembedding validates per-embedding.
+            // Accept any dim so CAM++ (192) and VoxBlink2 (256) both work.
             let _ = EXTRACTOR.set(extractor);
             MODEL_STATUS.store(1, Ordering::SeqCst);
-            log::info!("Speaker embedding extractor loaded (dim={})", dim);
+            log::info!("Speaker embedding extractor loaded from {} (dim={})", model_path.display(), dim);
             Ok(true)
         }
         None => {
-            MODEL_STATUS.store(2, Ordering::SeqCst);
-            Err(anyhow!("Failed to create SpeakerEmbeddingExtractor"))
+            log::warn!("Failed to create extractor from {}", model_path.display());
+            Ok(false)
         }
     }
 }
@@ -165,7 +198,7 @@ pub fn ensure_loaded() -> Result<()> {
 
 /// Extract a speaker embedding from 16 kHz mono f32 audio samples.
 ///
-/// Returns a 192-dim embedding vector on success.
+/// Returns a 256-dim embedding vector on success.
 pub fn extract_embedding(samples: &[f32], sample_rate: u32) -> Result<Vec<f32>> {
     if samples.is_empty() {
         return Err(anyhow!("empty audio"));
@@ -216,6 +249,30 @@ pub fn push_window(
     }
 }
 
+/// Extract embedding, push to buffer, and match against tracker.
+/// Combined operation for the realtime path.
+pub fn push_and_match(
+    buffer: &EmbeddingBuffer,
+    tracker: &mut super::tracker::SpeakerTracker,
+    samples: &[f32],
+    sample_rate: u32,
+    start: f64,
+    end: f64,
+    duration_secs: f64,
+) -> Option<super::tracker::TrackerResult> {
+    let embedding = extract_embedding(samples, sample_rate).ok()?;
+
+    // Push to buffer for offline use
+    buffer.push(WindowedEmbedding {
+        audio_start: start,
+        audio_end: end,
+        vec: embedding.clone(),
+    });
+
+    // Match against tracker
+    Some(tracker.match_or_create(&embedding, duration_secs))
+}
+
 /// Get a full diarization result for a complete audio signal.
 /// Used by the offline pass to get speaker-labeled segments.
 pub fn diarize_full_audio(
@@ -225,10 +282,18 @@ pub fn diarize_full_audio(
     max_speakers: usize,
 ) -> Result<Vec<super::DiarizationSegment>> {
     let seg_path = segmentation_model_path();
-    let emb_path = embedding_model_path();
-
-    if !seg_path.exists() || !emb_path.exists() {
+    // Try VoxBlink2 first, fall back to CAM++ if not on disk
+    let emb_path = if embedding_model_path().exists() {
+        embedding_model_path()
+    } else if embedding_model_fallback_path().exists() {
+        log::warn!("VoxBlink2 not found, using CAM++ fallback for offline diarization");
+        embedding_model_fallback_path()
+    } else {
         return Err(anyhow!("diarization models not available"));
+    };
+
+    if !seg_path.exists() {
+        return Err(anyhow!("segmentation model not available at {}", seg_path.display()));
     }
 
     // ponytail: sherpa-onnx FastClusteringConfig has no min/max_speakers fields.

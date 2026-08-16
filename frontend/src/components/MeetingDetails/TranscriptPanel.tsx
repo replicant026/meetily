@@ -2,13 +2,11 @@
 
 import { Transcript, TranscriptSegmentData } from '@/types';
 import { VirtualizedTranscriptView } from '@/components/VirtualizedTranscriptView';
-import { TranscriptButtonGroup } from './TranscriptButtonGroup';
-import { useMemo, useCallback } from 'react';
+import { AssignSpeakerDialog } from '@/components/speakers/AssignSpeakerDialog';
+import { useMemo, useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useSpeakerNames } from '@/hooks/useSpeakerNames';
 import { TranscriptExportFormat } from '@/lib/transcript-export';
-import { Play, Pause, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TranscriptPanelProps {
@@ -36,16 +34,14 @@ interface TranscriptPanelProps {
   meetingFolderPath?: string | null;
   onRefetchTranscripts?: () => Promise<void>;
 
-  // Audio jump props (PR-44c): optional audio file path enables
-  // transcript timestamp click-to-jump + compact player UI.
-  audioPath?: string | null;
-}
+  // Audio seek callback: enables transcript timestamp click-to-jump
+  // without duplicating the header transport (single audio surface).
+  onSeekToTimestamp?: (seconds: number) => void;
+  onPlayFromTimestamp?: (seconds: number) => void;
+  currentAudioTime?: number;
 
-function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return '00:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  // Speaker assignment callback (optimistic update in parent)
+  onSpeakerAssigned?: (speakerId: string, segmentIds: string[]) => void;
 }
 
 export function TranscriptPanel({
@@ -67,12 +63,31 @@ export function TranscriptPanel({
   meetingId,
   meetingFolderPath,
   onRefetchTranscripts,
-  audioPath,
+  onSeekToTimestamp,
+  onPlayFromTimestamp,
+  currentAudioTime,
   width,
+  onSpeakerAssigned,
 }: TranscriptPanelProps) {
   const tSummary = useTranslations('summary');
-  const tView = useTranslations('transcript.view');
-  const audioPlayer = useAudioPlayer(audioPath ?? null);
+
+  // Assign speaker dialog state
+  const [assignDialog, setAssignDialog] = useState<{
+    open: boolean;
+    sourceLabel: string;
+    segmentIds: string[];
+  }>({ open: false, sourceLabel: '', segmentIds: [] });
+
+  const handleSpeakerClick = useCallback((sourceLabel: string, segmentIds: string[]) => {
+    setAssignDialog({ open: true, sourceLabel, segmentIds });
+  }, []);
+
+  const handleAssigned = useCallback((speakerId: string, segmentIds: string[]) => {
+    setAssignDialog({ open: false, sourceLabel: '', segmentIds: [] });
+    onSpeakerAssigned?.(speakerId, segmentIds);
+    // Refresh transcript data to reflect new speaker labels
+    onRefetchTranscripts?.();
+  }, [onSpeakerAssigned, onRefetchTranscripts]);
 
   const convertedSegments = useMemo(() => {
     if (usePagination && segments) {
@@ -92,63 +107,19 @@ export function TranscriptPanel({
   const speakerNames = useSpeakerNames(meetingId ?? null);
 
   const handleTimestampClick = useCallback((sec: number) => {
-    audioPlayer.seek(sec);
-  }, [audioPlayer]);
+    onSeekToTimestamp?.(sec);
+  }, [onSeekToTimestamp]);
 
-  const hasAudio = !!audioPath;
+  const hasSeek = !!onSeekToTimestamp;
 
   return (
-    <div className={`hidden md:flex min-w-0 border-r border-gray-200 bg-white flex-col relative shrink-0${width != null ? '' : ' md:w-1/4 lg:w-1/3'}`} style={width != null ? { width: `${width}%` } : undefined}>
-      <div className="p-4 border-b border-gray-200">
-        <TranscriptButtonGroup
-          transcriptCount={usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0)}
-          onCopyTranscript={onCopyTranscript}
-          onExportTranscript={onExportTranscript}
-          onOpenMeetingFolder={onOpenMeetingFolder}
-          meetingId={meetingId}
-          meetingFolderPath={meetingFolderPath}
-          onRefetchTranscripts={onRefetchTranscripts}
-        />
-
-        {hasAudio && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-600" data-testid="transcript-audio-player">
-            <button
-              type="button"
-              onClick={() => audioPlayer.isPlaying ? audioPlayer.pause() : audioPlayer.play()}
-              disabled={!!audioPlayer.error || audioPlayer.duration === 0}
-              title={audioPlayer.isPlaying ? tView('pause_title') : tView('play_title')}
-              aria-label={audioPlayer.isPlaying ? tView('pause_title') : tView('play_title')}
-              className="flex items-center justify-center w-7 h-7 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700"
-            >
-              {audioPlayer.isPlaying ? <Pause size={14} /> : <Play size={14} />}
-            </button>
-            <div className="flex-1 flex items-center gap-2 min-w-0">
-              <span className="font-mono tabular-nums">{formatTime(audioPlayer.currentTime)}</span>
-              <input
-                type="range"
-                min={0}
-                max={audioPlayer.duration || 0}
-                step={0.1}
-                value={Math.min(audioPlayer.currentTime, audioPlayer.duration || 0)}
-                onChange={(e) => audioPlayer.seek(parseFloat(e.target.value))}
-                disabled={audioPlayer.duration === 0}
-                title={tView('seek_title')}
-                aria-label={tView('seek_title')}
-                className="flex-1 h-1 accent-blue-600 disabled:opacity-50 min-w-0"
-              />
-              <span className="font-mono tabular-nums">{formatTime(audioPlayer.duration)}</span>
-            </div>
-            {audioPlayer.error && (
-              <AlertCircle size={14} className="text-red-500 flex-shrink-0" aria-label={audioPlayer.error} />
-            )}
-          </div>
-        )}
-      </div>
-
+    <div className="flex min-w-0 flex-col relative bg-[rgb(var(--app-bg))]" data-testid="workspace-transcript">
       <div className="flex-1 overflow-hidden pb-4">
         <VirtualizedTranscriptView
           segments={convertedSegments}
-          onTimestampClick={hasAudio ? handleTimestampClick : undefined}
+          onTimestampClick={hasSeek ? handleTimestampClick : undefined}
+          onPlayFromTimestamp={onPlayFromTimestamp}
+          currentAudioTime={currentAudioTime}
           isRecording={isRecording}
           isPaused={false}
           isProcessing={false}
@@ -163,21 +134,33 @@ export function TranscriptPanel({
           onLoadMore={onLoadMore}
           customSpeakerNames={speakerNames.allNames}
           onSpeakerRename={speakerNames.setName}
+          onSpeakerClick={handleSpeakerClick}
           onEnrollSpeaker={(speakerId) => {
-            toast.success(`Enrolling voice for ${speakerId}...`);
+            toast.success(tSummary('enrolling_voice', { speakerId }));
           }}
         />
       </div>
 
       {!isRecording && convertedSegments.length > 0 && (
-        <div className="p-1 border-t border-gray-200">
+        <div className="p-1 border-t border-[rgb(var(--app-border))]">
           <textarea
             placeholder={tSummary("meeting.custom_prompt_placeholder")}
-            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm min-h-[80px] resize-y"
+            className="w-full px-3 py-2 border border-[rgb(var(--app-border))] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-stone-400 focus:border-stone-400 bg-[rgb(var(--app-surface))] shadow-sm min-h-[80px] resize-y"
             value={customPrompt}
             onChange={(e) => onPromptChange(e.target.value)}
           />
         </div>
+      )}
+
+      {assignDialog.open && meetingId && (
+        <AssignSpeakerDialog
+          meetingId={meetingId}
+          sourceLabel={assignDialog.sourceLabel}
+          segmentIds={assignDialog.segmentIds}
+          open={assignDialog.open}
+          onClose={() => setAssignDialog(prev => ({ ...prev, open: false }))}
+          onAssigned={handleAssigned}
+        />
       )}
     </div>
   );

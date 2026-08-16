@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Info } from 'lucide-react';
@@ -44,7 +45,7 @@ export function AudioBackendSelector({
           setCurrentBackend(propBackend);
         }
       } catch (err) {
-        console.error('Failed to load audio backends:', err);
+        logger.error('Failed to load audio backends:', err);
         setError('Failed to load backend options');
       } finally {
         setLoading(false);
@@ -66,9 +67,9 @@ export function AudioBackendSelector({
         onBackendChange(backendId);
       }
 
-      console.log(`Audio backend changed to: ${backendId}`);
+      logger.log(`Audio backend changed to: ${backendId}`);
     } catch (err) {
-      console.error('Failed to set audio backend:', err);
+      logger.error('Failed to set audio backend:', err);
       setError('Failed to change backend. Please try again.');
     }
   };

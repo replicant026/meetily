@@ -1,0 +1,27 @@
+{
+  "name": "All-Hands Meeting",
+  "description": "All-hands or company-wide meeting template covering announcements, team updates, and Q&A.",
+  "sections": [
+    {
+      "title": "Announcements",
+      "instruction": "Summarize the key announcements shared during the meeting, including company news, policy changes, and strategic updates.",
+      "format": "paragraph"
+    },
+    {
+      "title": "Team Updates",
+      "instruction": "List updates from each team or department presented during the meeting.",
+      "format": "list"
+    },
+    {
+      "title": "Q&A Highlights",
+      "instruction": "List the most notable questions asked and the answers or responses provided.",
+      "format": "list"
+    },
+    {
+      "title": "Action Items",
+      "instruction": "List all assigned tasks with their owners and due date. Always add reference transcript segment and timestamp in the table.",
+      "format": "list",
+      "item_format": "| **Owner** | Task | Due | Reference Transcript Segment | Segment Time stamp |\n| --- | --- | --- | --- | --- |"
+    }
+  ]
+}

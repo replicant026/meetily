@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from 'react';
 import { Globe } from 'lucide-react';
 import Analytics from '@/lib/analytics';
@@ -118,7 +119,7 @@ interface LanguageSelectionProps {
   selectedLanguage: string;
   onLanguageChange: (language: string) => void;
   disabled?: boolean;
-  provider?: 'localWhisper' | 'parakeet' | 'deepgram' | 'elevenLabs' | 'groq' | 'openai';
+  provider?: 'localWhisper' | 'parakeet' | 'deepgram' | 'elevenLabs' | 'groq' | 'openai' | 'mistral';
 }
 
 export function LanguageSelection({
@@ -142,7 +143,7 @@ export function LanguageSelection({
       // Save language preference to localStorage and sync to backend
       setSelectedLanguage(languageCode);
       onLanguageChange(languageCode);
-      console.log('Language preference saved:', languageCode);
+      logger.log('Language preference saved:', languageCode);
 
       // Track language selection analytics
       const selectedLang = LANGUAGES.find(lang => lang.code === languageCode);
@@ -159,7 +160,7 @@ export function LanguageSelection({
         description: `Transcription language set to ${languageName}`
       });
     } catch (error) {
-      console.error('Failed to save language preference:', error);
+      logger.error('Failed to save language preference:', error);
       toast.error("Failed to save language preference", {
         description: error instanceof Error ? error.message : String(error)
       });

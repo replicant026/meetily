@@ -18,7 +18,7 @@ use super::vad::{ContinuousVadProcessor};
 struct AudioMixerRingBuffer {
     mic_buffer: VecDeque<f32>,
     system_buffer: VecDeque<f32>,
-    window_size_samples: usize,  // Fixed mixing window (e.g., 50ms)
+    window_size_samples: usize,  // Fixed mixing window (600ms)
     max_buffer_size: usize,  // Safety limit (e.g., 100ms)
 }
 
@@ -48,13 +48,12 @@ impl AudioMixerRingBuffer {
 
     fn add_samples(&mut self, device_type: DeviceType, samples: Vec<f32>) {
         // Log buffer health periodically for diagnostics
-        static mut SAMPLE_COUNTER: u64 = 0;
-        unsafe {
-            SAMPLE_COUNTER += 1;
-            if SAMPLE_COUNTER % 200 == 0 {
-                debug!("📊 Ring buffer status: mic={} samples, sys={} samples (max={})",
-                       self.mic_buffer.len(), self.system_buffer.len(), self.max_buffer_size);
-            }
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static SAMPLE_COUNTER: AtomicU64 = AtomicU64::new(0);
+        let count = SAMPLE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        if count % 200 == 0 {
+            debug!("📊 Ring buffer status: mic={} samples, sys={} samples (max={})",
+                   self.mic_buffer.len(), self.system_buffer.len(), self.max_buffer_size);
         }
 
         match device_type {
@@ -162,22 +161,15 @@ impl ProfessionalAudioMixer {
             let mic = mic_window.get(i).copied().unwrap_or(0.0);
             let sys = sys_window.get(i).copied().unwrap_or(0.0);
 
-            // Pre-scale system audio to 70% to leave headroom
-            // This prevents constant soft scaling which can cause pumping artifacts
-            // Mic is normalized to -23 LUFS (already optimal), system needs reduction
-            let sys_scaled = sys * 1.0;
-            let _mic_scaled = mic * 0.8;  // Reserved for future mic scaling
-
             // Sum without ducking - mic stays at full volume, system slightly reduced
-            let sum = mic + sys_scaled;
+            let sum = mic + sys;
 
-            // CRITICAL FIX: Soft scaling prevents distortion artifacts
-            // If the sum would exceed ±1.0, scale down PROPORTIONALLY
+            // CRITICAL FIX: Soft clipping via tanh prevents distortion artifacts
+            // If the sum would exceed ±1.0, apply soft knee compression
             // This avoids hard clipping distortion that sounds like "radio breaks"
             let sum_abs = sum.abs();
             let mixed_sample = if sum_abs > 1.0 {
-                // Scale down to fit within ±1.0
-                sum / sum_abs
+                sum.tanh() // Soft knee compression
             } else {
                 sum
             };
@@ -198,7 +190,7 @@ pub struct AudioCapture {
     channels: u16,
     chunk_counter: Arc<std::sync::atomic::AtomicU64>,
     device_type: DeviceType,
-    recording_sender: Option<mpsc::UnboundedSender<AudioChunk>>,
+    _recording_sender: Option<mpsc::UnboundedSender<AudioChunk>>,
     needs_resampling: bool,  // Flag if resampling is required
     // CRITICAL FIX: Persistent resampler to preserve energy across chunks
     resampler: Arc<std::sync::Mutex<Option<SincFixedIn<f32>>>>,
@@ -370,7 +362,7 @@ impl AudioCapture {
             channels,
             chunk_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             device_type,
-            recording_sender,
+            _recording_sender: recording_sender,
             needs_resampling,
             resampler: Arc::new(std::sync::Mutex::new(resampler)),
             resampler_input_buffer: Arc::new(std::sync::Mutex::new(Vec::with_capacity(RESAMPLER_CHUNK_SIZE * 2))),
@@ -680,7 +672,7 @@ impl AudioCapture {
 pub struct AudioPipeline {
     receiver: mpsc::UnboundedReceiver<AudioChunk>,
     transcription_sender: mpsc::UnboundedSender<AudioChunk>,
-    state: Arc<RecordingState>,
+    _state: Arc<RecordingState>,
     vad_processor: ContinuousVadProcessor,
     sample_rate: u32,
     chunk_id_counter: u64,
@@ -694,6 +686,8 @@ pub struct AudioPipeline {
     mixer: ProfessionalAudioMixer,
     // Recording sender for pre-mixed audio
     recording_sender_for_mixed: Option<mpsc::UnboundedSender<AudioChunk>>,
+    // Rolling buffer of recent mixed audio for VAD segment overlap padding
+    mixed_history: std::collections::VecDeque<f32>,
 }
 
 impl AudioPipeline {
@@ -707,7 +701,7 @@ impl AudioPipeline {
         mic_device_kind: super::device_detection::InputDeviceKind,
         system_device_name: String,
         system_device_kind: super::device_detection::InputDeviceKind,
-    ) -> Self {
+    ) -> Result<Self, String> {
         // Log device characteristics for adaptive buffering
         info!("🎛️ AudioPipeline initializing with device characteristics:");
         info!("   Mic: '{}' ({:?}) - Buffer: {:?}",
@@ -732,8 +726,7 @@ impl AudioPipeline {
                 processor
             }
             Err(e) => {
-                error!("Failed to create VAD processor: {}", e);
-                panic!("VAD processor creation failed: {}", e);
+                return Err(format!("VAD processor creation failed: {}", e));
             }
         };
 
@@ -744,10 +737,10 @@ impl AudioPipeline {
         // Note: target_chunk_duration_ms is ignored - VAD controls segmentation now
         let _ = target_chunk_duration_ms;
 
-        Self {
+        Ok(Self {
             receiver,
             transcription_sender,
-            state,
+            _state: state,
             vad_processor,
             sample_rate,
             chunk_id_counter: 0,
@@ -760,7 +753,8 @@ impl AudioPipeline {
             ring_buffer,
             mixer,
             recording_sender_for_mixed: None,  // Will be set by manager
-        }
+            mixed_history: std::collections::VecDeque::new(),
+        })
     }
 
     /// Run the VAD-driven audio processing pipeline
@@ -831,6 +825,14 @@ impl AudioPipeline {
                             // Previous 2x gain was causing excessive limiting/distortion
                             let mixed_with_gain = mixed_clean;
 
+                            // Store in rolling history for VAD segment overlap padding
+                            // Keep last 8000 samples (~500ms at 16kHz)
+                            const MIXED_HISTORY_MAX: usize = 8000;
+                            self.mixed_history.extend(mixed_with_gain.iter().copied());
+                            while self.mixed_history.len() > MIXED_HISTORY_MAX {
+                                self.mixed_history.pop_front();
+                            }
+
                             // STEP 3: Send mixed audio for transcription (VAD + Whisper)
                             match self.vad_processor.process_audio(&mixed_with_gain) {
                                 Ok(speech_segments) => {
@@ -838,13 +840,25 @@ impl AudioPipeline {
                                         let duration_ms = segment.end_timestamp_ms - segment.start_timestamp_ms;
 
                                         if segment.samples.len() >= 800 {  // Minimum 50ms at 16kHz - matches Parakeet capability
-                                            info!("📤 Sending VAD segment: {:.1}ms, {} samples",
-                                                  duration_ms, segment.samples.len());
+                                            // Pad with 200ms left context from mixed audio history
+                                            // to catch words split at VAD segment boundaries
+                                            const PAD_SAMPLES: usize = 3200; // 200ms at 16kHz
+                                            let pad_count = PAD_SAMPLES.min(self.mixed_history.len());
+                                            let mut padded = Vec::with_capacity(pad_count + segment.samples.len());
+                                            if pad_count > 0 {
+                                                let start = self.mixed_history.len() - pad_count;
+                                                padded.extend(self.mixed_history.iter().skip(start).copied());
+                                            }
+                                            padded.extend(segment.samples);
+
+                                            let padded_duration_ms = padded.len() as f64 / 16.0;
+                                            info!("📤 Sending VAD segment: {:.1}ms (padded from {:.1}ms), {} samples",
+                                                  padded_duration_ms, duration_ms, padded.len());
 
                                             let transcription_chunk = AudioChunk {
-                                                data: segment.samples,
+                                                data: padded,
                                                 sample_rate: 16000,
-                                                timestamp: segment.start_timestamp_ms / 1000.0,
+                                                timestamp: (segment.start_timestamp_ms - (pad_count as f64 / 16.0)).max(0.0),
                                                 chunk_id: self.chunk_id_counter,
                                                 device_type: DeviceType::Microphone,  // Mixed audio
                                             };
@@ -989,7 +1003,10 @@ impl AudioPipelineManager {
             mic_device_kind,
             system_device_name,
             system_device_kind,
-        );
+        ).map_err(|e| {
+            error!("Failed to create audio pipeline: {}", e);
+            anyhow::anyhow!("Audio pipeline creation failed: {}", e)
+        })?;
 
         // CRITICAL FIX: Connect recording sender to receive pre-mixed audio
         // This ensures both mic AND system audio are captured in recordings

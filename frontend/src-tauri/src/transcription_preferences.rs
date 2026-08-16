@@ -110,18 +110,14 @@ pub async fn set_transcription_hotwords<R: Runtime>(
 pub(crate) fn extract_protected_terms(raw: &str) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     let mut terms: Vec<String> = raw
-        .split(|c: char| matches!(c, '\n' | '\r' | '\t') || c == ' ')
-        .filter_map(|s| {
-            let trimmed = s.trim();
-            if trimmed.is_empty() {
-                return None;
-            }
-            trimmed.strip_prefix('!').map(|rest| rest.trim().to_string())
-        })
+        .lines()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .filter_map(|s| s.strip_prefix('!').map(|rest| rest.trim().to_string()))
         .filter(|s| !s.is_empty())
         .filter(|s| seen.insert(s.clone()))
         .collect();
-    terms.sort_by(|a, b| b.len().cmp(&a.len()));
+    terms.sort_by(|a, b| b.len().cmp(&a.len()).then(a.cmp(b)));
     terms
 }
 
@@ -131,14 +127,17 @@ pub(crate) fn extract_protected_terms(raw: &str) -> Vec<String> {
 /// deduplicated, byte-length-descending list (longest match wins).
 pub(crate) fn extract_all_hotwords(raw: &str) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
-    let mut terms: Vec<String> = raw
-        .split(|c: char| matches!(c, '\n' | '\r' | '\t') || c == ' ')
-        .map(|s| s.trim().to_string())
+    let mut indexed: Vec<(usize, String)> = raw
+        .lines()
+        .map(|s| s.trim())
         .filter(|s| !s.is_empty())
-        .filter(|s| seen.insert(s.clone()))
+        .enumerate()
+        .map(|(i, s)| (i, s.strip_prefix('!').unwrap_or(s).trim().to_string()))
+        .filter(|(_, s)| !s.is_empty())
+        .filter(|(_, s)| seen.insert(s.clone()))
         .collect();
-    terms.sort_by(|a, b| b.len().cmp(&a.len()));
-    terms
+    indexed.sort_by(|a, b| b.1.len().cmp(&a.1.len()).then(a.0.cmp(&b.0)));
+    indexed.into_iter().map(|(_, t)| t).collect()
 }
 
 /// Wave 18 PR-55: Tauri command returning the protected-term list.

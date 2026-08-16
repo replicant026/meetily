@@ -1,5 +1,6 @@
+import { logger } from "@/lib/logger";
 "use client";
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Summary, SummaryResponse } from '@/types';
 import { useSidebar } from '@/components/Sidebar/SidebarProvider';
@@ -7,7 +8,12 @@ import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { TranscriptPanel } from '@/components/MeetingDetails/TranscriptPanel';
-import { SummaryPanel } from '@/components/MeetingDetails/SummaryPanel';
+import { TranscriptButtonGroup } from '@/components/MeetingDetails/TranscriptButtonGroup';
+import { SummaryGeneratorButtonGroup } from '@/components/MeetingDetails/SummaryGeneratorButtonGroup';
+import { MeetingWorkspace } from '@/components/MeetingWorkspace/MeetingWorkspace';
+import { MeetingNotesTab } from '@/components/MeetingWorkspace/MeetingNotesTab';
+import { MeetingActionsTab } from '@/components/MeetingWorkspace/MeetingActionsTab';
+import type { AudioController, WorkspaceAction } from '@/components/MeetingWorkspace/types';
 import { ModelConfig } from '@/components/ModelSettingsModal';
 
 // Custom hooks
@@ -19,6 +25,10 @@ import { useMeetingOperations } from '@/hooks/meeting-details/useMeetingOperatio
 import { useConfig } from '@/contexts/ConfigContext';
 import { useTranslations } from 'next-intl';
 import { useMeetingAudioPath } from '@/hooks/useMeetingAudioPath';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useAudioPeaks } from '@/hooks/useAudioPeaks';
+import { useMeetingWorkspace } from '@/components/MeetingWorkspace/useMeetingWorkspace';
+import { getMeetingActionStates } from '@/lib/meeting-workspace-storage';
 
 export default function PageContent({
   meeting,
@@ -49,7 +59,7 @@ export default function PageContent({
   loadedCount?: number;
   onLoadMore?: () => void;
 }) {
-  console.log('📄 PAGE CONTENT: Initializing with data:', {
+  logger.log('📄 PAGE CONTENT: Initializing with data:', {
     meetingId: meeting.id,
     summaryDataKeys: summaryData ? Object.keys(summaryData) : null,
     transcriptsCount: meeting.transcripts?.length
@@ -59,36 +69,6 @@ export default function PageContent({
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [isRecording] = useState(false);
   const [summaryResponse] = useState<SummaryResponse | null>(null);
-
-  // Resizable divider state
-  const [transcriptWidth, setTranscriptWidth] = useState(33);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-
-    const onMove = (ev: MouseEvent) => {
-      if (!isDragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
-      setTranscriptWidth(Math.min(60, Math.max(20, pct)));
-    };
-
-    const onUp = () => {
-      isDragging.current = false;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, []);
 
   // Ref to store the modal open function from SummaryGeneratorButtonGroup
   const openModelSettingsRef = useRef<(() => void) | null>(null);
@@ -106,17 +86,17 @@ export default function PageContent({
 
   // Callback to register the modal open function
   const handleRegisterModalOpen = (openFn: () => void) => {
-    console.log('📝 Registering modal open function in PageContent');
+    logger.log('📝 Registering modal open function in PageContent');
     openModelSettingsRef.current = openFn;
   };
 
   // Callback to trigger modal open (called from error handler)
   const handleOpenModelSettings = () => {
-    console.log('🔔 Opening model settings from PageContent');
+    logger.log('🔔 Opening model settings from PageContent');
     if (openModelSettingsRef.current) {
       openModelSettingsRef.current();
     } else {
-      console.warn('⚠️ Modal open function not yet registered');
+      logger.warn('⚠️ Modal open function not yet registered');
     }
   };
 
@@ -138,7 +118,7 @@ export default function PageContent({
 
       toast.success(t('summary.save_success'));
     } catch (error) {
-      console.error('Failed to save model config:', error);
+      logger.error('Failed to save model config:', error);
       toast.error(t('summary.save_failed'));
     }
   };
@@ -181,7 +161,7 @@ export default function PageContent({
 
     const autoGenerate = async () => {
       if (shouldAutoGenerate && meetingData.transcripts.length > 0 && !cancelled) {
-        console.log(`🤖 Auto-generating summary with ${modelConfig.provider}/${modelConfig.model}...`);
+        logger.log(`🤖 Auto-generating summary with ${modelConfig.provider}/${modelConfig.model}...`);
         await summaryGeneration.handleGenerateSummary('');
 
         // Notify parent that auto-generation is complete (only if not cancelled)
@@ -197,7 +177,162 @@ export default function PageContent({
     return () => {
       cancelled = true;
     };
-  }, [shouldAutoGenerate, meeting.id]); // Re-run if meeting changes
+  }, [shouldAutoGenerate, meeting.id, t]); // Re-run if meeting changes
+
+  // Audio player and waveform peaks (Wave 14 PR-44d)
+  const audioPlayer = useAudioPlayer(audioPath);
+  const peaks = useAudioPeaks(audioPath);
+
+  const audioController: AudioController = {
+    isPlaying: audioPlayer.isPlaying,
+    currentTime: audioPlayer.currentTime,
+    duration: audioPlayer.duration,
+    toggle: audioPlayer.isPlaying ? audioPlayer.pause : audioPlayer.play,
+    seek: audioPlayer.seek,
+  };
+
+  // Derive participants from transcript speaker data
+  const participants = useMeetingWorkspace(meetingData.transcripts);
+
+  const chapters = Array.isArray((meetingData.aiSummary as unknown as { chapters?: unknown })?.chapters)
+    ? (meetingData.aiSummary as unknown as { chapters: Array<{ segment_id?: unknown; title?: unknown; start_time?: unknown }> }).chapters
+      .filter((chapter) => (
+        typeof chapter.segment_id === 'string'
+        && typeof chapter.title === 'string'
+        && typeof chapter.start_time === 'number'
+        && Number.isFinite(chapter.start_time)
+      ))
+      .map((chapter) => ({
+        segmentId: chapter.segment_id as string,
+        title: chapter.title as string,
+        startTime: chapter.start_time as number,
+      }))
+    : [];
+
+  // Persisted action completion states
+  const [completedActionIds, setCompletedActionIds] = useState<Set<string>>(new Set());
+  const [manualActions, setManualActions] = useState<WorkspaceAction[]>([]);
+  const [manualActionsLoadedFor, setManualActionsLoadedFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!meeting.id) return;
+    getMeetingActionStates(meeting.id).then((states) => {
+      setCompletedActionIds(new Set(
+        Object.entries(states)
+          .filter(([, completed]) => completed)
+          .map(([id]) => id)
+      ));
+    }).catch(() => {});
+  }, [meeting.id, summaryData]);
+
+  useEffect(() => {
+    const storageKey = `meetily:manual-actions:${meeting.id}`;
+    setManualActionsLoadedFor(null);
+    try {
+      setManualActions(JSON.parse(localStorage.getItem(storageKey) ?? '[]'));
+    } catch {
+      setManualActions([]);
+    }
+    setManualActionsLoadedFor(meeting.id);
+  }, [meeting.id]);
+
+  useEffect(() => {
+    if (manualActionsLoadedFor !== meeting.id) return;
+    localStorage.setItem(`meetily:manual-actions:${meeting.id}`, JSON.stringify(manualActions));
+  }, [manualActions, manualActionsLoadedFor, meeting.id]);
+
+  const transcriptPanel = (
+    <TranscriptPanel
+      width={undefined}
+      transcripts={meetingData.transcripts}
+      customPrompt={customPrompt}
+      onPromptChange={setCustomPrompt}
+      onCopyTranscript={copyOperations.handleCopyTranscript}
+      onExportTranscript={copyOperations.handleExportTranscript}
+      onOpenMeetingFolder={meetingOperations.handleOpenMeetingFolder}
+      isRecording={isRecording}
+      disableAutoScroll={true}
+      // Pagination props for efficient loading
+      usePagination={true}
+      segments={segments}
+      hasMore={hasMore}
+      isLoadingMore={isLoadingMore}
+      totalCount={totalCount}
+      loadedCount={loadedCount}
+      onLoadMore={onLoadMore}
+      // Retranscription props
+      meetingId={meeting.id}
+      meetingFolderPath={meeting.folder_path}
+      onRefetchTranscripts={onRefetchTranscripts}
+      // Audio jump props (Wave 14 PR-44d): seek callback for timestamp click-to-jump
+      onSeekToTimestamp={audioPlayer.seek}
+      onPlayFromTimestamp={(seconds) => {
+        audioPlayer.seek(seconds);
+        void audioPlayer.play();
+      }}
+      currentAudioTime={audioPlayer.currentTime}
+    />
+  );
+
+  const actionItems: WorkspaceAction[] = [
+    ...(meetingData.aiSummary?.action_items?.blocks?.map((block, i) => ({
+      id: `summary:action_items:${i}`,
+      text: block.content,
+      assigneeId: null,
+      completed: completedActionIds.has(`summary:action_items:${i}`),
+    })) ?? []),
+    ...manualActions,
+  ];
+
+  const notesPanel = <MeetingNotesTab meetingId={meeting.id} />;
+  const actionsPanel = (
+    <MeetingActionsTab
+      meetingId={meeting.id}
+      actions={actionItems}
+      onCreateAction={(text) => {
+        setManualActions((current) => [
+          ...current,
+          { id: `manual:${crypto.randomUUID()}`, text, assigneeId: null, completed: false },
+        ]);
+      }}
+      onDeleteAction={(actionId) => setManualActions((current) => current.filter((action) => action.id !== actionId))}
+    />
+  );
+
+  const transcriptToolbar = (
+    <TranscriptButtonGroup
+      transcriptCount={totalCount ?? segments?.length ?? meetingData.transcripts.length}
+      onCopyTranscript={copyOperations.handleCopyTranscript}
+      onExportTranscript={copyOperations.handleExportTranscript}
+      onOpenMeetingFolder={meetingOperations.handleOpenMeetingFolder}
+      meetingId={meeting.id}
+      meetingFolderPath={meeting.folder_path}
+      onRefetchTranscripts={onRefetchTranscripts}
+      meetingTitle={meetingData.meetingTitle}
+      transcriptMarkdown={meetingData.transcripts.map((tr: { speaker?: string | null; text: string }) => {
+        const speaker = tr.speaker ? `**${tr.speaker}:** ` : '';
+        return `${speaker}${tr.text}`;
+      }).join('\n\n')}
+    />
+  );
+
+  const summaryToolbar = (
+    <SummaryGeneratorButtonGroup
+      modelConfig={modelConfig}
+      setModelConfig={setModelConfig}
+      onSaveModelConfig={handleSaveModelConfig}
+      onGenerateSummary={summaryGeneration.handleGenerateSummary}
+      onStopGeneration={summaryGeneration.handleStopGeneration}
+      customPrompt={customPrompt}
+      summaryStatus={summaryGeneration.summaryStatus}
+      availableTemplates={templates.availableTemplates}
+      selectedTemplate={templates.selectedTemplate}
+      onTemplateSelect={templates.handleTemplateSelection}
+      hasTranscripts={Boolean((segments?.length ?? 0) || meetingData.transcripts.length)}
+      hasSummary={Boolean(meetingData.aiSummary)}
+      isModelConfigLoading={false}
+      onOpenModelSettings={handleRegisterModalOpen}
+    />
+  );
 
   return (
     <motion.div
@@ -206,73 +341,54 @@ export default function PageContent({
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="flex flex-col h-screen bg-gray-50"
     >
-      <div ref={containerRef} className="flex flex-1 overflow-hidden">
-        <TranscriptPanel
-          width={transcriptWidth}
-          transcripts={meetingData.transcripts}
-          customPrompt={customPrompt}
-          onPromptChange={setCustomPrompt}
-          onCopyTranscript={copyOperations.handleCopyTranscript}
-          onExportTranscript={copyOperations.handleExportTranscript}
-          onOpenMeetingFolder={meetingOperations.handleOpenMeetingFolder}
-          isRecording={isRecording}
-          disableAutoScroll={true}
-          // Pagination props for efficient loading
-          usePagination={true}
-          segments={segments}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          totalCount={totalCount}
-          loadedCount={loadedCount}
-          onLoadMore={onLoadMore}
-          // Retranscription props
-          meetingId={meeting.id}
-          meetingFolderPath={meeting.folder_path}
-          onRefetchTranscripts={onRefetchTranscripts}
-          // Audio jump props (Wave 14 PR-44d): null disables the player gracefully
-          audioPath={audioPath}
-        />
-        {/* Resizable divider */}
-        <div
-          onMouseDown={handleDividerMouseDown}
-          className="w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 transition-colors shrink-0 hidden md:block"
-        />
-        <SummaryPanel
-          meeting={meeting}
-          meetingTitle={meetingData.meetingTitle}
-          onTitleChange={meetingData.handleTitleChange}
-          isEditingTitle={meetingData.isEditingTitle}
-          onStartEditTitle={() => meetingData.setIsEditingTitle(true)}
-          onFinishEditTitle={() => meetingData.setIsEditingTitle(false)}
-          isTitleDirty={meetingData.isTitleDirty}
-          summaryRef={meetingData.blockNoteSummaryRef}
-          isSaving={meetingData.isSaving}
-          onSaveAll={meetingData.saveAllChanges}
-          onCopySummary={copyOperations.handleCopySummary}
-          onOpenFolder={meetingOperations.handleOpenMeetingFolder}
-          aiSummary={meetingData.aiSummary}
-          summaryStatus={summaryGeneration.summaryStatus}
-          transcripts={meetingData.transcripts}
-          modelConfig={modelConfig}
-          setModelConfig={setModelConfig}
-          onSaveModelConfig={handleSaveModelConfig}
-          onGenerateSummary={summaryGeneration.handleGenerateSummary}
-          onStopGeneration={summaryGeneration.handleStopGeneration}
-          customPrompt={customPrompt}
-          summaryResponse={summaryResponse}
-          onSaveSummary={meetingData.handleSaveSummary}
-          onSummaryChange={meetingData.handleSummaryChange}
-          onDirtyChange={meetingData.setIsSummaryDirty}
-          summaryError={summaryGeneration.summaryError}
-          onRegenerateSummary={summaryGeneration.handleRegenerateSummary}
-          getSummaryStatusMessage={summaryGeneration.getSummaryStatusMessage}
-          availableTemplates={templates.availableTemplates}
-          selectedTemplate={templates.selectedTemplate}
-          onTemplateSelect={templates.handleTemplateSelection}
-          isModelConfigLoading={false}
-          onOpenModelSettings={handleRegisterModalOpen}
-        />
-      </div>
+      <MeetingWorkspace
+        meeting={{ id: meeting.id, title: meeting.title, created_at: meeting.created_at }}
+        audio={audioController}
+        participants={participants}
+        peaks={peaks}
+        chapters={chapters}
+        transcriptToolbar={transcriptToolbar}
+        summaryToolbar={summaryToolbar}
+        transcriptContent={transcriptPanel}
+        summaryProps={{
+          meeting,
+          meetingTitle: meetingData.meetingTitle,
+          onTitleChange: meetingData.handleTitleChange,
+          isEditingTitle: meetingData.isEditingTitle,
+          onStartEditTitle: () => meetingData.setIsEditingTitle(true),
+          onFinishEditTitle: () => meetingData.setIsEditingTitle(false),
+          isTitleDirty: meetingData.isTitleDirty,
+          summaryRef: meetingData.blockNoteSummaryRef,
+          isSaving: meetingData.isSaving,
+          onSaveAll: meetingData.saveAllChanges,
+          onCopySummary: copyOperations.handleCopySummary,
+          onOpenFolder: meetingOperations.handleOpenMeetingFolder,
+          aiSummary: meetingData.aiSummary,
+          summaryStatus: summaryGeneration.summaryStatus,
+          transcripts: meetingData.transcripts,
+          modelConfig,
+          setModelConfig,
+          onSaveModelConfig: handleSaveModelConfig,
+          onGenerateSummary: summaryGeneration.handleGenerateSummary,
+          onStopGeneration: summaryGeneration.handleStopGeneration,
+          customPrompt,
+          summaryResponse,
+          onSaveSummary: meetingData.handleSaveSummary,
+          onSummaryChange: meetingData.handleSummaryChange,
+          onDirtyChange: meetingData.setIsSummaryDirty,
+          summaryError: summaryGeneration.summaryError,
+          showToolbar: false,
+          onRegenerateSummary: summaryGeneration.handleRegenerateSummary,
+          getSummaryStatusMessage: summaryGeneration.getSummaryStatusMessage,
+          availableTemplates: templates.availableTemplates,
+          selectedTemplate: templates.selectedTemplate,
+          onTemplateSelect: templates.handleTemplateSelection,
+          isModelConfigLoading: false,
+          onOpenModelSettings: handleRegisterModalOpen,
+        }}
+        notesContent={notesPanel}
+        actionsContent={actionsPanel}
+      />
     </motion.div>
   );
 }

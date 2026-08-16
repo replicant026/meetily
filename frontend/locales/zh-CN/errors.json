@@ -8,5 +8,8 @@
   "update_available": "有可用更新。",
   "update_failed": "更新失败，请稍后重试。",
   "recovery_failed": "恢复会议失败，请重试。",
-  "unknown_error": "发生未知错误。"
+  "unknown_error": "发生未知错误。",
+  "error_boundary_title": "出错了",
+  "error_boundary_description": "发生意外错误。重新加载通常可以解决。",
+  "error_boundary_reset": "重新加载应用"
 }

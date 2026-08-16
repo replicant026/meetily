@@ -339,7 +339,11 @@ impl AudioStream {
                     task_handle.abort();
                     // Give the runtime a moment to clean up the aborted task
                     // This helps ensure Arc references in the closure are dropped
-                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(
+                            tokio::time::sleep(std::time::Duration::from_millis(50))
+                        );
+                    });
                     info!("Core Audio task aborted");
                 }
             }

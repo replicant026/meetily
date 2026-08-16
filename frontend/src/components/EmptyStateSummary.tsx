@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { FileQuestion, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AppButton } from '@/components/ui/app-button';
 import {
   Tooltip,
   TooltipContent,
@@ -26,11 +26,11 @@ export function EmptyStateSummary({ onGenerate, hasModel, isGenerating = false }
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="flex flex-col items-center justify-center h-full p-8 text-center"
     >
-      <FileQuestion className="w-16 h-16 text-gray-300 mb-4" />
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+      <FileQuestion className="w-16 h-16 text-[rgb(var(--app-muted-fg))] mb-4" />
+      <h3 className="text-lg font-semibold text-[rgb(var(--app-fg))] mb-2">
         {t('empty_state.title')}
       </h3>
-      <p className="text-sm text-gray-500 mb-6 max-w-md">
+      <p className="text-sm text-[rgb(var(--app-muted-fg))] mb-6 max-w-md">
         {t('empty_state.description')}
       </p>
 
@@ -38,14 +38,15 @@ export function EmptyStateSummary({ onGenerate, hasModel, isGenerating = false }
         <Tooltip>
           <TooltipTrigger asChild>
             <div>
-              <Button
+              <AppButton
+                variant="primary"
                 onClick={onGenerate}
                 disabled={!hasModel || isGenerating}
                 className="gap-2"
               >
                 <Sparkles className="w-4 h-4" />
                 {isGenerating ? t('empty_state.generating') : t('empty_state.generate')}
-              </Button>
+              </AppButton>
             </div>
           </TooltipTrigger>
           {!hasModel && (
@@ -57,7 +58,7 @@ export function EmptyStateSummary({ onGenerate, hasModel, isGenerating = false }
       </TooltipProvider>
 
       {!hasModel && (
-        <p className="text-xs text-amber-600 mt-3">
+        <p className="text-xs text-[rgb(var(--app-warning))] mt-3">
           {t('empty_state.select_model_first')}
         </p>
       )}

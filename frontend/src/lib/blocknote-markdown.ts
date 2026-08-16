@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import type { Block } from "@blocknote/core";
 
 interface MarkdownCapableEditor {
@@ -25,7 +26,7 @@ export async function blocksToMarkdownSafely(
       ok: true,
     };
   } catch (error) {
-    console.error("Failed to convert BlockNote blocks to markdown", {
+    logger.error("Failed to convert BlockNote blocks to markdown", {
       source: options.source,
       blocksCount: blocks.length,
       error,

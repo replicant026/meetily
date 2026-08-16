@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -58,7 +59,7 @@ export function useTranscriptionModels(transcriptModelConfig: TranscriptModelCon
         }));
       allModels.push(...availableWhisper);
     } catch (err) {
-      console.error('Failed to fetch Whisper models:', err);
+      logger.error('Failed to fetch Whisper models:', err);
     }
 
     // Fetch Parakeet models
@@ -74,7 +75,7 @@ export function useTranscriptionModels(transcriptModelConfig: TranscriptModelCon
         }));
       allModels.push(...availableParakeet);
     } catch (err) {
-      console.error('Failed to fetch Parakeet models:', err);
+      logger.error('Failed to fetch Parakeet models:', err);
     }
 
     setAvailableModels(allModels);

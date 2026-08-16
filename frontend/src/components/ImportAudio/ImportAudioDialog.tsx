@@ -12,6 +12,10 @@ import {
   HardDrive,
   ChevronDown,
   ChevronUp,
+  Check,
+  Circle,
+  Sparkles,
+  UsersRound,
 } from 'lucide-react';
 import {
   Dialog,
@@ -64,6 +68,34 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
+const WAVEFORM_BARS = [32, 58, 74, 45, 86, 65, 42, 37, 55, 78, 44, 92, 68, 48, 38, 64, 81, 49, 59, 73, 41, 89, 57, 46, 76, 62, 35, 54, 83, 66, 43, 72, 51, 91, 60, 39, 69, 80, 47, 63];
+
+function ImportWaveform({ progress }: { progress: number }) {
+  return (
+    <div className="flex h-16 items-center gap-1 overflow-hidden" aria-label="Audio waveform">
+      {WAVEFORM_BARS.map((height, index) => {
+        const isComplete = index / WAVEFORM_BARS.length <= progress / 100;
+        return (
+          <span
+            key={index}
+            className={isComplete ? 'bg-pink-600' : 'bg-stone-200'}
+            style={{ height: `${height}%`, width: 4, borderRadius: 999 }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function ImportStage({ active, complete, label }: { active: boolean; complete: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      {complete ? <Check className="h-4 w-4 rounded-full bg-pink-600 p-0.5 text-white" /> : active ? <Loader2 className="h-4 w-4 animate-spin text-pink-600" /> : <Circle className="h-4 w-4 text-stone-300" />}
+      <span className={active || complete ? 'text-stone-800' : 'text-stone-400'}>{label}</span>
+    </div>
+  );
+}
+
 export function ImportAudioDialog({
   open,
   onOpenChange,
@@ -78,6 +110,7 @@ export function ImportAudioDialog({
   const [selectedLang, setSelectedLang] = useState(selectedLanguage || 'auto');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [titleModifiedByUser, setTitleModifiedByUser] = useState(false);
+  const [participantCount, setParticipantCount] = useState('auto');
 
   // Always start as false — represents "dialog has not yet been opened".
   // Do NOT initialize from the `open` prop: if the component mounts with open=true
@@ -139,6 +172,7 @@ export function ImportAudioDialog({
       setTitleModifiedByUser(false);
       setSelectedLang(selectedLanguage || 'auto');
       setShowAdvanced(false);
+      setParticipantCount('auto');
 
       // Validate preselected file if provided
       if (preselectedFile) {
@@ -192,7 +226,8 @@ export function ImportAudioDialog({
       title || fileInfo.filename,
       isParakeetModel ? null : selectedLang === 'auto' ? null : selectedLang,
       selectedModel?.name || null,
-      selectedModel?.provider || null
+      selectedModel?.provider || null,
+      participantCount === 'auto' ? null : Number(participantCount),
     );
   };
 
@@ -227,54 +262,54 @@ export function ImportAudioDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-[500px]"
+        className="overflow-hidden border-[rgb(var(--app-border))] bg-[rgb(var(--app-surface))] p-0 sm:max-w-[620px]"
         onEscapeKeyDown={handleEscapeKeyDown}
         onInteractOutside={handleInteractOutside}
       >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+        <DialogHeader className="border-b border-[rgb(var(--app-border))] px-7 pb-5 pt-7">
+          <DialogTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.13em] text-pink-700">
             {isProcessing ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                Importing Audio...
+                <span className="h-2 w-2 rounded-full bg-pink-500" />
+                Importing audio
               </>
             ) : error ? (
               <>
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                Import Failed
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                Import failed
               </>
             ) : status === 'complete' ? (
               <>
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                Import Complete
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                Import complete
               </>
             ) : (
               <>
-                <Upload className="h-5 w-5 text-blue-600" />
-                Import Audio File
+                <span className="h-2 w-2 rounded-full bg-pink-500" />
+                Import audio
               </>
             )}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="mt-3 font-serif text-2xl text-stone-900">
             {isProcessing
               ? progress?.message || 'Processing audio...'
               : error
               ? 'An error occurred during import'
-              : 'Import an audio file to create a new meeting with transcripts'}
+              : 'Create a meeting from an audio file'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-5 px-7 py-6">
           {/* File selection / info */}
           {!isProcessing && !error && (
             <>
               {fileInfo ? (
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div className="space-y-4 rounded-xl border border-[rgb(var(--app-border))] bg-[rgb(var(--app-bg))] p-4">
                   <div className="flex items-start gap-3">
-                    <FileAudio className="h-8 w-8 text-blue-600 flex-shrink-0" />
+                    <FileAudio className="h-9 w-9 rounded-lg bg-pink-50 p-2 text-pink-700 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{fileInfo.filename}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                      <p className="font-serif text-lg text-stone-900 truncate">{fileInfo.filename}</p>
+                      <div className="mt-1 flex items-center gap-3 text-sm text-stone-500">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5" />
                           {formatDuration(fileInfo.duration_seconds)}
@@ -283,14 +318,14 @@ export function ImportAudioDialog({
                           <HardDrive className="h-3.5 w-3.5" />
                           {formatFileSize(fileInfo.size_bytes)}
                         </span>
-                        <span className="text-blue-600 font-medium">{fileInfo.format}</span>
+                        <span className="font-medium text-pink-700">{fileInfo.format}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Editable title */}
                   <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Meeting Title</label>
+                    <label className="text-sm font-medium text-stone-700">Meeting title</label>
                     <Input
                       value={title}
                       onChange={(e) => {
@@ -301,13 +336,13 @@ export function ImportAudioDialog({
                     />
                   </div>
 
-                  <Button variant="outline" size="sm" onClick={handleSelectFile} className="w-full">
-                    Choose Different File
+                  <Button variant="outline" size="sm" onClick={handleSelectFile} className="w-full border-[rgb(var(--app-border))] bg-[rgb(var(--app-surface))]">
+                    Change file
                   </Button>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <FileAudio className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <div className="rounded-xl border-2 border-dashed border-[rgb(var(--app-border))] bg-[rgb(var(--app-bg))] p-8 text-center">
+                  <FileAudio className="mx-auto mb-4 h-12 w-12 text-pink-600" />
                   <Button onClick={handleSelectFile} disabled={status === 'validating'}>
                     {status === 'validating' ? (
                       <>
@@ -317,12 +352,24 @@ export function ImportAudioDialog({
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Select Audio File
+                        Select audio file
                       </>
                     )}
                   </Button>
-                  <p className="text-sm text-gray-500 mt-2">MP4, WAV, MP3, FLAC, OGG, MKV, WebM, WMA</p>
+                  <p className="mt-2 text-sm text-stone-500">MP4, WAV, MP3, FLAC, OGG, MKV, WebM, WMA</p>
                 </div>
+              )}
+
+              {fileInfo && (
+                <section className="rounded-xl border border-[rgb(var(--app-border))] bg-[rgb(var(--app-bg))] p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-stone-900"><UsersRound className="h-4 w-4 text-pink-700" />Participants</div>
+                  <p className="mt-1 text-xs text-stone-500">Limit speaker diarization to the approximate number of people in the conversation.</p>
+                  <div className="mt-3 grid grid-cols-5 overflow-hidden rounded-lg border border-[rgb(var(--app-border))] bg-[rgb(var(--app-surface))]">
+                    {['auto', '1', '2', '3', '4+'].map((count) => (
+                      <button key={count} type="button" onClick={() => setParticipantCount(count === '4+' ? '4' : count)} className={`min-h-10 border-r border-[rgb(var(--app-border))] text-sm last:border-r-0 ${participantCount === (count === '4+' ? '4' : count) ? 'bg-pink-700 font-medium text-white' : 'text-stone-600 hover:bg-[rgb(var(--app-muted))]'}`}>{count === 'auto' ? 'Auto' : count}</button>
+                    ))}
+                  </div>
+                </section>
               )}
 
               {/* Advanced options (collapsible) */}
@@ -369,7 +416,7 @@ export function ImportAudioDialog({
                             <span className="text-sm font-medium">Language</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Language selection isn't supported for Parakeet. It always uses automatic detection.
+                            Language selection isn&apos;t supported for Parakeet. It always uses automatic detection.
                           </p>
                         </div>
                       )}
@@ -402,6 +449,7 @@ export function ImportAudioDialog({
                           </Select>
                         </div>
                       )}
+
                     </div>
                   )}
                 </div>
@@ -411,20 +459,33 @@ export function ImportAudioDialog({
 
           {/* Progress display */}
           {isProcessing && progress && (
-            <div className="space-y-2">
-              <div className="relative">
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
-                    style={{ width: `${Math.min(progress.progress_percentage, 100)}%` }}
-                  />
+            <div className="space-y-5">
+              {fileInfo && (
+                <div>
+                  <div className="font-serif text-2xl text-stone-900">{title || fileInfo.filename}</div>
+                  <p className="mt-1 text-sm text-stone-500">{fileInfo.format} · {formatDuration(fileInfo.duration_seconds)} · {formatFileSize(fileInfo.size_bytes)}</p>
                 </div>
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>{progress.stage}</span>
-                  <span>{Math.round(progress.progress_percentage)}%</span>
+              )}
+              <ImportWaveform progress={progress.progress_percentage} />
+              <div>
+                <div className="h-2 overflow-hidden rounded-full bg-stone-200">
+                  <div className="h-full rounded-full bg-pink-700 transition-[width] duration-500" style={{ width: `${Math.min(progress.progress_percentage, 100)}%` }} />
+                </div>
+                <div className="mt-2 flex justify-between text-sm text-stone-500">
+                  <span>{Math.round(progress.progress_percentage)}% complete</span>
+                  <span>{progress.stage === 'transcribing' ? 'Transcribing locally' : progress.message}</span>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground text-center">{progress.message}</p>
+              <div className="rounded-xl border border-[rgb(var(--app-border))] bg-[rgb(var(--app-bg))] p-4">
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-stone-500"><span className="h-2 w-2 rounded-full bg-pink-500" />Latest transcript</div>
+                <p className="font-serif text-lg leading-relaxed text-stone-800">{progress.latest_transcript || progress.message}</p>
+              </div>
+              <div className="space-y-3 border-t border-[rgb(var(--app-border))] pt-4">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-stone-500"><Sparkles className="h-3.5 w-3.5 text-pink-700" />Import stages</div>
+                <ImportStage complete={['transcribing', 'diarization', 'saving'].includes(progress.stage)} active={['copying', 'decoding', 'vad'].includes(progress.stage)} label="Preparing audio" />
+                <ImportStage complete={['diarization', 'saving'].includes(progress.stage)} active={progress.stage === 'transcribing'} label="Transcribing" />
+                <ImportStage complete={progress.stage === 'saving'} active={progress.stage === 'diarization'} label="Identifying speakers" />
+              </div>
             </div>
           )}
 
@@ -436,7 +497,7 @@ export function ImportAudioDialog({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t border-[rgb(var(--app-border))] bg-[rgb(var(--app-bg))] px-7 py-4">
           {!isProcessing && !error && (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -444,11 +505,11 @@ export function ImportAudioDialog({
               </Button>
               <Button
                 onClick={handleStartImport}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-pink-700 hover:bg-pink-800"
                 disabled={!fileInfo}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Import
+                Start import
               </Button>
             </>
           )}

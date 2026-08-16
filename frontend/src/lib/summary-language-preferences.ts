@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { invoke } from '@tauri-apps/api/core';
 import { normaliseLanguageCode } from '@/lib/summary-languages';
 
@@ -221,7 +222,7 @@ export async function detectAndCacheSummaryLanguage(
     try {
       await saveCachedDetectedSummaryLanguage(meetingId, detection.language);
     } catch (error) {
-      console.warn('Failed to cache detected summary language:', error);
+      logger.warn('Failed to cache detected summary language:', error);
     }
   }
 

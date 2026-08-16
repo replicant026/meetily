@@ -1,0 +1,27 @@
+{
+  "name": "1-on-1 Meeting",
+  "description": "Manager/employee one-on-one meeting template focused on check-in, discussion topics, and action items.",
+  "sections": [
+    {
+      "title": "Check-in",
+      "instruction": "Summarize the overall tone of the meeting, how the employee is doing, and any personal or professional updates shared.",
+      "format": "paragraph"
+    },
+    {
+      "title": "Discussion Topics",
+      "instruction": "List the main topics discussed during the meeting, including project updates, blockers, and feedback exchanged.",
+      "format": "list"
+    },
+    {
+      "title": "Action Items",
+      "instruction": "List all assigned tasks with their owners and due date. Always add reference transcript segment and timestamp in the table.",
+      "format": "list",
+      "item_format": "| **Owner** | Task | Due | Reference Transcript Segment | Segment Time stamp |\n| --- | --- | --- | --- | --- |"
+    },
+    {
+      "title": "Follow-up Notes",
+      "instruction": "Capture any follow-up items, agreed-upon next steps, or topics to revisit in the next 1-on-1.",
+      "format": "paragraph"
+    }
+  ]
+}

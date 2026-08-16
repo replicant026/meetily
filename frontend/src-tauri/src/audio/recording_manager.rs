@@ -327,7 +327,7 @@ impl RecordingManager {
         }
 
         // Stop audio pipeline
-        if let Err(e) = self.pipeline_manager.stop().await {
+        if let Err(e) = self.pipeline_manager.force_flush_and_stop().await {
             error!("Error stopping audio pipeline: {}", e);
         }
 
@@ -445,9 +445,9 @@ impl RecordingManager {
         self.recording_saver.diarization_buffer.clone()
     }
 
-    /// Add a transcript chunk to be saved later (legacy method)
-    pub fn add_transcript_chunk(&self, text: String) {
-        self.recording_saver.add_transcript_chunk(text);
+    /// Realtime speaker tracker for online cosine matching during recording.
+    pub fn speaker_tracker(&self) -> std::sync::Arc<std::sync::Mutex<crate::diarization::tracker::SpeakerTracker>> {
+        self.recording_saver.speaker_tracker.clone()
     }
 
     /// Get accumulated transcript segments from current recording session

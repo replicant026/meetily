@@ -10,30 +10,141 @@
 
 use super::clustering::{remap_by_first_appearance, spectral_cluster};
 use super::embedding::{diarize_full_audio, extract_embedding};
-use super::{WindowedEmbedding, EMBEDDING_DIM};
+use super::speaker_preferences::{get_preferences, resolve_match_action, SpeakerRecognitionPreferences};
+use super::WindowedEmbedding;
 use anyhow::Result;
 use hound::WavReader;
 use sqlx::SqlitePool;
 use std::path::Path;
 
 use crate::database::repositories::speaker::{SpeakerRepository, SUGGEST_MATCH_THRESHOLD};
+use crate::database::repositories::voice_reference::VoiceReferenceRepository;
 
 /// Maximum number of embedding windows fed to spectral_cluster.
 /// Eigendecomposition is O(N³); 192 keeps worst-case under a few seconds.
 const MAX_CLUSTER_WINDOWS: usize = 192;
 
-/// After diarization labels are written, try to match each unique speaker
-/// against known profiles. Returns the number of profiles that were matched.
+/// Shared speaker recognition logic used by both the sherpa and CAM++ paths.
 ///
-/// For each speaker label, extracts audio embeddings from their segments,
-/// computes a centroid, and matches against saved speaker profiles.
-/// If a match is found, updates transcript labels from "Speaker N" to the matched name.
+/// Finds the best matching profile, resolves the action based on preferences,
+/// and either creates a suggestion or returns the match for label application.
+/// Channel compatibility is skipped in the offline path since audio is always mixed.
+///
+/// Returns `Some((speaker_label, matched_name))` when labels should be applied
+/// (Automatic mode, quality threshold met). `None` otherwise.
+async fn process_speaker_match(
+    pool: &SqlitePool,
+    meeting_id: &str,
+    speaker_label: &str,
+    segments: &[(String, Option<f64>, Option<f64>)],
+    centroid: &[f32],
+    prefs: &SpeakerRecognitionPreferences,
+) -> Result<Option<(String, String)>> {
+    let (name, sim, _ref_id) = match SpeakerRepository::find_match(pool, centroid, SUGGEST_MATCH_THRESHOLD).await {
+        Ok(Some(result)) => result,
+        Ok(None) => return Ok(None),
+        Err(e) => {
+            log::warn!("speaker recognition: match lookup failed for {}: {}", speaker_label, e);
+            return Ok(None);
+        }
+    };
+
+    let action = resolve_match_action(prefs.recognition_mode.clone(), sim, prefs.minimum_reference_quality);
+
+    log::info!(
+        "speaker recognition: {} matched '{}' (sim={:.3}, action={:?}, {} segments)",
+        speaker_label, name, sim, action, segments.len()
+    );
+
+    match action {
+        super::speaker_preferences::MatchAction::Ignore => Ok(None),
+
+        super::speaker_preferences::MatchAction::Suggest => {
+            // Look up the person UUID so the suggestion stores a proper FK
+            let person_id = match SpeakerRepository::find_person_by_name(pool, &name).await {
+                Ok(Some((id, _))) => id,
+                _ => {
+                    log::warn!("speaker recognition: could not find person id for '{}'; skipping suggestion", name);
+                    return Ok(None);
+                }
+            };
+            let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
+            match VoiceReferenceRepository::create_suggestion(
+                pool,
+                meeting_id,
+                speaker_label,
+                &person_id,
+                sim,
+                &seg_ids,
+            )
+            .await
+            {
+                Ok(sug_id) => {
+                    log::info!("speaker recognition: created suggestion {} for {}", sug_id, name);
+                }
+                Err(e) => {
+                    log::warn!("speaker recognition: failed to create suggestion: {}", e);
+                }
+            }
+            Ok(None)
+        }
+
+        super::speaker_preferences::MatchAction::Apply => {
+            // Skip channel check — offline path audio is always mixed
+            if sim < prefs.minimum_reference_quality {
+                log::debug!(
+                    "speaker recognition: quality {:.3} below minimum {:.3} for {}; creating suggestion",
+                    sim, prefs.minimum_reference_quality, name
+                );
+                let person_id = match SpeakerRepository::find_person_by_name(pool, &name).await {
+                    Ok(Some((id, _))) => id,
+                    _ => {
+                        log::warn!("speaker recognition: could not find person id for '{}'; skipping suggestion", name);
+                        return Ok(None);
+                    }
+                };
+                let seg_ids: Vec<String> = segments.iter().map(|(id, _, _)| id.clone()).collect();
+                let _ = VoiceReferenceRepository::create_suggestion(
+                    pool,
+                    meeting_id,
+                    speaker_label,
+                    &person_id,
+                    sim,
+                    &seg_ids,
+                )
+                .await;
+                return Ok(None);
+            }
+
+            Ok(Some((speaker_label.to_string(), name)))
+        }
+    }
+}
+
+/// After diarization labels are written, try to match each unique speaker
+/// against known profiles. Respects [`SpeakerRecognitionPreferences`]:
+///
+/// * **Off** → skip entirely
+/// * **Suggest** → create suggestion rows, do NOT update transcript labels
+/// * **Automatic** → update labels only at confidence ≥ 0.90 AND channel-compatible;
+///   create confirmed references only when quality meets minimum
+///
+/// Returns the list of (cluster_label, matched_name) for any actions taken
+/// (suggestions or direct applies).
 async fn apply_speaker_recognition(
     pool: &SqlitePool,
     meeting_id: &str,
     audio_wav: Option<&Path>,
 ) -> Result<Vec<(String, String)>> {
     use crate::database::repositories::transcript::TranscriptsRepository;
+
+    let prefs = get_preferences();
+
+    // Off mode → skip entirely
+    if let crate::database::repositories::voice_reference::RecognitionMode::Off = prefs.recognition_mode {
+        log::info!("speaker recognition: mode=Off, skipping");
+        return Ok(Vec::new());
+    }
 
     // Fetch all segments with speaker labels and audio timestamps
     let rows = sqlx::query_as::<_, (String, String, Option<f64>, Option<f64>)>(
@@ -54,7 +165,10 @@ async fn apply_speaker_recognition(
         by_speaker.entry(speaker.clone()).or_default().push((id.clone(), *start, *end));
     }
 
-    log::info!("speaker recognition: checking {} unique speakers in meeting {}", by_speaker.len(), meeting_id);
+    log::info!(
+        "speaker recognition: mode={:?}, checking {} unique speakers in meeting {}",
+        prefs.recognition_mode, by_speaker.len(), meeting_id
+    );
 
     // Load audio for embedding extraction from the provided path
     let (samples, sr) = match audio_wav {
@@ -91,7 +205,7 @@ async fn apply_speaker_recognition(
     };
 
     let mut matched: Vec<(String, String)> = Vec::new();
-    let mut mapping: Vec<(String, String)> = Vec::new();
+    let mut label_mapping: Vec<(String, String)> = Vec::new();
 
     for (speaker_label, segments) in &by_speaker {
         // Extract audio slices for this speaker's segments and compute embeddings
@@ -134,43 +248,30 @@ async fn apply_speaker_recognition(
         }
 
         // Compute centroid (average embedding)
-        let dim = speaker_embeddings[0].len();
-        let mut centroid = vec![0.0f32; dim];
-        for emb in &speaker_embeddings {
-            for (i, v) in emb.iter().enumerate() {
-                centroid[i] += v;
-            }
-        }
-        for v in centroid.iter_mut() {
-            *v /= speaker_embeddings.len() as f32;
-        }
+        let centroid = compute_centroid(&speaker_embeddings);
 
         // Match against saved profiles
-        match SpeakerRepository::find_match(pool, &centroid, SUGGEST_MATCH_THRESHOLD).await {
-            Ok(Some((name, sim))) => {
-                log::info!(
-                    "speaker recognition: {} matched '{}' (sim={:.3}, {} embeddings averaged)",
-                    speaker_label, name, sim, speaker_embeddings.len()
-                );
-                // Update transcript labels from "Speaker N" to matched name
-                for (seg_id, _, _) in segments {
-                    mapping.push((seg_id.clone(), name.clone()));
-                }
-                matched.push((speaker_label.clone(), name.clone()));
+        if let Some((label, name)) = process_speaker_match(
+            pool,
+            meeting_id,
+            speaker_label,
+            segments,
+            &centroid,
+            &prefs,
+        )
+        .await?
+        {
+            for (seg_id, _, _) in segments {
+                label_mapping.push((seg_id.clone(), name.clone()));
             }
-            Ok(None) => {
-                log::debug!("speaker recognition: {} no match above threshold", speaker_label);
-            }
-            Err(e) => {
-                log::warn!("speaker recognition: match lookup failed for {}: {}", speaker_label, e);
-            }
+            matched.push((label, name));
         }
     }
 
-    // Apply matched names to transcripts
-    if !mapping.is_empty() {
-        TranscriptsRepository::update_segment_speakers(pool, &mapping).await?;
-        log::info!("speaker recognition: updated {} transcript labels with matched names", mapping.len());
+    // Apply matched names to transcripts (only for Apply action)
+    if !label_mapping.is_empty() {
+        TranscriptsRepository::update_segment_speakers(pool, &label_mapping).await?;
+        log::info!("speaker recognition: updated {} transcript labels with matched names", label_mapping.len());
     }
 
     Ok(matched)
@@ -184,7 +285,21 @@ pub async fn commit_speaker_labels(
     min_speakers: usize,
     max_speakers: usize,
 ) -> Result<usize> {
-    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, None).await
+    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, None, None).await
+}
+
+/// Like [`commit_speaker_labels`] but with a hint from the realtime speaker tracker.
+/// The tracker count helps `choose_k` pick the right cluster count.
+pub async fn commit_speaker_labels_with_tracker_hint(
+    pool: &SqlitePool,
+    meeting_id: &str,
+    audio_wav: Option<&Path>,
+    realtime_windows: Vec<WindowedEmbedding>,
+    min_speakers: usize,
+    max_speakers: usize,
+    tracker_speaker_count: Option<usize>,
+) -> Result<usize> {
+    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, None, tracker_speaker_count).await
 }
 
 /// Like [`commit_speaker_labels`], but calls `progress(percentage, message)` at
@@ -207,7 +322,7 @@ pub async fn commit_speaker_labels_with_progress<F>(
 where
     F: Fn(u32, &str) + Send + Sync,
 {
-    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, Some(&progress)).await
+    commit_speaker_labels_inner(pool, meeting_id, audio_wav, realtime_windows, min_speakers, max_speakers, Some(&progress), None).await
 }
 
 async fn commit_speaker_labels_inner(
@@ -215,9 +330,10 @@ async fn commit_speaker_labels_inner(
     meeting_id: &str,
     audio_wav: Option<&Path>,
     realtime_windows: Vec<WindowedEmbedding>,
-    _min_speakers: usize,
-    _max_speakers: usize,
+    requested_min_speakers: usize,
+    requested_max_speakers: usize,
     progress: Option<&(dyn Fn(u32, &str) + Send + Sync)>,
+    tracker_speaker_count: Option<usize>,
 ) -> Result<usize> {
     let emit = |pct: u32, msg: &str| {
         if let Some(cb) = progress {
@@ -230,8 +346,18 @@ async fn commit_speaker_labels_inner(
         log::info!("diarization offline: disabled in settings; skipping");
         return Ok(0);
     }
-    let min_speakers = status.min_speakers.max(2);
-    let max_speakers = status.max_speakers.max(min_speakers);
+    // An imported file can specify an exact participant count. Zero retains
+    // the user's global diarization preference.
+    let min_speakers = if requested_min_speakers > 0 {
+        requested_min_speakers
+    } else {
+        status.min_speakers.max(1)
+    };
+    let max_speakers = if requested_max_speakers > 0 {
+        requested_max_speakers.max(min_speakers)
+    } else {
+        status.max_speakers.max(min_speakers)
+    };
 
     emit(91, "Separando os falantes…");
 
@@ -299,7 +425,7 @@ async fn commit_speaker_labels_inner(
     let windows = &effective_windows;
     let (clustered_windows, original_to_block) = aggregate_temporal_windows(windows, MAX_CLUSTER_WINDOWS);
     let group_size = if clustered_windows.is_empty() { 0 } else { (windows.len() + clustered_windows.len() - 1) / clustered_windows.len() };
-    let k = choose_k(clustered_windows.len(), min_speakers, max_speakers);
+    let k = choose_k(clustered_windows.len(), min_speakers, max_speakers, tracker_speaker_count);
 
     emit(96, "Agrupando falantes…");
 
@@ -327,18 +453,16 @@ async fn commit_speaker_labels_inner(
     emit(97, "Matching speaker profiles…");
 
     // Try to match clusters against known speaker profiles
-    let recognition_mode = super::status();
-    let _known_names: Vec<String> = if recognition_mode.model_status == "ready" {
-        SpeakerRepository::get_all_names(pool).await.unwrap_or_default()
-    } else {
-        Vec::new()
-    };
+    let recognition_prefs = super::speaker_preferences::get_preferences();
 
     let segments = crate::database::repositories::transcript::TranscriptsRepository::fetch_segment_times(
         pool, meeting_id,
     )
     .await?;
-    let mut mapping: Vec<(String, String)> = Vec::with_capacity(segments.len());
+
+    // Group segments by cluster_id for per-cluster speaker recognition
+    let mut cluster_segments: std::collections::HashMap<usize, Vec<(String, f64, f64)>> =
+        std::collections::HashMap::new();
     for (seg_id, seg_start, seg_end) in segments {
         let mid = (seg_start + seg_end) / 2.0;
         let mut best_idx = 0usize;
@@ -350,25 +474,45 @@ async fn commit_speaker_labels_inner(
                 best_idx = i;
             }
         }
-        // Map original window index → aggregated block index → cluster label
         let block_idx = original_to_block[best_idx];
         let cluster_id = labels[block_idx];
+        cluster_segments.entry(cluster_id).or_default().push((seg_id, seg_start, seg_end));
+    }
 
-        // Check if this cluster matches a known speaker profile
-        let mut speaker_name = None;
-        if let Some((_, centroid)) = cluster_embeddings.iter().find(|(cid, _)| *cid == cluster_id) {
-            if let Ok(Some((name, sim))) = SpeakerRepository::find_match(
+    // Run process_speaker_match once per cluster with ALL segments
+    let mut cluster_names: std::collections::HashMap<usize, String> = std::collections::HashMap::new();
+    for (cluster_id, cluster_segs) in &cluster_segments {
+        if let Some((_, centroid)) = cluster_embeddings.iter().find(|(cid, _)| *cid == *cluster_id) {
+            let cluster_label = format!("Speaker {}", cluster_id + 1);
+            let seg_refs: Vec<(String, Option<f64>, Option<f64>)> = cluster_segs
+                .iter()
+                .map(|(id, s, e)| (id.clone(), Some(*s), Some(*e)))
+                .collect();
+            if let Some((_, name)) = process_speaker_match(
                 pool,
+                meeting_id,
+                &cluster_label,
+                &seg_refs,
                 centroid,
-                SUGGEST_MATCH_THRESHOLD,
-            ).await {
-                log::info!("speaker recognition: cluster {} matched '{}' (sim={:.3})", cluster_id, name, sim);
-                speaker_name = Some(name);
+                &recognition_prefs,
+            )
+            .await?
+            {
+                cluster_names.insert(*cluster_id, name);
             }
         }
+    }
 
-        let speaker = speaker_name.unwrap_or_else(|| format!("Speaker {}", cluster_id + 1));
-        mapping.push((seg_id, speaker));
+    // Build mapping using cluster-level results
+    let mut mapping: Vec<(String, String)> = Vec::with_capacity(cluster_segments.values().map(|v| v.len()).sum());
+    for (cluster_id, cluster_segs) in &cluster_segments {
+        let speaker = cluster_names
+            .get(cluster_id)
+            .cloned()
+            .unwrap_or_else(|| format!("Speaker {}", cluster_id + 1));
+        for (seg_id, _, _) in cluster_segs {
+            mapping.push((seg_id.clone(), speaker.clone()));
+        }
     }
 
     emit(99, "Saving speaker labels…");
@@ -398,7 +542,8 @@ fn run_sherpa_diarization(
     let spec = reader.spec();
     let samples: Vec<f32> = reader
         .samples::<i16>()
-        .map(|s| s.unwrap() as f32 / 32768.0)
+        .filter_map(|s| s.ok())
+        .map(|s| s as f32 / 32768.0)
         .collect();
 
     let sr = spec.sample_rate;
@@ -533,11 +678,39 @@ pub(crate) fn aggregate_temporal_windows(
     (aggregated, original_to_block)
 }
 
-fn choose_k(n: usize, min_k: usize, max_k: usize) -> usize {
-    let lo = min_k.max(2);
+fn choose_k(n: usize, min_k: usize, max_k: usize, tracker_hint: Option<usize>) -> usize {
+    let lo = min_k.max(1);
     let hi = max_k.max(lo);
-    let guess = (n / 50).clamp(lo, hi);
+    // Use tracker's observed speaker count as hint when available
+    let guess = if let Some(count) = tracker_hint {
+        if count >= lo && count <= hi {
+            count
+        } else {
+            (n / 50).clamp(lo, hi)
+        }
+    } else {
+        (n / 50).clamp(lo, hi)
+    };
     guess.min(n)
+}
+
+/// Compute the average (centroid) embedding from a list of embeddings.
+fn compute_centroid(embeddings: &[Vec<f32>]) -> Vec<f32> {
+    if embeddings.is_empty() {
+        return Vec::new();
+    }
+    let dim = embeddings[0].len();
+    let mut centroid = vec![0.0f32; dim];
+    for emb in embeddings {
+        for (i, v) in emb.iter().enumerate() {
+            centroid[i] += v;
+        }
+    }
+    let n = embeddings.len() as f32;
+    for v in centroid.iter_mut() {
+        *v /= n;
+    }
+    centroid
 }
 
 /// Compute the centroid embedding for each cluster.
@@ -549,27 +722,18 @@ fn compute_cluster_centroids(
 ) -> Vec<(usize, Vec<f32>)> {
     let mut centroids = Vec::with_capacity(num_clusters);
     for cluster_id in 0..num_clusters {
-        let members: Vec<&Vec<f32>> = windows
+        let members: Vec<Vec<f32>> = windows
             .iter()
             .zip(labels.iter())
             .filter(|(_, &label)| label == cluster_id)
-            .map(|(w, _)| &w.vec)
+            .map(|(w, _)| w.vec.clone())
             .collect();
 
         if members.is_empty() {
             continue;
         }
 
-        let dim = members[0].len();
-        let mut centroid = vec![0.0f32; dim];
-        for member in &members {
-            for (i, &v) in member.iter().enumerate() {
-                centroid[i] += v;
-            }
-        }
-        for v in &mut centroid {
-            *v /= members.len() as f32;
-        }
+        let centroid = compute_centroid(&members);
         centroids.push((cluster_id, centroid));
     }
     centroids
@@ -579,7 +743,8 @@ fn reembed_wav(path: &Path) -> Result<Vec<WindowedEmbedding>> {
     let mut reader = WavReader::open(path)?;
     let samples: Vec<f32> = reader
         .samples::<i16>()
-        .map(|s| s.unwrap() as f32 / 32768.0)
+        .filter_map(|s| s.ok())
+        .map(|s| s as f32 / 32768.0)
         .collect();
     let sr = reader.spec().sample_rate;
     if sr != 16_000 {
@@ -592,7 +757,7 @@ fn reembed_wav(path: &Path) -> Result<Vec<WindowedEmbedding>> {
     while start + win <= samples.len() {
         let end_sample = start + win;
         let emb = extract_embedding(&samples[start..end_sample], sr)?;
-        if emb.len() != EMBEDDING_DIM {
+        if emb.is_empty() {
             break;
         }
         let start_t = start as f64 / sr as f64;

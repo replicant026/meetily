@@ -1,6 +1,7 @@
+import { logger } from "@/lib/logger";
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
@@ -75,6 +76,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [serverAddress, setServerAddress] = useState('');
   const [transcriptServerAddress, setTranscriptServerAddress] = useState('');
   const [activeSummaryPolls, setActiveSummaryPolls] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const activeSummaryPollsRef = useRef(activeSummaryPolls);
+  activeSummaryPollsRef.current = activeSummaryPolls;
 
   // Use recording state from RecordingStateContext (single source of truth)
   const { isRecording } = useRecordingState();
@@ -94,7 +97,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         setMeetings(transformedMeetings);
         Analytics.trackBackendConnection(true);
       } catch (error) {
-        console.error('Error fetching meetings:', error);
+        logger.error('Error fetching meetings:', error);
         setMeetings([]);
         Analytics.trackBackendConnection(false, error instanceof Error ? error.message : 'Unknown error');
       }
@@ -113,7 +116,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     fetchSettings();
   }, []);
 
-  const baseItems: SidebarItem[] = [
+  const baseItems: SidebarItem[] = useMemo(() => [
     {
       id: 'meetings',
       title: 'Meeting Notes',
@@ -122,7 +125,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         ...meetings.map(meeting => ({ id: meeting.id, title: meeting.title, type: 'file' as const }))
       ]
     },
-  ];
+  ], [meetings]);
 
 
   const toggleCollapse = () => {
@@ -148,11 +151,11 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       // Check if already on home page
       if (pathname === '/') {
         // Already on home - trigger recording directly via custom event
-        console.log('Triggering recording from sidebar (already on home page)');
+        logger.log('Triggering recording from sidebar (already on home page)');
         window.dispatchEvent(new CustomEvent('start-recording-from-sidebar'));
       } else {
         // Not on home - navigate and use auto-start mechanism
-        console.log('Navigating to home page with auto-start flag');
+        logger.log('Navigating to home page with auto-start flag');
         sessionStorage.setItem('autoStartRecording', 'true');
         router.push('/');
       }
@@ -177,7 +180,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       const results = await invoke('api_search_transcripts', { query }) as TranscriptSearchResult[];
       setSearchResults(results);
     } catch (error) {
-      console.error('Error searching transcripts:', error);
+      logger.error('Error searching transcripts:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -191,11 +194,11 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     onUpdate: (result: any) => void
   ) => {
     // Stop existing poll for this meeting if any
-    if (activeSummaryPolls.has(meetingId)) {
-      clearInterval(activeSummaryPolls.get(meetingId)!);
+    if (activeSummaryPollsRef.current.has(meetingId)) {
+      clearInterval(activeSummaryPollsRef.current.get(meetingId)!);
     }
 
-    console.log(`📊 Starting polling for meeting ${meetingId}, process ${processId}`);
+    logger.log(`📊 Starting polling for meeting ${meetingId}, process ${processId}`);
 
     let pollCount = 0;
     const MAX_POLLS = 200; // ~16.5 minutes at 5-second intervals (slightly longer than backend's 15-min timeout to avoid race conditions)
@@ -205,7 +208,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
       // Timeout safety: Stop after 10 minutes
       if (pollCount >= MAX_POLLS) {
-        console.warn(`⏱️ Polling timeout for ${meetingId} after ${MAX_POLLS} iterations`);
+        logger.warn(`⏱️ Polling timeout for ${meetingId} after ${MAX_POLLS} iterations`);
         clearInterval(pollInterval);
         setActiveSummaryPolls(prev => {
           const next = new Map(prev);
@@ -223,14 +226,14 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
           meetingId: meetingId,
         }) as any;
 
-        console.log(`📊 Polling update for ${meetingId}:`, result.status);
+        logger.log(`📊 Polling update for ${meetingId}:`, result.status);
 
         // Call the update callback with result
         onUpdate(result);
 
         // Stop polling if completed, error, failed, cancelled, or idle (after initial processing)
         if (result.status === 'completed' || result.status === 'error' || result.status === 'failed' || result.status === 'cancelled') {
-          console.log(`Polling completed for ${meetingId}, status: ${result.status}`);
+          logger.log(`Polling completed for ${meetingId}, status: ${result.status}`);
           clearInterval(pollInterval);
           setActiveSummaryPolls(prev => {
             const next = new Map(prev);
@@ -239,7 +242,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
           });
         } else if (result.status === 'idle' && pollCount > 1) {
           // If we get 'idle' after polling started, process completed/disappeared
-          console.log(`Process completed or not found for ${meetingId}, stopping poll`);
+          logger.log(`Process completed or not found for ${meetingId}, stopping poll`);
           clearInterval(pollInterval);
           setActiveSummaryPolls(prev => {
             const next = new Map(prev);
@@ -248,7 +251,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch (error) {
-        console.error(`Polling error for ${meetingId}:`, error);
+        logger.error(`Polling error for ${meetingId}:`, error);
         // Report error to callback
         onUpdate({
           status: 'error',
@@ -264,12 +267,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     }, 5000); // Poll every 5 seconds
 
     setActiveSummaryPolls(prev => new Map(prev).set(meetingId, pollInterval));
-  }, [activeSummaryPolls]);
+  }, []);
 
   const stopSummaryPolling = React.useCallback((meetingId: string) => {
-    const pollInterval = activeSummaryPolls.get(meetingId);
+    const pollInterval = activeSummaryPollsRef.current.get(meetingId);
     if (pollInterval) {
-      console.log(`⏹️ Stopping polling for meeting ${meetingId}`);
+      logger.log(`Stopping polling for meeting ${meetingId}`);
       clearInterval(pollInterval);
       setActiveSummaryPolls(prev => {
         const next = new Map(prev);
@@ -277,15 +280,15 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
     }
-  }, [activeSummaryPolls]);
+  }, []);
 
   // Cleanup all polling intervals on unmount
   useEffect(() => {
     return () => {
-      console.log('🧹 Cleaning up all summary polling intervals');
-      activeSummaryPolls.forEach(interval => clearInterval(interval));
+      logger.log('Cleaning up all summary polling intervals');
+      activeSummaryPollsRef.current.forEach(interval => clearInterval(interval));
     };
-  }, [activeSummaryPolls]);
+  }, []);
 
 
 

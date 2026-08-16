@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * useTranscriptRecovery Hook
  *
@@ -70,7 +71,7 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
                 folderPath: hasAudio ? meeting.folderPath : undefined
               };
             } catch (error) {
-              console.warn('Failed to check audio for meeting:', error);
+              logger.warn('Failed to check audio for meeting:', error);
               // On error, assume no audio to be safe
               return { ...meeting, folderPath: undefined };
             }
@@ -82,7 +83,7 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
 
       setRecoverableMeetings(meetingsWithAudioStatus);
     } catch (error) {
-      console.error('Failed to check for recoverable transcripts:', error);
+      logger.error('Failed to check for recoverable transcripts:', error);
       setRecoverableMeetings([]);
     } finally {
       setIsLoading(false);
@@ -99,7 +100,7 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
       transcripts.sort((a, b) => (a.sequenceId || 0) - (b.sequenceId || 0));
       return transcripts;
     } catch (error) {
-      console.error('Failed to load meeting transcripts:', error);
+      logger.error('Failed to load meeting transcripts:', error);
       return [];
     }
   }, []);
@@ -149,7 +150,7 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
             meetingFolder: folderPath,
           });
         } catch (error) {
-          console.warn('Audio recovery could not start:', error);
+          logger.warn('Audio recovery could not start:', error);
         }
       }
 
@@ -179,7 +180,7 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
       try {
         await applyPinnedSummaryLanguageToMeeting(savedMeetingId);
       } catch (error) {
-        console.warn('Failed to apply pinned summary language to recovered meeting:', error);
+        logger.warn('Failed to apply pinned summary language to recovered meeting:', error);
         toast.warning('Could not apply default summary language', {
           description: 'The recovered meeting was saved, but the default summary language was not applied.',
         });
@@ -195,7 +196,7 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
           await invoke('cleanup_checkpoints', { meetingFolder: folderPath });
         } catch (error) {
           // Non-fatal - don't fail recovery if cleanup fails
-          console.warn('Checkpoint cleanup failed (non-fatal):', error);
+          logger.warn('Checkpoint cleanup failed (non-fatal):', error);
         }
       }
 
@@ -208,7 +209,7 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
         meetingId: savedMeetingId
       };
     } catch (error) {
-      console.error('Failed to recover meeting:', error);
+      logger.error('Failed to recover meeting:', error);
       throw error;
     } finally {
       setIsRecovering(false);
@@ -223,7 +224,7 @@ export function useTranscriptRecovery(): UseTranscriptRecoveryReturn {
       await indexedDBService.deleteMeeting(meetingId);
       setRecoverableMeetings(prev => prev.filter(m => m.meetingId !== meetingId));
     } catch (error) {
-      console.error('Failed to delete meeting:', error);
+      logger.error('Failed to delete meeting:', error);
       throw error;
     }
   }, []);

@@ -1,7 +1,9 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useRef } from 'react';
 import { useSidebar } from './Sidebar/SidebarProvider';
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from '@/components/ui/button';
+import { AppButton } from '@/components/ui/app-button';
 import { useOllamaDownload } from '@/contexts/OllamaDownloadContext';
 import { BuiltInModelManager } from '@/components/BuiltInModelManager';
 import { Input } from '@/components/ui/input';
@@ -140,7 +142,6 @@ export function ModelSettingsModal({
   const [hasAutoFetched, setHasAutoFetched] = useState<boolean>(false);
   const hasSyncedFromParent = useRef<boolean>(false);
   const hasLoadedInitialConfig = useRef<boolean>(false);
-  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState<boolean>(true); // Default to true
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isEndpointSectionCollapsed, setIsEndpointSectionCollapsed] = useState<boolean>(true); // Collapsed by default
   const [ollamaNotInstalled, setOllamaNotInstalled] = useState<boolean>(false); // Track if Ollama is not installed
@@ -210,7 +211,7 @@ export function ModelSettingsModal({
       })) as string;
       setApiKey(data || '');
     } catch (err) {
-      console.error('Error fetching API key:', err);
+      logger.error('Error fetching API key:', err);
       setApiKey(null);
     }
   };
@@ -276,7 +277,7 @@ export function ModelSettingsModal({
               data.apiKey = apiKeyData;
               setApiKey(apiKeyData);
             } catch (err) {
-              console.error('Failed to fetch API key:', err);
+              logger.error('Failed to fetch API key:', err);
             }
           }
 
@@ -300,34 +301,18 @@ export function ModelSettingsModal({
                 setCustomTopP(customConfig.topP?.toString() || '');
               }
             } catch (err) {
-              console.error('Failed to fetch custom OpenAI config:', err);
+              logger.error('Failed to fetch custom OpenAI config:', err);
             }
           }
         }
       } catch (error) {
-        console.error('Failed to fetch model config:', error);
+        logger.error('Failed to fetch model config:', error);
         hasLoadedInitialConfig.current = true; // Mark as loaded even on error
       }
     };
 
     fetchModelConfig();
-  }, [skipInitialFetch]);
-
-  // Fetch auto-generate setting on mount
-  useEffect(() => {
-    const fetchAutoGenerateSetting = async () => {
-      try {
-        const enabled = (await invoke('api_get_auto_generate_setting')) as boolean;
-        setAutoGenerateEnabled(enabled);
-        console.log('Auto-generate setting loaded:', enabled);
-      } catch (err) {
-        console.error('Failed to fetch auto-generate setting:', err);
-        // Keep default value (true) on error
-      }
-    };
-
-    fetchAutoGenerateSetting();
-  }, []);
+  }, [skipInitialFetch, setModelConfig]);
 
   // Sync ollamaEndpoint state when modelConfig.ollamaEndpoint changes from parent
   useEffect(() => {
@@ -345,7 +330,7 @@ export function ModelSettingsModal({
   // Sync custom OpenAI state from modelConfig (context or props)
   useEffect(() => {
     if (modelConfig.provider === 'custom-openai') {
-      console.log('Syncing custom OpenAI fields from ConfigContext:', {
+      logger.log('Syncing custom OpenAI fields from ConfigContext:', {
         endpoint: modelConfig.customOpenAIEndpoint,
         model: modelConfig.customOpenAIModel,
         hasApiKey: !!modelConfig.customOpenAIApiKey,
@@ -454,7 +439,7 @@ export function ModelSettingsModal({
       if (!silent) {
         toast.error(errorMsg);
       }
-      console.error('Error loading models:', err);
+      logger.error('Error loading models:', err);
     } finally {
       setIsLoadingOllama(false);
     }
@@ -494,7 +479,7 @@ export function ModelSettingsModal({
       const data = (await invoke('get_openrouter_models')) as OpenRouterModel[];
       setOpenRouterModels(data);
     } catch (err) {
-      console.error('Error loading OpenRouter models:', err);
+      logger.error('Error loading OpenRouter models:', err);
       setOpenRouterError(
         err instanceof Error ? err.message : 'Failed to load OpenRouter models'
       );
@@ -518,7 +503,7 @@ export function ModelSettingsModal({
         }
       }
     } catch (err) {
-      console.error('Error loading Built-in AI models:', err);
+      logger.error('Error loading Built-in AI models:', err);
       toast.error('Failed to load Built-in AI models');
     }
   };
@@ -534,7 +519,7 @@ export function ModelSettingsModal({
       const data = (await invoke('get_openai_models', { apiKey: key })) as OpenAIModel[];
       setOpenaiModels(data.map((m) => m.id));
     } catch (err) {
-      console.error('Error loading OpenAI models:', err);
+      logger.error('Error loading OpenAI models:', err);
       setOpenaiModels([]); // Will use fallback via modelOptions
     } finally {
       setIsLoadingOpenAI(false);
@@ -552,7 +537,7 @@ export function ModelSettingsModal({
       const data = (await invoke('get_anthropic_models', { apiKey: key })) as AnthropicModel[];
       setClaudeModels(data.map((m) => m.id));
     } catch (err) {
-      console.error('Error loading Claude models:', err);
+      logger.error('Error loading Claude models:', err);
       setClaudeModels([]); // Will use fallback via modelOptions
     } finally {
       setIsLoadingClaude(false);
@@ -570,7 +555,7 @@ export function ModelSettingsModal({
       const data = (await invoke('get_groq_models', { apiKey: key })) as GroqModel[];
       setGroqModels(data.map((m) => m.id));
     } catch (err) {
-      console.error('Error loading Groq models:', err);
+      logger.error('Error loading Groq models:', err);
       setGroqModels([]); // Will use fallback via modelOptions
     } finally {
       setIsLoadingGroq(false);
@@ -626,9 +611,9 @@ export function ModelSettingsModal({
           temperature: customTemperature ? parseFloat(customTemperature) : null,
           topP: customTopP ? parseFloat(customTopP) : null,
         });
-        console.log('Custom OpenAI config saved successfully');
+        logger.log('Custom OpenAI config saved successfully');
       } catch (err) {
-        console.error('Failed to save custom OpenAI config:', err);
+        logger.error('Failed to save custom OpenAI config:', err);
         toast.error('Failed to save custom OpenAI configuration');
         return;
       }
@@ -651,7 +636,7 @@ export function ModelSettingsModal({
       model: modelConfig.provider === 'custom-openai' ? customOpenAIModel.trim() : modelConfig.model,
     };
     setModelConfig(updatedConfig);
-    console.log('ModelSettingsModal - handleSave - Updated ModelConfig:', updatedConfig);
+    logger.log('ModelSettingsModal - handleSave - Updated ModelConfig:', updatedConfig);
 
     // Persist confirmed model choice to per-provider cache
     if (updatedConfig.model) {
@@ -727,7 +712,7 @@ export function ModelSettingsModal({
       // This respects the database as the single source of truth
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to download model';
-      console.error('Error downloading model:', err);
+      logger.error('Error downloading model:', err);
 
       // Check if Ollama is not installed and show appropriate error
       if (isOllamaNotInstalledError(errorMsg)) {
@@ -760,7 +745,7 @@ export function ModelSettingsModal({
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to delete model';
       toast.error(errorMsg);
-      console.error('Error deleting model:', err);
+      logger.error('Error deleting model:', err);
     }
   };
 
@@ -776,7 +761,7 @@ export function ModelSettingsModal({
     for (const modelName of previous) {
       if (!current.has(modelName)) {
         // Download completed, refresh models list
-        console.log(`[ModelSettingsModal] Download completed for ${modelName}, refreshing list`);
+        logger.log(`[ModelSettingsModal] Download completed for ${modelName}, refreshing list`);
         fetchOllamaModels(true);
         break; // Only refresh once even if multiple completed
       }
@@ -865,7 +850,7 @@ export function ModelSettingsModal({
                       setCustomTopP(config.topP?.toString() || '');
                     }
                   }).catch((err) => {
-                    console.error('Failed to load custom OpenAI config:', err);
+                    logger.error('Failed to load custom OpenAI config:', err);
                   });
                 }
               }}
@@ -1095,7 +1080,7 @@ export function ModelSettingsModal({
                     variant="ghost"
                     size="icon"
                     onClick={() => setIsApiKeyLocked(!isApiKeyLocked)}
-                    className={isLockButtonVibrating ? 'animate-vibrate text-red-500' : ''}
+                    className={isLockButtonVibrating ? 'animate-vibrate text-[rgb(var(--app-danger))]' : ''}
                     title={isApiKeyLocked ? 'Unlock to edit' : 'Lock to prevent editing'}
                   >
                     {isApiKeyLocked ? <Lock /> : <Unlock />}
@@ -1149,14 +1134,14 @@ export function ModelSettingsModal({
                       placeholder="http://localhost:11434"
                       className={cn(
                         "pr-10",
-                        endpointValidationState === 'invalid' && "border-red-500"
+                        endpointValidationState === 'invalid' && "border-[rgb(var(--app-danger))]"
                       )}
                     />
                     {endpointValidationState === 'valid' && (
-                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[rgb(var(--app-success))]" />
                     )}
                     {endpointValidationState === 'invalid' && (
-                      <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-red-500" />
+                      <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[rgb(var(--app-danger))]" />
                     )}
                   </div>
                   <Button
@@ -1181,9 +1166,9 @@ export function ModelSettingsModal({
                   </Button>
                 </div>
                 {ollamaEndpointChanged && !error && (
-                  <Alert className="mt-3 border-yellow-500 bg-yellow-50">
-                    <AlertDescription className="text-yellow-800">
-                      Endpoint changed. Please click "Fetch Models" to load models from the new endpoint before saving.
+                  <Alert className="mt-3 border-[rgb(var(--app-warning))] bg-[rgb(var(--app-muted))]">
+                    <AlertDescription className="text-[rgb(var(--app-muted-fg))]">
+                      Endpoint changed. Please click &quot;Fetch Models&quot; to load models from the new endpoint before saving.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1225,22 +1210,22 @@ export function ModelSettingsModal({
                 {ollamaNotInstalled ? (
                   /* Show Ollama download link when not installed */
                   <div className="space-y-4">
-                    <Alert className="border-orange-500 bg-orange-50">
-                      <AlertDescription className="text-orange-800">
+                    <Alert className="border-[rgb(var(--app-warning))] bg-[rgb(var(--app-muted))]">
+                      <AlertDescription className="text-[rgb(var(--app-muted-fg))]">
                         Ollama is not installed or not running. Please download and install Ollama to use local models.
                       </AlertDescription>
                     </Alert>
-                    <Button
-                      variant="default"
+                    <AppButton
+                      variant="primary"
                       size="sm"
                       onClick={() => invoke('open_external_url', { url: 'https://ollama.com/download' })}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      className="w-full"
                     >
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Download Ollama
-                    </Button>
+                    </AppButton>
                     <div className="text-sm text-muted-foreground text-center">
-                      After installing Ollama, restart this application and click "Fetch Models" to continue.
+                      After installing Ollama, restart this application and click &quot;Fetch Models&quot; to continue.
                     </div>
                   </div>
                 ) : (
@@ -1277,14 +1262,14 @@ export function ModelSettingsModal({
 
                         {/* Show progress for gemma3:1b download */}
                         {isDownloading('gemma3:1b') && getProgress('gemma3:1b') !== undefined && (
-                          <div className="bg-white rounded-md border p-3">
+                          <div className="bg-[rgb(var(--app-surface))] rounded-md border border-[rgb(var(--app-border))] p-3">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-blue-600">Downloading gemma3:1b</span>
-                              <span className="text-sm font-semibold text-blue-600">
+                              <span className="text-sm font-medium text-[rgb(var(--app-accent))]">Downloading gemma3:1b</span>
+                              <span className="text-sm font-semibold text-[rgb(var(--app-accent))]">
                                 {Math.round(getProgress('gemma3:1b')!)}%
                               </span>
                             </div>
-                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="w-full h-2 bg-[rgb(var(--app-muted))] rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300"
                                 style={{ width: `${getProgress('gemma3:1b')}%` }}
@@ -1302,7 +1287,7 @@ export function ModelSettingsModal({
                 {filteredModels.length === 0 ? (
                   <Alert>
                     <AlertDescription>
-                      No models found matching "{searchQuery}". Try a different search term.
+                      No models found matching &quot;{searchQuery}&quot;. Try a different search term.
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -1317,8 +1302,8 @@ export function ModelSettingsModal({
                           className={cn(
                             'bg-card p-2 m-0 rounded-md border transition-colors',
                             modelConfig.model === model.name
-                              ? 'ring-1 ring-blue-500 border-blue-500 background-blue-100'
-                              : 'hover:bg-muted/50',
+                              ? 'ring-1 ring-[rgb(var(--app-accent))] border-[rgb(var(--app-accent))] bg-[rgb(var(--app-muted))]'
+                              : 'hover:bg-[rgb(var(--app-muted))]/50',
                             !modelIsDownloading && 'cursor-pointer'
                           )}
                           onClick={() => {
@@ -1335,12 +1320,12 @@ export function ModelSettingsModal({
 
                           {/* Progress bar for downloading models */}
                           {modelIsDownloading && progress !== undefined && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="mt-3 pt-3 border-t border-[rgb(var(--app-border))]">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium text-blue-600">Downloading...</span>
-                                <span className="text-sm font-semibold text-blue-600">{Math.round(progress)}%</span>
+                                <span className="text-sm font-medium text-[rgb(var(--app-accent))]">Downloading...</span>
+                                <span className="text-sm font-semibold text-[rgb(var(--app-accent))]">{Math.round(progress)}%</span>
                               </div>
-                              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="w-full h-2 bg-[rgb(var(--app-muted))] rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300"
                                   style={{ width: `${progress}%` }}
@@ -1372,36 +1357,14 @@ export function ModelSettingsModal({
         )}
       </div>
 
-      {/* Auto-generate summaries toggle */}
-      {/* <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <Label htmlFor="auto-generate" className="text-base font-medium">
-              Auto-generate summaries
-            </Label>
-            <p className="text-sm text-muted-foreground mt-1">
-              Automatically generate summary when opening meetings without one
-            </p>
-          </div>
-          <Switch
-            id="auto-generate"
-            checked={autoGenerateEnabled}
-            onCheckedChange={setAutoGenerateEnabled}
-          />
-        </div>
-      </div> */}
-
       <div className="mt-6 flex justify-end">
-        <Button
-          className={cn(
-            'px-4 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
-            isDoneDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-          )}
+        <AppButton
+          variant="primary"
           onClick={handleSave}
           disabled={isDoneDisabled}
         >
           Save
-        </Button>
+        </AppButton>
       </div>
     </div>
   );

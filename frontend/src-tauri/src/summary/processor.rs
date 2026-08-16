@@ -3,9 +3,10 @@ use crate::summary::templates::Template;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 // Compile regex once and reuse (significant performance improvement for repeated calls)
 static THINKING_TAG_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -14,6 +15,121 @@ static THINKING_TAG_REGEX: Lazy<Regex> = Lazy::new(|| {
 
 const ENGLISH_BASE_SUMMARY_INSTRUCTION: &str =
     "**Write the summary/report in English regardless of transcript language; non-English prose is invalid.**";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SummaryChapter {
+    pub segment_id: String,
+    pub title: String,
+    pub start_time: f64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ActionItem {
+    pub assignee: Option<String>,
+    pub task: String,
+    pub due_date: Option<String>,
+    pub priority: Option<String>,
+    pub segment_ref: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RequestedChapter {
+    segment_id: String,
+    title: String,
+}
+
+fn chapter_source(segments: &[(String, String, f64)]) -> String {
+    const MAX_CHAPTER_SOURCE_CHARS: usize = 32_000;
+    const MAX_SEGMENTS: usize = 120;
+    let indices: Vec<usize> = if segments.len() <= MAX_SEGMENTS {
+        (0..segments.len()).collect()
+    } else {
+        (0..MAX_SEGMENTS)
+            .map(|index| index * (segments.len() - 1) / (MAX_SEGMENTS - 1))
+            .collect()
+    };
+    let mut source = String::new();
+
+    for index in indices {
+        let (id, text, start_time) = &segments[index];
+        let excerpt: String = text.replace('\n', " ").trim().chars().take(240).collect();
+        let line = format!(
+            "[segment_id={id}; start_time={start_time:.2}] {}\n",
+            excerpt
+        );
+        if source.len() + line.len() > MAX_CHAPTER_SOURCE_CHARS {
+            break;
+        }
+        source.push_str(&line);
+    }
+
+    source
+}
+
+fn parse_grounded_chapters(raw: &str, segments: &[(String, String, f64)]) -> Vec<SummaryChapter> {
+    let json = raw
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+    let Ok(requested) = serde_json::from_str::<Vec<RequestedChapter>>(json) else {
+        return Vec::new();
+    };
+
+    requested.into_iter().filter_map(|chapter| {
+        let title = chapter.title.trim();
+        if title.is_empty() {
+            return None;
+        }
+        segments.iter().find(|(id, _, _)| id == &chapter.segment_id).map(|(_, _, start_time)| SummaryChapter {
+            segment_id: chapter.segment_id,
+            title: title.chars().take(72).collect(),
+            start_time: *start_time,
+        })
+    }).fold(Vec::new(), |mut chapters, chapter| {
+        if !chapters.iter().any(|existing: &SummaryChapter| existing.segment_id == chapter.segment_id) {
+            chapters.push(chapter);
+        }
+        chapters
+    })
+}
+
+/// Produces topic chapters grounded in persisted transcript segment IDs.
+/// Model-provided timestamps are never used: accepted IDs resolve locally.
+#[allow(clippy::too_many_arguments)]
+pub async fn generate_grounded_chapters(
+    client: &Client,
+    provider: &LLMProvider,
+    model_name: &str,
+    api_key: &str,
+    segments: &[(String, String, f64)],
+    ollama_endpoint: Option<&str>,
+    custom_openai_endpoint: Option<&str>,
+    max_tokens: Option<u32>,
+    temperature: Option<f32>,
+    top_p: Option<f32>,
+    app_data_dir: Option<&PathBuf>,
+    cancellation_token: Option<&CancellationToken>,
+) -> Result<Vec<SummaryChapter>, LLMError> {
+    if segments.len() < 2 {
+        return Ok(Vec::new());
+    }
+    let source = chapter_source(segments);
+    if source.is_empty() {
+        return Ok(Vec::new());
+    }
+    let raw = generate_summary(
+        client, provider, model_name, api_key,
+        "You identify major topic changes in a meeting transcript. Return ONLY valid JSON.",
+        &format!(
+            "Create 2 to 8 concise topic chapters. Each starts at a real topic transition. Return ONLY a JSON array with objects exactly shaped as {{\"segment_id\":\"...\",\"title\":\"...\"}}. Use only supplied segment_id values. Do not invent IDs, timestamps, or chapters.\n<timestamped_segments>\n{source}</timestamped_segments>"
+        ),
+        ollama_endpoint, custom_openai_endpoint, max_tokens, temperature, top_p,
+        app_data_dir, cancellation_token,
+    ).await?;
+    Ok(parse_grounded_chapters(&raw, segments))
+}
 
 fn resolve_cached_english<'a>(
     cached: Option<&'a str>,
@@ -618,6 +734,59 @@ pub async fn generate_meeting_summary(
     Ok((final_markdown, english_markdown, successful_chunk_count))
 }
 
+/// Extracts structured action items from a final summary markdown via LLM.
+///
+/// Returns an empty Vec on parse failure or LLM error rather than propagating.
+#[allow(clippy::too_many_arguments)]
+pub async fn extract_action_items(
+    client: &Client,
+    provider: &LLMProvider,
+    model_name: &str,
+    api_key: &str,
+    summary_markdown: &str,
+    ollama_endpoint: Option<&str>,
+    custom_openai_endpoint: Option<&str>,
+    _max_tokens: Option<u32>,
+    temperature: Option<f32>,
+    top_p: Option<f32>,
+    app_data_dir: Option<&PathBuf>,
+    cancellation_token: Option<&CancellationToken>,
+) -> Vec<ActionItem> {
+    let system_prompt = r#"Extract action items from this meeting summary. Return ONLY a JSON array of objects with these fields:
+- assignee: string or null (who is responsible)
+- task: string (what needs to be done)
+- due_date: string or null (deadline if mentioned)
+- priority: "high" or "medium" or "low" or null
+- segment_ref: string or null (reference to transcript segment if mentioned)
+
+If no action items exist, return an empty array []. Do not include any text outside the JSON array."#;
+
+    let user_prompt = format!("<meeting_summary>\n{summary_markdown}\n</meeting_summary>");
+
+    match generate_summary(
+        client, provider, model_name, api_key,
+        system_prompt, &user_prompt,
+        ollama_endpoint, custom_openai_endpoint,
+        Some(_max_tokens.unwrap_or(1024)), temperature, top_p,
+        app_data_dir, cancellation_token,
+    )
+    .await
+    {
+        Ok(raw) => {
+            let cleaned = raw
+                .trim()
+                .trim_start_matches("```json")
+                .trim_end_matches("```")
+                .trim();
+            serde_json::from_str::<Vec<ActionItem>>(cleaned).unwrap_or_default()
+        }
+        Err(e) => {
+            warn!("Action item extraction failed: {}", e);
+            Vec::new()
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn run_markdown_transform(
     client: &Client,
@@ -749,6 +918,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn chapter_parser_keeps_only_real_unique_segment_ids() {
+        let segments = vec![
+            ("segment-a".to_string(), "Opening".to_string(), 3.5),
+            ("segment-b".to_string(), "Decision".to_string(), 42.0),
+        ];
+        let raw = r#"[
+            {"segment_id":"segment-a","title":"Introducao"},
+            {"segment_id":"invented","title":"Nao aceitar"},
+            {"segment_id":"segment-a","title":"Duplicado"},
+            {"segment_id":"segment-b","title":"Decisao"}
+        ]"#;
+
+        assert_eq!(
+            parse_grounded_chapters(raw, &segments),
+            vec![
+                SummaryChapter { segment_id: "segment-a".to_string(), title: "Introducao".to_string(), start_time: 3.5 },
+                SummaryChapter { segment_id: "segment-b".to_string(), title: "Decisao".to_string(), start_time: 42.0 },
+            ]
+        );
+    }
+
+    #[test]
     fn chunk_summary_prompt_forces_english_base_output() {
         let prompt = build_chunk_summary_user_prompt("会議の内容");
 
@@ -815,7 +1006,7 @@ mod tests {
         assert_eq!(
             english_markdown_after_normalization_result(
                 "# Original",
-                Err("normalization failed".to_string())
+                Err(LLMError::Other("normalization failed".to_string()))
             )
             .unwrap(),
             "# Original"
@@ -827,7 +1018,7 @@ mod tests {
         assert!(
             english_markdown_after_normalization_result(
                 "# Original",
-                Err("Summary generation was cancelled".to_string())
+                Err(LLMError::Cancelled)
             )
             .is_err()
         );
@@ -924,7 +1115,7 @@ mod tests {
     fn chunk_prompt_omits_glossary_when_absent() {
         crate::audio::post_processor::set_hotwords_for_llm(vec![]);
         let prompt = build_chunk_summary_user_prompt("hello world");
-        assert!(!prompt.contains("<glossary>"));
+        assert!(!prompt.contains("</glossary>"));
     }
 
     #[test]

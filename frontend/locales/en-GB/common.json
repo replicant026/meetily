@@ -17,7 +17,8 @@
     "close": "Close",
     "confirm": "Confirm",
     "back": "Back",
-    "next": "Next"
+    "next": "Next",
+    "copy": "Copy"
   },
   "status": {
     "loading": "Loading...",
@@ -29,6 +30,93 @@
     "success_title": "Meeting recovered successfully!",
     "transcripts_and_audio": "Transcripts and audio recovered",
     "transcripts_only": "Transcripts recovered (no audio available)",
-    "view_meeting": "View Meeting"
+    "view_meeting": "View Meeting",
+    "type_full": "Full recovery: transcripts and audio available",
+    "type_transcript_only": "Transcript-only recovery: audio recording not available"
+  },
+  "feedback": {
+    "drop_audio_title": "Drop audio file to import",
+    "onboarding_complete_setup": "Please complete setup first",
+    "onboarding_complete_description": "You need to finish onboarding before you can start recording."
+  },
+  "audio_level_meter": {
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "confidence": {
+    "high": "High confidence",
+    "good": "Good confidence",
+    "medium": "Medium confidence",
+    "low": "Low confidence",
+    "confidence_title": "{percent}% confidence - {label}",
+    "aria_label": "Transcription confidence: {percent}%"
+  },
+  "console": {
+    "label": "Developer Console",
+    "toggle_button": "Toggle Console",
+    "description": "Show or hide the developer console window. On Windows, this controls the console window. On macOS, this opens Terminal with app logs."
+  },
+  "info": {
+    "about": "About",
+    "about_title": "About Meetily"
+  },
+  "model_download": {
+    "finalizing": "Finalizing...",
+    "downloading": "Downloading {model}",
+    "percent_complete": "{percent}% complete",
+    "downloading_status": "Downloading...",
+    "completed_loading": "✓ Download completed, loading model...",
+    "models_available": "📦 {downloaded} of {total} models available",
+    "total_size": "💾 {size} total",
+    "local_no_internet": "✓ Models run locally - no internet required for transcription"
+  },
+  "confirmation": {
+    "delete_title": "Confirm Delete"
+  },
+  "summary_updater": {
+    "saving_title": "Saving",
+    "save_changes_title": "Save Changes",
+    "saving": "Saving...",
+    "copy_summary_title": "Copy Summary"
+  },
+  "chunk_progress": {
+    "processing_progress": "Processing Progress",
+    "paused": "Paused",
+    "pause": "Pause",
+    "resume": "Resume",
+    "calculating": "Calculating...",
+    "chunks_completed": "{completed} of {total} chunks completed",
+    "completed": "Completed",
+    "processing": "Processing",
+    "pending": "Pending",
+    "failed": "Failed",
+    "estimated_time_remaining": "Estimated time remaining: {time}",
+    "recent_chunks": "Recent Chunks ({shown} of {total})",
+    "chunk_label": "Chunk {id}",
+    "processing_complete": "Processing completed! All {count} chunks have been transcribed.",
+    "mini_processing": "Processing",
+    "mini_chunks": "{completed} / {total} chunks",
+    "processing_count": "({count} processing)",
+    "error": "Error: {message}"
+  },
+  "onboarding": {
+    "ready": {
+      "title": "You're all set",
+      "description": "Meetily is ready to record, transcribe, and summarize.",
+      "transcription_ready": "Transcription engine ready",
+      "transcription_downloading": "Transcription engine downloading in background",
+      "summary_ready": "Summary engine ready",
+      "summary_downloading": "Summary engine downloading in background",
+      "start_button": "Start Using Meetily"
+    },
+    "welcome": {
+      "title": "Welcome to Meetily",
+      "description": "Record. Transcribe. Summarize. All on your device.",
+      "feature_data": "Your data never leaves your device",
+      "feature_summaries": "Intelligent summaries & insights",
+      "feature_offline": "Works offline, no cloud required",
+      "get_started": "Get Started",
+      "takes_less": "Takes less than 3 minutes"
+    }
   }
 }

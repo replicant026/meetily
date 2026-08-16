@@ -8,5 +8,8 @@
     "update_available": " Uma atualização está disponível.",
     "update_failed": "Falha na atualização. Por favor, tente novamente mais tarde.",
     "recovery_failed": "Falha ao recuperar reunião. Por favor, tente novamente.",
-    "unknown_error": "Erro desconhecido ocorreu"
+    "unknown_error": "Erro desconhecido ocorreu",
+    "error_boundary_title": "Algo deu errado",
+    "error_boundary_description": "Ocorreu um erro inesperado. Recarregar geralmente resolve.",
+    "error_boundary_reset": "Recarregar App"
 }

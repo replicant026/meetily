@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 "use client";
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
@@ -42,7 +43,7 @@ export function BluetoothPlaybackWarning({
           setIsDismissed(false); // Reset dismissal when switching to non-BT device
         }
       } catch (error) {
-        console.error('Failed to check audio output device:', error);
+        logger.error('Failed to check audio output device:', error);
         // Fail silently - don't show warning if we can't detect device
         setIsBluetoothActive(false);
       }
@@ -75,7 +76,7 @@ export function BluetoothPlaybackWarning({
             Bluetooth Playback Detected
           </AlertTitle>
           <AlertDescription className="text-yellow-800 mt-1">
-            You're using <strong>{deviceName}</strong> for playback.
+            You&apos;re using <strong>{deviceName}</strong> for playback.
             Recordings may sound distorted or sped up through Bluetooth devices.
             For accurate review, please use <strong>computer speakers</strong> or{' '}
             <strong>wired headphones</strong>.

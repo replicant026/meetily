@@ -415,7 +415,9 @@ mod tests {
             ]
         );
         fs::remove_dir_all(&tmp).unwrap();
-        // ---- Wave 18 PR-56: failure persistence + retry helpers ----
+    }
+
+    // ---- Wave 18 PR-56: failure persistence + retry helpers ----
 
     fn tmp_app_data(label: &str) -> std::path::PathBuf {
         let p = std::env::temp_dir().join(format!("meetily_pr56_{}", label));
@@ -507,5 +509,4 @@ mod tests {
         fs::remove_dir_all(&app_data).unwrap();
     }
 
-}
 }

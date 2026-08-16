@@ -1,6 +1,5 @@
 // Audio capture implementations module
 
-pub mod microphone;
 pub mod system;
 pub mod backend_config;
 

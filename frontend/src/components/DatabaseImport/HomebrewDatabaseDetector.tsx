@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -46,7 +47,7 @@ export function HomebrewDatabaseDetector({ onImportSuccess, onDecline }: Homebre
         }
       }
     } catch (error) {
-      console.error('Error checking homebrew database:', error);
+      logger.error('Error checking homebrew database:', error);
       // Silently fail - this is just auto-detection
     } finally {
       setIsChecking(false);
@@ -68,7 +69,7 @@ export function HomebrewDatabaseDetector({ onImportSuccess, onDecline }: Homebre
         window.location.reload();
       }, 1000);
     } catch (error) {
-      console.error('Error importing database:', error);
+      logger.error('Error importing database:', error);
       toast.error(`Import failed: ${error}`);
       setIsImporting(false);
     }

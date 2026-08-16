@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 "use client"
 
 import { useEffect, useState, useRef } from "react"
@@ -83,7 +84,7 @@ export function PreferenceSettings() {
     if (!notificationSettings) return;
 
     const handleUpdateNotificationSettings = async () => {
-      console.log("Updating notification settings to:", notificationsEnabled);
+      logger.log("Updating notification settings to:", notificationsEnabled);
 
       try {
         // Update the notification preferences
@@ -96,17 +97,17 @@ export function PreferenceSettings() {
           }
         };
 
-        console.log("Calling updateNotificationSettings with:", updatedSettings);
+        logger.log("Calling updateNotificationSettings with:", updatedSettings);
         await updateNotificationSettings(updatedSettings);
         setPreviousNotificationsEnabled(notificationsEnabled);
-        console.log("Successfully updated notification settings to:", notificationsEnabled);
+        logger.log("Successfully updated notification settings to:", notificationsEnabled);
 
         // Track notification preference change - only fires when user manually toggles
         await Analytics.track('notification_settings_changed', {
           notifications_enabled: notificationsEnabled.toString()
         });
       } catch (error) {
-        console.error('Failed to update notification settings:', error);
+        logger.error('Failed to update notification settings:', error);
       }
     };
 
@@ -132,7 +133,7 @@ export function PreferenceSettings() {
         folder_type: folderType
       });
     } catch (error) {
-      console.error(`Failed to open ${folderType} folder:`, error);
+      logger.error(`Failed to open ${folderType} folder:`, error);
     }
   };
 

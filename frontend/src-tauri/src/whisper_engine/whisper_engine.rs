@@ -33,6 +33,15 @@ pub struct ModelInfo {
     pub description: String,
 }
 
+/// A single transcription sub-segment with timestamps from whisper.cpp internals.
+/// Timestamps are in centiseconds (1/100s) — whisper's native unit.
+#[derive(Debug, Clone)]
+pub struct WhisperSegment {
+    pub text: String,
+    pub start_cs: i64, // centiseconds from chunk start
+    pub end_cs: i64,
+}
+
 pub struct WhisperEngine {
     models_dir: PathBuf,
     current_context: Arc<RwLock<Option<WhisperContext>>>,
@@ -695,6 +704,170 @@ impl WhisperEngine {
         };
 
         Ok((cleaned_result, avg_confidence, is_partial))
+    }
+
+    /// Transcribe audio and return per-sub-segment results with whisper-internal timestamps.
+    /// Enables timestamps so whisper.cpp produces sentence-level segmentation instead of
+    /// collapsing everything into one string. Each WhisperSegment represents one whisper
+    /// internal segment with its start/end in centiseconds.
+    ///
+    /// Falls back to a single segment if whisper returns 0 timestamped segments.
+    pub async fn transcribe_audio_with_segments(
+        &self,
+        audio_data: Vec<f32>,
+        language: Option<String>,
+        initial_prompt: Option<String>,
+    ) -> Result<(Vec<WhisperSegment>, f32)> {
+        let ctx_lock = self.current_context.read().await;
+        let ctx = ctx_lock.as_ref()
+            .ok_or_else(|| anyhow!("No model loaded. Please load a model first."))?;
+
+        let hardware_profile = crate::audio::HardwareProfile::detect();
+        let adaptive_config = hardware_profile.get_whisper_config();
+
+        let mut params = FullParams::new(SamplingStrategy::BeamSearch {
+            beam_size: adaptive_config.beam_size as i32,
+            patience: 1.0,
+        });
+
+        let (language_code, should_translate) = match language.as_deref() {
+            Some("auto") | None => (None, false),
+            Some("auto-translate") => (None, true),
+            Some(lang) => (Some(lang), false),
+        };
+        params.set_language(language_code);
+        params.set_translate(should_translate);
+
+        // Enable timestamps so whisper produces sentence-level segments with t0/t1.
+        params.set_no_timestamps(false);
+        params.set_token_timestamps(true);
+
+        params.set_print_special(false);
+        params.set_print_progress(false);
+        params.set_print_realtime(false);
+        params.set_print_timestamps(false);
+        params.set_suppress_blank(true);
+        params.set_suppress_non_speech_tokens(true);
+        params.set_temperature(adaptive_config.temperature);
+        params.set_max_initial_ts(1.0);
+        params.set_entropy_thold(2.4);
+        params.set_logprob_thold(-1.0);
+        params.set_no_speech_thold(0.55);
+
+        if let Some(prompt) = initial_prompt.as_deref() {
+            if !prompt.trim().is_empty() {
+                params.set_initial_prompt(prompt);
+            }
+        }
+        params.set_max_len(200);
+        params.set_single_segment(false);
+
+        let mut state = ctx.create_state()?;
+        state.full(params, &audio_data)?;
+
+        let num_segments = state.full_n_segments()?;
+        let mut segments = Vec::with_capacity(num_segments as usize);
+        let mut total_confidence = 0.0f32;
+        let mut count = 0u32;
+
+        for i in 0..num_segments {
+            let text = match state.full_get_segment_text_lossy(i) {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+            let cleaned = text.trim().to_string();
+            if cleaned.is_empty() {
+                continue;
+            }
+
+            // t0/t1 are in centiseconds (whisper.cpp convention)
+            let start_cs = state.full_get_segment_t0(i).unwrap_or(0);
+            let end_cs = state.full_get_segment_t1(i).unwrap_or(0);
+
+            let seg_len = cleaned.len() as f32;
+            total_confidence += (seg_len / 100.0).min(0.9) + 0.1;
+            count += 1;
+
+            segments.push(WhisperSegment { text: cleaned, start_cs, end_cs });
+        }
+
+        // Fallback: if timestamps produced nothing, run again without them
+        if segments.is_empty() {
+            let text = Self::transcribe_plain(ctx, &audio_data, &adaptive_config, &language, initial_prompt.as_deref())?;
+            if !text.is_empty() {
+                let duration_cs = (audio_data.len() as f64 / 160.0) as i64; // samples → centiseconds
+                segments.push(WhisperSegment { text, start_cs: 0, end_cs: duration_cs });
+                count = 1;
+                total_confidence = 0.5;
+            }
+        }
+
+        let avg_confidence = if count > 0 { total_confidence / count as f32 } else { 0.0 };
+        Ok((segments, avg_confidence))
+    }
+
+    /// Plain transcription helper used as fallback — returns concatenated text (no timestamps).
+    fn transcribe_plain(
+        ctx: &WhisperContext,
+        audio_data: &[f32],
+        adaptive_config: &crate::audio::AdaptiveWhisperConfig,
+        language: &Option<String>,
+        initial_prompt: Option<&str>,
+    ) -> Result<String> {
+        let mut params = FullParams::new(SamplingStrategy::BeamSearch {
+            beam_size: adaptive_config.beam_size as i32,
+            patience: 1.0,
+        });
+
+        let (language_code, should_translate) = match language.as_deref() {
+            Some("auto") | None => (None, false),
+            Some("auto-translate") => (None, true),
+            Some(lang) => (Some(lang), false),
+        };
+        params.set_language(language_code);
+        params.set_translate(should_translate);
+
+        params.set_no_timestamps(true);
+        params.set_token_timestamps(true);
+        params.set_print_special(false);
+        params.set_print_progress(false);
+        params.set_print_realtime(false);
+        params.set_print_timestamps(false);
+        params.set_suppress_blank(true);
+        params.set_suppress_non_speech_tokens(true);
+        params.set_temperature(adaptive_config.temperature);
+        params.set_max_initial_ts(1.0);
+        params.set_entropy_thold(2.4);
+        params.set_logprob_thold(-1.0);
+        params.set_no_speech_thold(0.55);
+
+        if let Some(prompt) = initial_prompt {
+            if !prompt.trim().is_empty() {
+                params.set_initial_prompt(prompt);
+            }
+        }
+        params.set_max_len(200);
+        params.set_single_segment(false);
+
+        let mut state = ctx.create_state()?;
+        state.full(params, audio_data)?;
+        let num_segments = state.full_n_segments()?;
+
+        let mut result = String::new();
+        for i in 0..num_segments {
+            let text = match state.full_get_segment_text_lossy(i) {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+            let cleaned = text.trim();
+            if !cleaned.is_empty() {
+                if !result.is_empty() {
+                    result.push(' ');
+                }
+                result.push_str(cleaned);
+            }
+        }
+        Ok(result.trim().to_string())
     }
 
     pub async fn transcribe_audio(&self, audio_data: Vec<f32>, language: Option<String>) -> Result<String> {

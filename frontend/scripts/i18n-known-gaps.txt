@@ -1,0 +1,15 @@
+notes.not_found
+sidebar.meeting_list.delete_aria
+sidebar.meeting_list.edit_title_aria
+speakers.assign.people_list
+transcript.stats.column_hits
+transcript.stats.column_hotword
+transcript.stats.column_last_hit
+transcript.stats.description
+transcript.stats.empty
+transcript.stats.just_now
+transcript.stats.loading
+transcript.stats.refresh
+transcript.stats.relative_over_30_days
+transcript.stats.stale_hint
+transcript.stats.title

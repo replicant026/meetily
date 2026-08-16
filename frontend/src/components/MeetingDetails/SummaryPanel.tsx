@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 "use client";
 
 import { Summary, SummaryResponse, Transcript } from '@/types';
@@ -61,6 +62,8 @@ interface SummaryPanelProps {
   onTemplateSelect: (templateId: string, templateName: string) => void;
   isModelConfigLoading?: boolean;
   onOpenModelSettings?: (openFn: () => void) => void;
+  /** Workspace renders generator controls alongside its tabs. */
+  showToolbar?: boolean;
 }
 
 export function SummaryPanel({
@@ -96,7 +99,8 @@ export function SummaryPanel({
   selectedTemplate,
   onTemplateSelect,
   isModelConfigLoading = false,
-  onOpenModelSettings
+  onOpenModelSettings,
+  showToolbar = true,
 }: SummaryPanelProps) {
   const [summaryLang, setSummaryLang] = useState<string | null>(null);
   const [summaryLangStorage, setSummaryLangStorage] = useState<SummaryLanguageStorage>('metadata');
@@ -137,7 +141,7 @@ export function SummaryPanel({
           setSummaryLangStorage(stored.storage);
         }
       } catch (err) {
-        console.error('Failed to load summary language:', err);
+        logger.error('Failed to load summary language:', err);
         toast.warning(t('status.failed_to_load_lang'), {
           description: t('status.load_failed_description'),
         });
@@ -150,7 +154,7 @@ export function SummaryPanel({
     return () => {
       cancelled = true;
     };
-  }, [meeting.id]);
+  }, [meeting.id, t]);
 
   const persistLatestLanguageSelection = async () => {
     if (languageSaveLoopRunningRef.current) return;
@@ -188,14 +192,14 @@ export function SummaryPanel({
             latest?.version === request.version &&
             activeMeetingIdRef.current === request.meetingId
           ) {
-            console.error('Failed to persist summary language:', err);
+            logger.error('Failed to persist summary language:', err);
             toast.error(t('status.failed_to_save_lang'));
             setSummaryLang(request.rollback.language);
             setSummaryLangStorage(request.rollback.storage);
             return;
           }
 
-          console.warn('Ignoring failed stale summary language save:', err);
+          logger.warn('Ignoring failed stale summary language save:', err);
           if (latest?.version === request.version) return;
         }
       }
@@ -255,9 +259,9 @@ export function SummaryPanel({
   );
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden">
+    <div className="flex-1 min-w-0 flex flex-col bg-[rgb(var(--app-bg))] overflow-hidden">
       {/* Title area */}
-      <div className="p-4 border-b border-gray-200">
+      {showToolbar && <div className="p-4 border-b border-gray-200">
         {/* <EditableTitle
           title={meetingTitle}
           isEditing={isEditingTitle}
@@ -299,7 +303,7 @@ export function SummaryPanel({
                 onCopy={onCopySummary}
                 onFind={() => {
                   // TODO: Implement find in summary functionality
-                  console.log('Find in summary clicked');
+                  logger.log('Find in summary clicked');
                 }}
                 onOpenFolder={onOpenFolder}
                 hasSummary={!!aiSummary}
@@ -307,12 +311,12 @@ export function SummaryPanel({
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {isSummaryLoading ? (
         <div className="flex flex-col h-full">
           {/* Show button group during generation */}
-          <div className="flex items-center justify-center pt-8 pb-4">
+          {showToolbar && <div className="flex items-center justify-center pt-8 pb-4">
             <SummaryGeneratorButtonGroup
               modelConfig={modelConfig}
               setModelConfig={setModelConfig}
@@ -328,7 +332,7 @@ export function SummaryPanel({
               isModelConfigLoading={isModelConfigLoading}
               onOpenModelSettings={onOpenModelSettings}
             />
-          </div>
+          </div>}
           {/* Loading spinner */}
           <div className="flex items-center justify-center flex-1">
             <div className="text-center">
@@ -340,7 +344,7 @@ export function SummaryPanel({
       ) : !aiSummary ? (
         <div className="flex flex-col h-full">
           {/* Centered Summary Generator Button Group when no summary */}
-          <div className="flex items-center justify-center gap-2 pt-8 pb-4">
+          {showToolbar && <div className="flex items-center justify-center gap-2 pt-8 pb-4">
             <SummaryGeneratorButtonGroup
               modelConfig={modelConfig}
               setModelConfig={setModelConfig}
@@ -358,7 +362,7 @@ export function SummaryPanel({
               onOpenModelSettings={onOpenModelSettings}
               languageSlot={transcripts.length > 0 ? languageSlot : undefined}
             />
-          </div>
+          </div>}
           {/* Empty state message */}
           <EmptyStateSummary
             onGenerate={() => onGenerateSummary(customPrompt)}
@@ -366,7 +370,7 @@ export function SummaryPanel({
             isGenerating={isSummaryLoading}
           />
         </div>
-      ) : transcripts?.length > 0 && (
+      ) : (
         <div className="flex-1 overflow-y-auto min-h-0">
           {summaryResponse && (
             <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4 max-h-1/3 overflow-y-auto">

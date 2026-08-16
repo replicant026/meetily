@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useCallback } from 'react';
 import { ModelConfig } from '@/components/ModelSettingsModal';
 import { invoke as invokeTauri } from '@tauri-apps/api/core';
@@ -23,10 +24,10 @@ export function useModelConfiguration({ serverAddress }: UseModelConfigurationPr
     const fetchModelConfig = async () => {
       setIsLoading(true);
       try {
-        console.log('🔄 Fetching model configuration from database...');
+        logger.log('🔄 Fetching model configuration from database...');
         const data = await invokeTauri('api_get_model_config', {}) as any;
         if (data && data.provider !== null) {
-          console.log('✅ Loaded model config from database:', {
+          logger.log('✅ Loaded model config from database:', {
             provider: data.provider,
             model: data.model,
             whisperModel: data.whisperModel,
@@ -41,7 +42,7 @@ export function useModelConfiguration({ serverAddress }: UseModelConfigurationPr
               }) as string;
               data.apiKey = apiKeyData;
             } catch (err) {
-              console.error('Failed to fetch API key:', err);
+              logger.error('Failed to fetch API key:', err);
             }
           }
 
@@ -59,26 +60,26 @@ export function useModelConfiguration({ serverAddress }: UseModelConfigurationPr
                 data.topP = customConfig.topP || null;
                 // For custom-openai, model field should match customOpenAIModel
                 data.model = customConfig.model || data.model;
-                console.log('✅ Loaded custom OpenAI config:', {
+                logger.log('✅ Loaded custom OpenAI config:', {
                   displayName: customConfig.displayName,
                   endpoint: customConfig.endpoint,
                   model: customConfig.model,
                 });
               }
             } catch (err) {
-              console.error('Failed to fetch custom OpenAI config:', err);
+              logger.error('Failed to fetch custom OpenAI config:', err);
             }
           }
 
           setModelConfig(data);
         } else {
-          console.warn('⚠️ No model config found in database, using defaults');
+          logger.warn('⚠️ No model config found in database, using defaults');
         }
       } catch (error) {
-        console.error('❌ Failed to fetch model config:', error);
+        logger.error('❌ Failed to fetch model config:', error);
       } finally {
         setIsLoading(false);
-        console.log('✅ Model configuration loading complete');
+        logger.log('✅ Model configuration loading complete');
       }
     };
 
@@ -90,7 +91,7 @@ export function useModelConfiguration({ serverAddress }: UseModelConfigurationPr
     const setupListener = async () => {
       const { listen } = await import('@tauri-apps/api/event');
       const unlisten = await listen<ModelConfig>('model-config-updated', (event) => {
-        console.log('Meeting details received model-config-updated event:', event.payload);
+        logger.log('Meeting details received model-config-updated event:', event.payload);
         setModelConfig(event.payload);
       });
 
@@ -116,7 +117,7 @@ export function useModelConfiguration({ serverAddress }: UseModelConfigurationPr
         apiKey: configToSave.apiKey ?? null,
         ollamaEndpoint: configToSave.ollamaEndpoint ?? null
       };
-      console.log('Saving model config with payload:', payload);
+      logger.log('Saving model config with payload:', payload);
 
       // Track model configuration change
       if (updatedConfig && (
@@ -139,7 +140,7 @@ export function useModelConfiguration({ serverAddress }: UseModelConfigurationPr
         ollamaEndpoint: payload.ollamaEndpoint,
       });
 
-      console.log('Save model config success');
+      logger.log('Save model config success');
       setModelConfig(payload);
 
       // Emit event to sync other components
@@ -150,7 +151,7 @@ export function useModelConfiguration({ serverAddress }: UseModelConfigurationPr
 
       await Analytics.trackSettingsChanged('model_config', `${payload.provider}_${payload.model}`);
     } catch (error) {
-      console.error('Failed to save model config:', error);
+      logger.error('Failed to save model config:', error);
       toast.error("Failed to save summary settings", { description: String(error) });
       if (error instanceof Error) {
         setError(error.message);

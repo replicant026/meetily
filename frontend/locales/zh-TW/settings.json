@@ -65,6 +65,19 @@
         "auto_postprocess_label": "自動 LLM 改寫",
         "auto_postprocess_help": "對每個轉寫片段呼叫 LLM 糾正錯詞、保留專有名詞(需設定模型)。",
         "auto_postprocess_save_failed": "儲存 LLM 改寫設定失敗",
+        "speaker_renamed": "{from} 已重新命名為 \"{to}\"",
+        "jump_to": "跳轉到 {time}",
+        "save_voice_profile": "儲存語音檔案",
+        "recording_paused": "錄音已暫停",
+        "listening_for_speech": "正在偵測語音…",
+        "click_resume": "點擊恢復繼續錄音",
+        "speak_to_see": "說話即可看到即時轉錄",
+        "loading_more": "載入更多…",
+        "showing_segments": "顯示 {loaded} / {total} 個片段",
+        "listening": "正在監聽…",
+        "welcome": "歡迎使用 Meetily！",
+        "start_recording_hint": "開始錄音即可看到即時轉錄",
+        "enrolling_voice": "正在為 {speakerId} 註冊語音…",
         "auto_postprocess_load_failed": "無法讀取 LLM 改寫設定",
         "speaker_rename_placeholder": "輸入姓名（如：陳總）",
         "speaker_rename_save": "儲存",
@@ -280,7 +293,9 @@
         "cancel": "取消",
         "confirm_delete": "確定要刪除這個中斷的會議嗎？此操作無法復原。",
         "alert_recover_failed": "復原會議失敗",
-        "alert_delete_failed": "刪除會議失敗"
+        "alert_delete_failed": "刪除會議失敗",
+        "recovery_type_full": "完整復原：轉寫和音訊均可使用",
+        "recovery_type_transcript_only": "僅轉寫復原：音訊錄音不可用"
     },
     "diarization_enable": "啟用說話人識別",
     "diarization_min_speakers": "最少說話人人數",
@@ -291,5 +306,131 @@
     "diarization_model_status_failed": "載入失敗；僅使用即時估算",
     "diarization_model_status_disabled": "已停用",
     "diarization_load_error": "載入說話人識別設定失敗。",
-    "diarization_loading": "正在載入說話人識別設定…"
+    "diarization_loading": "正在載入說話人識別設定…",
+    "app_settings": {
+        "save_failed": "Failed to save settings",
+        "loading": "Loading settings...",
+        "sections": {
+            "general": "General",
+            "audio": "Audio",
+            "recordings": "Recordings",
+            "shortcuts": "Shortcuts",
+            "notifications": "Notifications",
+            "transcription": "Transcription",
+            "speakers": "Speakers",
+            "llms": "LLMs",
+            "summaries": "Summaries",
+            "export": "Export",
+            "advanced": "Advanced"
+        },
+        "general": {
+            "theme_label": "Theme",
+            "theme_system": "System",
+            "theme_light": "Light",
+            "theme_dark": "Dark",
+            "scale_label": "Interface Scale",
+            "sidebar_label": "Sidebar",
+            "sidebar_fixed": "Always visible",
+            "sidebar_auto_hide": "Auto-hide",
+            "start_with_system": "Start with system",
+            "start_with_system_desc": "Launch Meetily when your computer starts",
+            "start_hidden": "Start hidden",
+            "start_hidden_desc": "Start in the background without opening the window",
+            "language_label": "Language",
+            "analytics_consent": "Share anonymous usage data"
+        },
+        "recordings": {
+            "retention_label": "Retention",
+            "retention_desc": "Automatically delete old recordings after the selected period",
+            "retention_never": "Never",
+            "retention_7d": "7 days",
+            "retention_30d": "30 days",
+            "retention_90d": "90 days",
+            "name_pattern_label": "File name pattern",
+            "name_pattern_desc": "Use {date}, {time}, and {title} as placeholders"
+        },
+        "shortcuts": {
+            "toggle_recording": "Toggle recording",
+            "capture_screen": "Capture screen",
+            "press_keys": "Press shortcut keys...",
+            "conflict": "This shortcut is already in use",
+            "clear": "Clear"
+        },
+        "notifications": {
+            "enabled_label": "Enable notifications",
+            "recording_started": "Recording started",
+            "recording_stopped": "Recording stopped",
+            "update_available": "Update available",
+            "update_installed": "Update installed",
+            "suppress_during_recording": "Suppress during recording"
+        },
+        "speakers": {
+            "matching_label": "Speaker matching",
+            "matching_off": "Disabled",
+            "matching_suggest": "Suggest",
+            "matching_automatic": "Automatic",
+            "matching_desc": "How Meetily matches speakers across meetings",
+            "lock_channels": "Lock audio channels",
+            "lock_channels_desc": "Prevent speakers from being moved between microphone and system audio"
+        },
+        "llms": {
+            "add_provider": "Add Provider",
+            "add_provider_hint": "Provider management coming soon",
+            "no_providers": "No LLM providers configured yet.",
+            "status_connected": "Connected",
+            "status_disconnected": "Disconnected",
+            "status_unknown": "Unknown"
+        },
+        "summaries": {
+            "auto_generate": "Auto-generate summaries",
+            "auto_generate_desc": "Generate a summary automatically when recording stops",
+            "include_chapters": "Include chapters",
+            "include_chapters_desc": "Break the summary into chapters",
+            "include_action_items": "Include action items",
+            "include_action_items_desc": "Extract action items from the meeting",
+            "default_language": "Default summary language",
+            "default_language_desc": "Language for summary generation",
+            "language_auto": "Auto-detect",
+            "system_prompt": "System prompt",
+            "system_prompt_desc": "Custom instructions for the summary generator",
+            "default_tab": "Default detail tab",
+            "default_tab_desc": "Which tab to show when opening meeting details",
+            "default_tab_summary": "Summary",
+            "default_tab_transcript": "Transcript"
+        },
+        "export": {
+            "name_pattern_label": "Export file name",
+            "date_format_label": "Date format",
+            "date_format_iso": "ISO 8601",
+            "date_format_local": "Local format",
+            "yaml_metadata": "Include YAML metadata",
+            "inline_metadata": "Inline metadata in document",
+            "auto_export": "Auto-export",
+            "auto_export_desc": "Export automatically after a meeting is saved"
+        },
+        "advanced": {
+            "title": "Experimental",
+            "description": "These features are experimental and may change or be removed."
+        }
+    },
+    "export": {
+        "name_pattern": "檔案名稱模式",
+        "name_pattern_desc": "匯出檔案名稱的模式。使用 {meeting_name} 和 {date}。",
+        "preview": "預覽",
+        "date_format": "日期格式",
+        "date_format_desc": "匯出檔案中日期的格式",
+        "locale_format": "系統區域",
+        "custom_format": "自訂",
+        "yaml_metadata": "YAML 元資料",
+        "yaml_metadata_desc": "在匯出檔案中包含會議元資料作為 YAML frontmatter",
+        "metadata_position": "元資料位置",
+        "metadata_position_desc": "元資料在匯出檔案中的位置",
+        "frontmatter": "前置元資料（檔案頂部）",
+        "inline": "內聯（檔案末尾）",
+        "auto_export": "自動匯出",
+        "auto_export_desc": "會議結束且轉錄完成後自動匯出。僅限本機 — 不呼叫外部服務。"
+    },
+    "advanced": {
+        "experimental_warning": "這些功能是實驗性的，可能無法按預期運作。使用風險自負。"
+    }
 }

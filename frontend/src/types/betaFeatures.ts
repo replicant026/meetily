@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * Beta Features Type System
  *
@@ -75,7 +76,7 @@ export function loadBetaFeatures(): BetaFeatures {
       return { ...DEFAULT_BETA_FEATURES, ...parsed };
     }
   } catch (error) {
-    console.error('[BetaFeatures] Failed to load from localStorage:', error);
+    logger.error('[BetaFeatures] Failed to load from localStorage:', error);
   }
 
   return { ...DEFAULT_BETA_FEATURES };
@@ -92,6 +93,6 @@ export function saveBetaFeatures(features: BetaFeatures): void {
   try {
     localStorage.setItem('betaFeatures', JSON.stringify(features));
   } catch (error) {
-    console.error('[BetaFeatures] Failed to save to localStorage:', error);
+    logger.error('[BetaFeatures] Failed to save to localStorage:', error);
   }
 }

@@ -4,8 +4,12 @@ use std::sync::Mutex;
 pub mod clustering;
 pub mod embedding;
 pub mod offline;
+pub mod overlap;
+pub mod speaker_preferences;
+pub mod tracker;
+pub mod voice_references;
 
-pub const EMBEDDING_DIM: usize = 192;
+pub const EMBEDDING_DIM: usize = 256;
 pub const MAX_BUFFER_WINDOWS: usize = 2000;
 
 #[derive(Debug, Clone)]
@@ -99,8 +103,8 @@ pub fn status() -> DiarizationStatus {
 pub fn update_status(next: DiarizationStatus) {
     let mut g = STATUS.lock().expect("diarization status lock");
     g.enabled = next.enabled;
-    g.min_speakers = next.min_speakers.max(2);
-    g.max_speakers = next.max_speakers.max(g.min_speakers);
+    g.min_speakers = next.min_speakers.max(1);
+    g.max_speakers = next.max_speakers.max(g.min_speakers).min(20);
     g.model_status = next.model_status;
 }
 

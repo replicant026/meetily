@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -32,7 +33,7 @@ export function usePermissionCheck() {
       const outputDevices = devices.filter(d => d.device_type === 'Output');
       const hasSystemAudio = outputDevices.length > 0;
 
-      console.log('Permission check:', {
+      logger.log('Permission check:', {
         hasMicrophone,
         hasSystemAudio,
         inputDevices: inputDevices.length,
@@ -48,7 +49,7 @@ export function usePermissionCheck() {
 
       return { hasMicrophone, hasSystemAudio };
     } catch (error) {
-      console.error('Failed to check audio permissions:', error);
+      logger.error('Failed to check audio permissions:', error);
       setStatus({
         hasMicrophone: false,
         hasSystemAudio: false,
@@ -69,7 +70,7 @@ export function usePermissionCheck() {
         checkPermissions();
       }, 1000);
     } catch (error) {
-      console.error('Failed to request permissions:', error);
+      logger.error('Failed to request permissions:', error);
     }
   };
 

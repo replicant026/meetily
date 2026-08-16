@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as AsyncMutex;
 use anyhow::Result;
 use log::{info, warn, error};
-use tauri::{AppHandle, Runtime, Emitter, Manager};
+use tauri::{AppHandle, Runtime, Emitter};
 use tokio::sync::mpsc;
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
@@ -57,6 +57,8 @@ pub struct RecordingSaver {
     is_saving: Arc<Mutex<bool>>,
     /// PR-44a: per-session embedding buffer released on stop_recording.
     pub diarization_buffer: Arc<crate::diarization::EmbeddingBuffer>,
+    /// Realtime speaker tracker for online cosine matching.
+    pub speaker_tracker: Arc<Mutex<crate::diarization::tracker::SpeakerTracker>>,
 }
 
 impl RecordingSaver {
@@ -70,6 +72,7 @@ impl RecordingSaver {
             chunk_receiver: None,
             is_saving: Arc::new(Mutex::new(false)),
             diarization_buffer: Arc::new(crate::diarization::EmbeddingBuffer::default()),
+            speaker_tracker: Arc::new(Mutex::new(crate::diarization::tracker::SpeakerTracker::default())),
         }
     }
 
@@ -116,7 +119,7 @@ impl RecordingSaver {
         // NEW: Save incrementally to disk
         // PR-A: record hotword hits against this segment (fire-and-forget).
         // Errors are swallowed inside the helper so the streaming path never blocks.
-        crate::hotword_stats::record_segment(&segment.text);
+        let _ = crate::hotword_stats::record_segment(&segment.text);
         // PR-42-iii: spawn async LLM postprocess; emits transcript-postprocessed
         // or transcript-postprocess-failed to the frontend. No-op when text is short.
         crate::llm_postprocess::spawn_segment_postprocess(
@@ -128,21 +131,6 @@ impl RecordingSaver {
                 warn!("Failed to write incremental transcript update: {}", e);
             }
         }
-    }
-
-    /// Legacy method for backward compatibility - converts text to basic segment
-    pub fn add_transcript_chunk(&self, text: String) {
-        let segment = TranscriptSegment {
-            id: format!("seg_{}", chrono::Utc::now().timestamp_millis()),
-            text,
-            audio_start_time: 0.0,
-            audio_end_time: 0.0,
-            duration: 0.0,
-            display_time: "[00:00]".to_string(),
-            confidence: 1.0,
-            sequence_id: 0,
-        };
-        self.add_transcript_segment(segment);
     }
 
     /// Start accumulation with optional incremental saving
@@ -182,6 +170,11 @@ impl RecordingSaver {
                     }
                 }
             }
+        }
+
+        // Set saving flag BEFORE spawning task so the task sees it immediately
+        if let Ok(mut is_saving) = self.is_saving.lock() {
+            *is_saving = true;
         }
 
         // Start accumulation task
@@ -224,11 +217,6 @@ impl RecordingSaver {
 
                 info!("Recording saver accumulation task ended");
             });
-        }
-
-        // Set saving flag
-        if let Ok(mut is_saving) = self.is_saving.lock() {
-            *is_saving = true;
         }
 
         sender
@@ -379,8 +367,17 @@ impl RecordingSaver {
             *is_saving = false;
         }
 
-        // Give time for final chunks
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+        // Give time for final chunks to drain from the channel
+        let drain_timeout = tokio::time::timeout(
+            tokio::time::Duration::from_secs(2),
+            async {
+                // Wait briefly to let any in-flight chunks arrive
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            },
+        ).await;
+        if drain_timeout.is_err() {
+            warn!("Timed out waiting for final audio chunks to drain (2s timeout)");
+        }
 
         // Check if incremental saver exists (indicates auto_save was enabled)
         let should_save_audio = self.incremental_saver.is_some();
@@ -460,37 +457,6 @@ impl RecordingSaver {
 
         if let Err(e) = app.emit("recording-saved", &save_event) {
             warn!("Failed to emit recording-saved event: {}", e);
-        }
-
-        // PR-44b: kick off offline diarization once audio is on disk. The
-        // meeting_id and pool are pulled from app state, mirroring the
-        // pattern used by the import/retranscription flows. Failures stay
-        // non-fatal so the save itself still succeeds.
-        if let Some(meeting_id) = self.metadata.as_ref().and_then(|m| m.meeting_id.clone()) {
-            let pool_opt = app.try_state::<crate::state::AppState>();
-            if let Some(app_state) = pool_opt {
-                let pool = app_state.db_manager.pool().clone();
-                let wav_path = self.meeting_folder.as_ref().map(|f| f.join("audio.wav"));
-                let windows = self.diarization_buffer.snapshot();
-                let app_clone = app.clone();
-                tokio::spawn(async move {
-                    let res = crate::diarization::offline::commit_speaker_labels(
-                        &pool,
-                        &meeting_id,
-                        wav_path.as_deref(),
-                        windows,
-                        2,
-                        6,
-                    ).await;
-                    if let Err(e) = res {
-                        log::warn!("diarization offline failed: {}", e);
-                    } else {
-                        let _ = app_clone.emit("transcripts-updated", serde_json::json!({
-                            "meeting_id": meeting_id,
-                        }));
-                    }
-                });
-            }
         }
 
         // Clean up transcript segments

@@ -24,6 +24,7 @@ impl TranscriptionProvider for ParakeetProvider {
         &self,
         audio: Vec<f32>,
         language: Option<String>,
+        initial_prompt: Option<String>,
     ) -> std::result::Result<TranscriptResult, TranscriptionError> {
         // Log language preference warning if set (Parakeet doesn't support it yet)
         if let Some(ref lang) = language {
@@ -31,6 +32,10 @@ impl TranscriptionProvider for ParakeetProvider {
                 "Parakeet doesn't support language preference '{}' yet - transcribing in default language",
                 lang
             );
+        }
+        // Parakeet doesn't support custom vocabulary prompts
+        if initial_prompt.is_some() {
+            log::debug!("Parakeet ignoring initial_prompt (not supported)");
         }
 
         match self.engine.transcribe_audio(audio).await {

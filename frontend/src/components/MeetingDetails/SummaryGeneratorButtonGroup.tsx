@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 "use client";
 
 import { ModelConfig, ModelSettingsModal } from '@/components/ModelSettingsModal';
@@ -70,7 +71,7 @@ export function SummaryGeneratorButtonGroup({
       // Register our open dialog function with the parent by calling the callback
       // This allows the parent to store a reference to this function
       const openDialog = () => {
-        console.log('📱 Opening model settings dialog via callback');
+        logger.log('📱 Opening model settings dialog via callback');
         setSettingsDialogOpen(true);
       };
 
@@ -172,7 +173,7 @@ export function SummaryGeneratorButtonGroup({
       setSettingsDialogOpen(true);
 
     } catch (error) {
-      console.error('Error checking built-in AI models:', error);
+      logger.error('Error checking built-in AI models:', error);
       toast.error(t('errors.check_model_status_failed'), {
         description: error instanceof Error ? error.message : String(error),
         duration: 5000,
@@ -213,7 +214,7 @@ export function SummaryGeneratorButtonGroup({
       // Models are available, proceed with generation
       onGenerateSummary(customPrompt);
     } catch (error) {
-      console.error('Error checking Ollama models:', error);
+      logger.error('Error checking Ollama models:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       if (isOllamaNotInstalledError(errorMessage)) {

@@ -13,7 +13,7 @@ import { ConfidenceIndicator } from "./ConfidenceIndicator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { RecordingStatusBar } from "./RecordingStatusBar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Play, Search, X } from "lucide-react";
 import { TranscriptSegmentData } from "@/types";
 import { useTranslations } from "next-intl";
 import { getSpeakerColor, buildSpeakerColorMap } from "@/lib/speaker-colors";
@@ -44,9 +44,14 @@ export interface VirtualizedTranscriptViewProps {
     onLoadMore?: () => void;
     /** Called when user clicks the timestamp button to jump audio playback */
     onTimestampClick?: (sec: number) => void;
+    /** Seeks and starts the shared player at a transcript segment. */
+    onPlayFromTimestamp?: (sec: number) => void;
+    /** Shared player position, used to mark the segment currently playing. */
+    currentAudioTime?: number;
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
     onEnrollSpeaker?: (speakerId: string) => void;
+    onSpeakerClick?: (speakerLabel: string, segmentIds: string[]) => void;
     transientSpeaker?: string | null;
 }
 
@@ -77,43 +82,86 @@ function cleanStopWords(text: string): string {
     return cleanedText.replace(/\s+/g, ' ').trim();
 }
 
+// Post-process ReactNode array to wrap search query matches in <mark> tags.
+// Only touches plain-text nodes; existing React elements (hotword marks) pass through.
+function applySearchHighlight(
+    nodes: React.ReactNode[],
+    query: string,
+    keyPrefix: string,
+): React.ReactNode[] {
+    if (!query.trim()) return nodes;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    const lower = query.toLowerCase();
+    const result: React.ReactNode[] = [];
+    let k = 0;
+    for (const node of nodes) {
+        if (typeof node !== 'string') { result.push(node); continue; }
+        for (const part of node.split(regex)) {
+            if (!part) continue;
+            if (part.toLowerCase() === lower) {
+                result.push(
+                    <mark key={`${keyPrefix}-${k++}`} className="bg-yellow-200 text-inherit rounded-sm px-0.5">
+                        {part}
+                    </mark>
+                );
+            } else {
+                result.push(part);
+            }
+        }
+    }
+    return result;
+}
+
 // Memoized transcript segment component
 const TranscriptSegment = memo(function TranscriptSegment({
     id,
     timestamp,
+    endTime,
     text,
     confidence,
     isStreaming,
     showConfidence,
     onTimestampClick,
+    onPlayFromTimestamp,
+    isActive,
     speaker,
     transientSpeaker,
     customSpeakerNames,
     onSpeakerRename,
     speakerColorMap,
     onEnrollSpeaker,
+    onSpeakerClick,
     hotwords,
     protectedSet,
     postprocessFailed,
     postprocessFailedMessage,
+    searchQuery,
+    isSearchActive,
 }: {
     id: string;
     timestamp: number;
+    endTime?: number | null;
     text: string;
     confidence?: number;
     isStreaming: boolean;
     showConfidence: boolean;
     onTimestampClick?: (sec: number) => void;
+    onPlayFromTimestamp?: (sec: number) => void;
+    isActive: boolean;
     speaker?: string | null;
     transientSpeaker?: string | null;
     customSpeakerNames?: Record<string, string>;
     onSpeakerRename?: (speakerId: string, friendlyName: string) => void;
     speakerColorMap?: Map<string, import("@/lib/speaker-colors").SpeakerColor>;
     onEnrollSpeaker?: (speakerId: string) => void;
+    onSpeakerClick?: (speakerLabel: string) => void;
     hotwords: HotwordRule[];
     protectedSet?: Set<string>;
     postprocessFailed?: boolean;
     postprocessFailedMessage?: string;
+    searchQuery?: string;
+    isSearchActive?: boolean;
 }) {
     const t = useTranslations('settings.transcript');
     const handleHotwordCopy = useCallback((value: string) => {
@@ -125,6 +173,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
     }, [t]);
     const displayText = cleanStopWords(text) || (text.trim() === '' ? '[Silence]' : text);
     const hotwordNodes = wrapHotwords(displayText, hotwords, handleHotwordCopy, protectedSet).nodes;
+    const displayNodes = searchQuery ? applySearchHighlight(hotwordNodes, searchQuery, `sh-${id}`) : hotwordNodes;
     const customName = speaker ? customSpeakerNames?.[speaker] : undefined;
     const speakerColor = speaker ? (speakerColorMap?.get(speaker) ?? getSpeakerColor(speaker)) : null;
     const [isRenaming, setIsRenaming] = useState(false);
@@ -139,7 +188,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
         const trimmed = draftName.trim();
         if (speaker && trimmed) {
             onSpeakerRename?.(speaker, trimmed);
-            toast.success(`${speaker} is now "${trimmed}"`);
+            toast.success(t('speaker_renamed', { from: speaker, to: trimmed }));
         }
         setIsRenaming(false);
     };
@@ -153,87 +202,140 @@ const TranscriptSegment = memo(function TranscriptSegment({
             }}
             disabled={!onTimestampClick}
             className={
-                "text-xs mt-1 flex-shrink-0 min-w-[50px] text-left " +
+                "text-xs flex-shrink-0 min-w-[50px] text-right " +
                 (onTimestampClick
-                    ? "text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    ? "text-stone-500 hover:text-stone-900 hover:underline cursor-pointer"
                     : "text-gray-400 cursor-default")
             }
-            aria-label={`Jump to ${formatRecordingTime(timestamp)}`}
+            aria-label={t('jump_to', { time: formatRecordingTime(timestamp) })}
         >
             {formatRecordingTime(timestamp)}
         </button>
     );
 
     return (
-        <div id={`segment-${id}`} className="mb-3">
-            <div className="flex items-start gap-2">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        {timeButton}
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        {confidence !== undefined && showConfidence && (
-                            <ConfidenceIndicator confidence={confidence} showIndicator={showConfidence} />
-                        )}
-                    </TooltipContent>
-                </Tooltip>
-                {speaker && !isRenaming && (
-                    <span className="inline-flex items-center gap-0.5 mt-1 flex-shrink-0 group/speaker">
-                        <button
-                            type="button"
-                            onClick={openRename}
-                            disabled={!onSpeakerRename}
-                            className={`text-xs font-medium px-2 py-0.5 rounded ${speakerColor?.bg ?? 'bg-blue-50'} ${speakerColor?.text ?? 'text-blue-700'} hover:opacity-80 disabled:cursor-default`}
-                            title={onSpeakerRename ? t('speaker_rename_placeholder') : undefined}
-                        >
-                            {customName ?? speaker}
-                        </button>
-                        {onEnrollSpeaker && (
+        <div
+            id={`segment-${id}`}
+            className={`group/segment mb-3 rounded-r-md border-l-2 px-2 py-1 transition-colors ${
+                isActive ? 'border-blue-500 bg-blue-50 shadow-sm' : isSearchActive ? 'border-yellow-400 bg-yellow-50/50 shadow-sm' : 'border-transparent'
+            }`}
+            aria-current={isActive ? 'true' : undefined}
+        >
+            <div className="grid items-start gap-x-3" style={{ gridTemplateColumns: 'auto minmax(0,1fr) auto' }}>
+                {/* Column 1: Speaker identity */}
+                <div className="min-w-0 pt-0.5">
+                    {speaker && !isRenaming && (
+                        <span className="inline-flex items-center gap-0.5 group/speaker">
                             <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); onEnrollSpeaker(speaker); }}
-                                className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-green-600 rounded"
-                                title="Save voice profile"
+                                onClick={(e) => {
+                                    if (onSpeakerClick) {
+                                        onSpeakerClick(speaker);
+                                    } else {
+                                        openRename(e);
+                                    }
+                                }}
+                                className="inline-flex items-center gap-2 text-sm font-medium text-stone-800 cursor-pointer hover:text-stone-950"
+                                title={onSpeakerClick ? t('speaker_assign_tooltip', { default: 'Click to assign this speaker to a person' }) : t('speaker_rename_placeholder')}
                             >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                <span
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold"
+                                    style={{
+                                        backgroundColor: speakerColor?.backgroundColor ?? '#e7e5e4',
+                                        color: speakerColor?.foregroundColor ?? '#44403c',
+                                    }}
+                                >
+                                    {(customName ?? speaker).slice(0, 2).toUpperCase()}
+                                </span>
+                                <span className="max-w-28 truncate">{customName ?? speaker}</span>
                             </button>
-                        )}
-                    </span>
-                )}
-                {!speaker && transientSpeaker && !isRenaming && (
-                    <span
-                        className="text-xs font-medium text-gray-600 border border-dashed border-gray-400 px-2 py-0.5 rounded mt-1 flex-shrink-0 cursor-help"
-                        title={t('transient_tooltip', { default: 'Realtime hint; will be re-clustered when the recording stops.' })}
-                    >
-                        {transientSpeaker}
-                    </span>
-                )}
-                {speaker && isRenaming && (
-                    <span className="flex items-center gap-1 mt-1 flex-shrink-0">
-                        <input
-                            autoFocus
-                            type="text"
-                            value={draftName}
-                            onChange={(e) => setDraftName(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') commitRename();
-                                else if (e.key === 'Escape') cancelRename();
-                            }}
-                            placeholder={t('speaker_rename_placeholder')}
-                            className="text-xs px-1.5 py-0.5 border border-blue-300 rounded w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        <button type="button" onClick={commitRename} className="p-0.5 text-green-600 hover:text-green-800" title={t('speaker_rename_save')} aria-label={t('speaker_rename_save')}><Check size={14} /></button>
-                        <button type="button" onClick={cancelRename} className="p-0.5 text-gray-500 hover:text-gray-700" title={t('speaker_rename_cancel')} aria-label={t('speaker_rename_cancel')}><X size={14} /></button>
-                    </span>
-                )}
-                <div className="flex-1">
+                            {onSpeakerRename && (
+                                <button
+                                    type="button"
+                                    onClick={openRename}
+                                    className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-blue-600 rounded"
+                                    title={t('speaker_rename_placeholder')}
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                </button>
+                            )}
+                            {onEnrollSpeaker && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onEnrollSpeaker(speaker); }}
+                                    className="opacity-0 group-hover/speaker:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-green-600 rounded"
+                                    title={t('save_voice_profile')}
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                </button>
+                            )}
+                        </span>
+                    )}
+                    {!speaker && transientSpeaker && !isRenaming && (
+                        <span
+                            className="text-xs font-medium text-gray-600 border border-dashed border-gray-400 px-2 py-0.5 rounded cursor-help"
+                            title={t('transient_tooltip', { default: 'Realtime hint; will be re-clustered when the recording stops.' })}
+                        >
+                            {transientSpeaker}
+                        </span>
+                    )}
+                    {speaker && isRenaming && (
+                        <span className="inline-flex items-center gap-1">
+                            <input
+                                autoFocus
+                                type="text"
+                                value={draftName}
+                                onChange={(e) => setDraftName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') commitRename();
+                                    else if (e.key === 'Escape') cancelRename();
+                                }}
+                                placeholder={t('speaker_rename_placeholder')}
+                                className="text-xs px-1.5 py-0.5 border border-blue-300 rounded w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <button type="button" onClick={commitRename} className="p-0.5 text-green-600 hover:text-green-800" title={t('speaker_rename_save')} aria-label={t('speaker_rename_save')}><Check size={14} /></button>
+                            <button type="button" onClick={cancelRename} className="p-0.5 text-gray-500 hover:text-gray-700" title={t('speaker_rename_cancel')} aria-label={t('speaker_rename_cancel')}><X size={14} /></button>
+                        </span>
+                    )}
+                </div>
+
+                {/* Column 2: Transcript body text */}
+                <div className="min-w-0">
                     {isStreaming ? (
                         <div className="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
-                            <p className="text-base text-gray-800 leading-relaxed">{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
+                            <p className="text-[19px] text-stone-900 leading-8" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{displayNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
                         </div>
                     ) : (
-                        <p className="text-base text-gray-800 leading-relaxed">{hotwordNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
+                        <p className="text-[19px] text-stone-900 leading-8" style={{ fontFamily: 'var(--app-display-font, inherit)' }}>{displayNodes}{postprocessFailed ? (<span className="ml-1 inline-flex align-baseline text-amber-600" title={postprocessFailedMessage ?? ""} aria-label="LLM postprocess failed">⚠</span>) : null}</p>
                     )}
+                </div>
+
+                {/* Column 3: Timestamp action */}
+                <div className="pt-0.5">
+                    {onPlayFromTimestamp && (
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onPlayFromTimestamp(timestamp);
+                            }}
+                            className="mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-blue-700 opacity-0 transition-opacity hover:bg-blue-100 focus:opacity-100 group-hover/segment:opacity-100"
+                            title="Play from this segment"
+                            aria-label={`Play from ${formatRecordingTime(timestamp)}`}
+                        >
+                            <Play size={14} fill="currentColor" />
+                        </button>
+                    )}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            {timeButton}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            {confidence !== undefined && showConfidence && (
+                                <ConfidenceIndicator confidence={confidence} showIndicator={showConfidence} />
+                            )}
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
             </div>
         </div>
@@ -243,6 +345,8 @@ const TranscriptSegment = memo(function TranscriptSegment({
 export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps> = ({
     segments,
     onTimestampClick,
+    onPlayFromTimestamp,
+    currentAudioTime,
     isRecording = false,
     isPaused = false,
     isProcessing = false,
@@ -258,11 +362,29 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     customSpeakerNames,
     onSpeakerRename,
     onEnrollSpeaker,
+    onSpeakerClick,
 }) => {
+    const t = useTranslations('settings.transcript');
     // Wave 18 PR-52: shared hotword rules so every TranscriptSegment uses the same list.
     const { rules: hotwords, protectedSet } = useHotwords();
     // Build stable speaker→color map from segment order (prevents color reset on rename)
     const speakerColorMap = useMemo(() => buildSpeakerColorMap(segments), [segments]);
+    const activeSegmentId = useMemo(() => {
+        if (currentAudioTime === undefined) return undefined;
+        return segments.find((segment, index) =>
+            currentAudioTime >= segment.timestamp &&
+            currentAudioTime < (segment.endTime ?? segments[index + 1]?.timestamp ?? Infinity)
+        )?.id;
+    }, [currentAudioTime, segments]);
+
+    // Wrap onSpeakerClick to resolve segment IDs for the clicked label
+    const handleSpeakerClick = useCallback((speakerLabel: string) => {
+        if (!onSpeakerClick) return;
+        const segmentIds = segments
+            .filter((s) => s.speaker === speakerLabel)
+            .map((s) => s.id);
+        onSpeakerClick(speakerLabel, segmentIds);
+    }, [onSpeakerClick, segments]);
     // Create scroll ref first - shared between virtualizer and auto-scroll hook
     const scrollRef = useRef<HTMLDivElement>(null);
     // Ref for infinite scroll trigger element
@@ -307,6 +429,83 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     const postprocess = useTranscriptPostprocessEvents(true);
     const resolveDisplayText = (segment: TranscriptSegmentData): string =>
         postprocess.getDisplayText(segment.id, getDisplayText(segment));
+
+    // --- Transcript search ---
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Cmd/Ctrl+F → toggle search bar
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                e.preventDefault();
+                e.stopPropagation();
+                setSearchOpen(prev => !prev);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, []);
+
+    // Escape → close search (only when open)
+    useEffect(() => {
+        if (!searchOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                setSearchOpen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [searchOpen]);
+
+    // Auto-focus input when search opens; clear state when it closes
+    useEffect(() => {
+        if (searchOpen) {
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select();
+        } else {
+            setSearchQuery('');
+            setActiveMatchIndex(0);
+        }
+    }, [searchOpen]);
+
+    // Matching segments (case-insensitive substring)
+    const matchingSegments = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const lower = searchQuery.toLowerCase();
+        return segments.filter(s => resolveDisplayText(s).toLowerCase().includes(lower));
+    }, [searchQuery, segments, postprocess, getDisplayText]);
+
+    // Reset active index when query changes
+    useEffect(() => {
+        setActiveMatchIndex(0);
+    }, [searchQuery]);
+
+    const goToNextMatch = useCallback(() => {
+        if (matchingSegments.length === 0) return;
+        setActiveMatchIndex(prev => (prev + 1) % matchingSegments.length);
+    }, [matchingSegments.length]);
+
+    const goToPrevMatch = useCallback(() => {
+        if (matchingSegments.length === 0) return;
+        setActiveMatchIndex(prev => (prev - 1 + matchingSegments.length) % matchingSegments.length);
+    }, [matchingSegments.length]);
+
+    // Scroll active match into view
+    const activeSearchSegmentId = useMemo(() => {
+        if (!searchOpen || !searchQuery.trim() || matchingSegments.length === 0) return undefined;
+        return matchingSegments[Math.min(activeMatchIndex, matchingSegments.length - 1)]?.id;
+    }, [searchOpen, searchQuery, activeMatchIndex, matchingSegments]);
+
+    useEffect(() => {
+        if (!activeSearchSegmentId) return;
+        const el = document.getElementById(`segment-${activeSearchSegmentId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, [activeSearchSegmentId]);
 
     // Infinite scroll: IntersectionObserver to trigger loading more
     useEffect(() => {
@@ -378,6 +577,59 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                 )}
             </AnimatePresence>
 
+            {/* Transcript Search Bar */}
+            <AnimatePresence>
+                {searchOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                        className="sticky top-0 z-20 flex justify-end py-2 pointer-events-none"
+                    >
+                        <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200 rounded-full px-3 py-1.5 pointer-events-auto">
+                            <Search size={14} className="text-gray-400 flex-shrink-0" />
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); goToNextMatch(); }
+                                    else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); goToPrevMatch(); }
+                                }}
+                                placeholder="Search transcript..."
+                                className="w-40 text-sm bg-transparent border-none outline-none text-gray-800 placeholder-gray-400"
+                            />
+                            {searchQuery.trim() && (
+                                <span className="text-xs text-gray-500 whitespace-nowrap tabular-nums select-none">
+                                    {matchingSegments.length > 0
+                                        ? `${Math.min(activeMatchIndex + 1, matchingSegments.length)} of ${matchingSegments.length}`
+                                        : 'No matches'}
+                                </span>
+                            )}
+                            {searchQuery.trim() && matchingSegments.length > 0 && (
+                                <>
+                                    <button onClick={goToPrevMatch} className="p-0.5 text-gray-400 hover:text-gray-700 rounded transition-colors" aria-label="Previous match">
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button onClick={goToNextMatch} className="p-0.5 text-gray-400 hover:text-gray-700 rounded transition-colors" aria-label="Next match">
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </>
+                            )}
+                            <button
+                                onClick={() => setSearchOpen(false)}
+                                className="p-0.5 text-gray-400 hover:text-gray-700 rounded transition-colors ml-0.5"
+                                aria-label="Close search"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Content - add padding when recording to prevent overlap */}
             <div className={isRecording ? 'pt-2' : ''}>
             {segments.length === 0 ? (
@@ -393,16 +645,16 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                 <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-orange-500' : 'bg-blue-500 animate-pulse'}`}></div>
                             </div>
                             <p className="text-sm text-gray-600">
-                                {isPaused ? 'Recording paused' : 'Listening for speech...'}
+                                {isPaused ? t('recording_paused') : t('listening_for_speech')}
                             </p>
                             <p className="text-xs mt-1 text-gray-400">
-                                {isPaused ? 'Click resume to continue recording' : 'Speak to see live transcription'}
+                                {isPaused ? t('click_resume') : t('speak_to_see')}
                             </p>
                         </>
                     ) : (
                         <>
-                            <p className="text-lg font-semibold">Welcome to meetily!</p>
-                            <p className="text-xs mt-1">Start recording to see live transcription</p>
+                            <p className="text-lg font-semibold">{t('welcome')}</p>
+                            <p className="text-xs mt-1">{t('start_recording_hint')}</p>
                         </>
                     )}
                 </motion.div>
@@ -436,6 +688,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                     <TranscriptSegment
                                         id={segment.id}
                                         timestamp={segment.timestamp}
+                                        endTime={segment.endTime}
                                         text={resolveDisplayText(segment)}
                                         confidence={segment.confidence}
                                         postprocessFailed={postprocess.hasFailed(segment.id)}
@@ -448,9 +701,14 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onSpeakerRename={onSpeakerRename}
                                         speakerColorMap={speakerColorMap}
                                         onEnrollSpeaker={onEnrollSpeaker}
+                                        onSpeakerClick={handleSpeakerClick}
                                         onTimestampClick={onTimestampClick}
+                                        onPlayFromTimestamp={onPlayFromTimestamp}
+                                        isActive={segment.id === activeSegmentId}
                                         hotwords={hotwords}
                                         protectedSet={protectedSet}
+                                        searchQuery={searchOpen ? searchQuery : undefined}
+                                        isSearchActive={segment.id === activeSearchSegmentId}
                                     />
                                 </div>
                             );
@@ -463,11 +721,11 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             {isLoadingMore ? (
                                 <div className="flex items-center gap-2 text-gray-500">
                                     <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                                    <span className="text-sm">Loading more...</span>
+                                    <span className="text-sm">{t('loading_more')}</span>
                                 </div>
                             ) : hasMore && totalCount > 0 ? (
                                 <span className="text-sm text-gray-400">
-                                    Showing {loadedCount} of {totalCount} segments
+                                    {t('showing_segments', { loaded: loadedCount, total: totalCount })}
                                 </span>
                             ) : null}
                         </div>
@@ -482,7 +740,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             className="flex items-center gap-2 mt-4 text-gray-500"
                         >
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm">Listening...</span>
+                            <span className="text-sm">{t('listening')}</span>
                         </motion.div>
                     )}
                 </>
@@ -503,6 +761,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                     <TranscriptSegment
                                         id={segment.id}
                                         timestamp={segment.timestamp}
+                                        endTime={segment.endTime}
                                         text={resolveDisplayText(segment)}
                                         confidence={segment.confidence}
                                         postprocessFailed={postprocess.hasFailed(segment.id)}
@@ -515,8 +774,14 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                         onSpeakerRename={onSpeakerRename}
                                         speakerColorMap={speakerColorMap}
                                         onEnrollSpeaker={onEnrollSpeaker}
+                                        onSpeakerClick={handleSpeakerClick}
                                         onTimestampClick={onTimestampClick}
+                                        onPlayFromTimestamp={onPlayFromTimestamp}
+                                        isActive={segment.id === activeSegmentId}
                                         hotwords={hotwords}
+                                        searchQuery={searchOpen ? searchQuery : undefined}
+                                        isSearchActive={segment.id === activeSearchSegmentId}
+                                        protectedSet={protectedSet}
                                     />
                                 </motion.div>
                             );
@@ -529,11 +794,11 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             {isLoadingMore ? (
                                 <div className="flex items-center gap-2 text-gray-500">
                                     <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                                    <span className="text-sm">Loading more...</span>
+                                    <span className="text-sm">{t('loading_more')}</span>
                                 </div>
                             ) : hasMore && totalCount > 0 ? (
                                 <span className="text-sm text-gray-400">
-                                    Showing {loadedCount} of {totalCount} segments
+                                    {t('showing_segments', { loaded: loadedCount, total: totalCount })}
                                 </span>
                             ) : null}
                         </div>
@@ -548,7 +813,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             className="flex items-center gap-2 mt-4 text-gray-500"
                         >
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm">Listening...</span>
+                            <span className="text-sm">{t('listening')}</span>
                         </motion.div>
                     )}
                 </>

@@ -163,6 +163,25 @@ impl TranscriptsRepository {
         Ok(rows)
     }
 
+    /// Fetch the timestamped transcript segments used as the grounded source
+    /// for AI-generated meeting chapters. Database IDs make every accepted
+    /// chapter seekable without trusting a model-provided timestamp.
+    pub async fn fetch_timed_segments_for_chapters(
+        pool: &SqlitePool,
+        meeting_id: &str,
+    ) -> Result<Vec<(String, String, f64)>, SqlxError> {
+        sqlx::query_as::<_, (String, String, f64)>(
+            "SELECT id, transcript, audio_start_time FROM transcripts
+             WHERE meeting_id = ?
+               AND audio_start_time IS NOT NULL
+               AND TRIM(transcript) != ''
+             ORDER BY audio_start_time ASC, id ASC",
+        )
+        .bind(meeting_id)
+        .fetch_all(pool)
+        .await
+    }
+
     /// PR-44b: apply stable speaker labels in a single transaction. The
     /// caller decides which labels to apply (offline cluster output).
     pub async fn update_segment_speakers(

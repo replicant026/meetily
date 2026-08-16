@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
@@ -105,7 +106,7 @@ export function ModelManager({
         setModels(modelsWithDownloadState);
         setInitialized(true);
       } catch (err) {
-        console.error('Failed to initialize Whisper:', err);
+        logger.error('Failed to initialize Whisper:', err);
         setError(err instanceof Error ? err.message : 'Failed to load models');
         toast.error('Failed to load transcription models', {
           description: err instanceof Error ? err.message : 'Unknown error',
@@ -126,7 +127,7 @@ export function ModelManager({
     let unlistenError: (() => void) | null = null;
 
     const setupListeners = async () => {
-      console.log('[ModelManager] Setting up event listeners...');
+      logger.log('[ModelManager] Setting up event listeners...');
 
       // Download progress with throttling
       unlistenProgress = await listen<{ modelName: string; progress: number }>(
@@ -142,7 +143,7 @@ export function ModelManager({
             Math.abs(progress - throttleData.progress) >= 5;
 
           if (shouldUpdate) {
-            console.log(`[ModelManager] Progress update for ${modelName}: ${progress}%`);
+            logger.log(`[ModelManager] Progress update for ${modelName}: ${progress}%`);
             progressThrottleRef.current.set(modelName, { progress, timestamp: now });
 
             setModels(prevModels =>
@@ -235,7 +236,7 @@ export function ModelManager({
     setupListeners();
 
     return () => {
-      console.log('[ModelManager] Cleaning up event listeners...');
+      logger.log('[ModelManager] Cleaning up event listeners...');
       if (unlistenProgress) unlistenProgress();
       if (unlistenComplete) unlistenComplete();
       if (unlistenError) unlistenError();
@@ -250,7 +251,7 @@ export function ModelManager({
         apiKey: null
       });
     } catch (error) {
-      console.error('Failed to save model selection:', error);
+      logger.error('Failed to save model selection:', error);
     }
   };
 
@@ -281,7 +282,7 @@ export function ModelManager({
         duration: 3000
       });
     } catch (err) {
-      console.error('Failed to cancel download:', err);
+      logger.error('Failed to cancel download:', err);
       toast.error('Failed to cancel download', {
         description: err instanceof Error ? err.message : 'Unknown error',
         duration: 4000
@@ -312,7 +313,7 @@ export function ModelManager({
 
       await WhisperAPI.downloadModel(modelName);
     } catch (err) {
-      console.error('Download failed:', err);
+      logger.error('Download failed:', err);
       updateDownloadingModels(prev => {
         const newSet = new Set(prev);
         newSet.delete(modelName);
@@ -365,7 +366,7 @@ export function ModelManager({
         onModelSelect('');
       }
     } catch (err) {
-      console.error('Failed to delete model:', err);
+      logger.error('Failed to delete model:', err);
       toast.error(`Failed to delete ${displayName}`, {
         description: err instanceof Error ? err.message : 'Delete failed',
         duration: 4000

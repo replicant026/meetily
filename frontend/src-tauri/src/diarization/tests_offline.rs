@@ -1,15 +1,17 @@
+use crate::diarization::{update_status, status, DiarizationStatus};
+use crate::diarization::offline::commit_speaker_labels;
 
 #[tokio::test]
 async fn disabled_short_circuit_returns_zero() {
-    super::super::update_status(super::super::DiarizationStatus {
+    update_status(DiarizationStatus {
         enabled: false,
         min_speakers: 2,
         max_speakers: 4,
         model_status: "disabled".to_string(),
     });
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
     let res = commit_speaker_labels(
-        // Pool is unused because we short-circuit before any DB call.
-        &unsafe { std::mem::zeroed() },
+        &pool,
         "meeting-disabled",
         None,
         Vec::new(),
@@ -20,5 +22,5 @@ async fn disabled_short_circuit_returns_zero() {
     assert!(res.is_ok());
     assert_eq!(res.unwrap_or(99), 0);
     // Restore default for other tests.
-    super::super::update_status(status());
+    update_status(status());
 }

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { invoke } from '@tauri-apps/api/core';
 
 export interface AnalyticsProperties {
@@ -45,9 +46,9 @@ export class Analytics {
     try {
       await invoke('init_analytics');
       this.initialized = true;
-      console.log('Analytics initialized successfully');
+      logger.log('Analytics initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize analytics:', error);
+      logger.error('Failed to initialize analytics:', error);
       throw error;
     } finally {
       this.initializationPromise = null;
@@ -60,9 +61,9 @@ export class Analytics {
       this.initialized = false;
       this.currentUserId = null;
       this.initializationPromise = null;
-      console.log('Analytics disabled successfully');
+      logger.log('Analytics disabled successfully');
     } catch (error) {
-      console.error('Failed to disable analytics:', error);
+      logger.error('Failed to disable analytics:', error);
     }
   }
 
@@ -70,27 +71,27 @@ export class Analytics {
     try {
       return await invoke('is_analytics_enabled');
     } catch (error) {
-      console.error('Failed to check analytics status:', error);
+      logger.error('Failed to check analytics status:', error);
       return false;
     }
   }
 
   static async track(eventName: string, properties?: AnalyticsProperties): Promise<void> {
     if (!this.initialized) {
-      console.warn('Analytics not initialized');
+      logger.warn('Analytics not initialized');
       return;
     }
 
     try {
       await invoke('track_event', { eventName, properties });
     } catch (error) {
-      console.error(`Failed to track event ${eventName}:`, error);
+      logger.error(`Failed to track event ${eventName}:`, error);
     }
   }
 
   static async identify(userId: string, properties?: AnalyticsProperties): Promise<void> {
     if (!this.initialized) {
-      console.warn('Analytics not initialized');
+      logger.warn('Analytics not initialized');
       return;
     }
 
@@ -98,14 +99,14 @@ export class Analytics {
       await invoke('identify_user', { userId, properties });
       this.currentUserId = userId;
     } catch (error) {
-      console.error(`Failed to identify user ${userId}:`, error);
+      logger.error(`Failed to identify user ${userId}:`, error);
     }
   }
 
   // Enhanced user tracking methods for Phase 1
   static async startSession(userId: string): Promise<string | null> {
     if (!this.initialized) {
-      console.warn('Analytics not initialized');
+      logger.warn('Analytics not initialized');
       return null;
     }
 
@@ -115,7 +116,7 @@ export class Analytics {
       
       return sessionId as string;
     } catch (error) {
-      console.error('Failed to start analytics session:', error);
+      logger.error('Failed to start analytics session:', error);
       return null;
     }
   }
@@ -126,7 +127,7 @@ export class Analytics {
     try {
       await invoke('end_analytics_session');
     } catch (error) {
-      console.error('Failed to end analytics session:', error);
+      logger.error('Failed to end analytics session:', error);
     }
   }
 
@@ -136,7 +137,7 @@ export class Analytics {
     try {
       await invoke('track_daily_active_user');
     } catch (error) {
-      console.error('Failed to track daily active user:', error);
+      logger.error('Failed to track daily active user:', error);
     }
   }
 
@@ -146,7 +147,7 @@ export class Analytics {
     try {
       await invoke('track_user_first_launch');
     } catch (error) {
-      console.error('Failed to track user first launch:', error);
+      logger.error('Failed to track user first launch:', error);
     }
   }
 
@@ -156,7 +157,7 @@ export class Analytics {
     try {
       return await invoke('is_analytics_session_active');
     } catch (error) {
-      console.error('Failed to check session status:', error);
+      logger.error('Failed to check session status:', error);
       return false;
     }
   }
@@ -180,7 +181,7 @@ export class Analytics {
       
       return userId;
     } catch (error) {
-      console.error('Failed to get persistent user ID:', error);
+      logger.error('Failed to get persistent user ID:', error);
       // Fallback to session storage
       let userId = sessionStorage.getItem('meetily_user_id');
       if (!userId) {
@@ -205,7 +206,7 @@ export class Analytics {
         await store.save();
       }
     } catch (error) {
-      console.error('Failed to check first launch:', error);
+      logger.error('Failed to check first launch:', error);
       // Fallback to session storage
       const isFirstLaunch = sessionStorage.getItem('is_first_launch') === 'true';
       if (isFirstLaunch) {
@@ -229,7 +230,7 @@ export class Analytics {
         await store.save();
       }
     } catch (error) {
-      console.error('Failed to check daily usage:', error);
+      logger.error('Failed to check daily usage:', error);
     }
   }
 
@@ -247,7 +248,7 @@ export class Analytics {
       if (userAgent.includes('linux')) return 'Linux';
       return 'unknown';
     } catch (error) {
-      console.error('Failed to get platform:', error);
+      logger.error('Failed to get platform:', error);
       return 'unknown';
     }
   }
@@ -259,7 +260,7 @@ export class Analytics {
       const userAgent = navigator.userAgent;
       return `${platform} (${userAgent})`;
     } catch (error) {
-      console.error('Failed to get OS version:', error);
+      logger.error('Failed to get OS version:', error);
       return 'unknown';
     }
   }
@@ -290,7 +291,7 @@ export class Analytics {
 
       return this.deviceInfo;
     } catch (error) {
-      console.error('Failed to get device info:', error);
+      logger.error('Failed to get device info:', error);
       return {
         platform: 'unknown',
         os_version: 'unknown',
@@ -309,7 +310,7 @@ export class Analytics {
       const diffMs = Date.now() - new Date(dateStr).getTime();
       return Math.floor(diffMs / (1000 * 60 * 60 * 24));
     } catch (error) {
-      console.error(`Failed to calculate days since ${dateKey}:`, error);
+      logger.error(`Failed to calculate days since ${dateKey}:`, error);
       return null;
     }
   }
@@ -330,7 +331,7 @@ export class Analytics {
       await store.set('daily_meeting_counts', dailyCounts);
       await store.save();
     } catch (error) {
-      console.error('Failed to update meeting count:', error);
+      logger.error('Failed to update meeting count:', error);
     }
   }
 
@@ -342,7 +343,7 @@ export class Analytics {
       const dailyCounts = await store.get<Record<string, number>>('daily_meeting_counts') || {};
       return dailyCounts[today] || 0;
     } catch (error) {
-      console.error('Failed to get meetings count today:', error);
+      logger.error('Failed to get meetings count today:', error);
       return 0;
     }
   }
@@ -354,7 +355,7 @@ export class Analytics {
       const features = await store.get<Record<string, any>>('features_used') || {};
       return !!features[featureName];
     } catch (error) {
-      console.error(`Failed to check feature usage for ${featureName}:`, error);
+      logger.error(`Failed to check feature usage for ${featureName}:`, error);
       return false;
     }
   }
@@ -377,7 +378,7 @@ export class Analytics {
       await store.set('features_used', features);
       await store.save();
     } catch (error) {
-      console.error(`Failed to mark feature used for ${featureName}:`, error);
+      logger.error(`Failed to mark feature used for ${featureName}:`, error);
     }
   }
 
@@ -405,7 +406,7 @@ export class Analytics {
         architecture: deviceInfo.architecture
       });
     } catch (error) {
-      console.error('Failed to track session started:', error);
+      logger.error('Failed to track session started:', error);
     }
   }
 
@@ -424,7 +425,7 @@ export class Analytics {
         os_version: deviceInfo.os_version
       });
     } catch (error) {
-      console.error('Failed to track session ended:', error);
+      logger.error('Failed to track session ended:', error);
     }
   }
 
@@ -456,7 +457,7 @@ export class Analytics {
 
       this.meetingsInSession++;
     } catch (error) {
-      console.error('Failed to track meeting completed:', error);
+      logger.error('Failed to track meeting completed:', error);
     }
   }
 
@@ -485,7 +486,7 @@ export class Analytics {
 
       await this.track('feature_used', trackingProperties);
     } catch (error) {
-      console.error(`Failed to track feature used: ${featureName}`, error);
+      logger.error(`Failed to track feature used: ${featureName}`, error);
     }
   }
 
@@ -526,7 +527,7 @@ export class Analytics {
 
       await this.track(`${copyType}_copied`, trackingProperties);
     } catch (error) {
-      console.error(`Failed to track ${copyType} copy:`, error);
+      logger.error(`Failed to track ${copyType} copy:`, error);
     }
   }
 
@@ -537,7 +538,7 @@ export class Analytics {
     try {
       await invoke('track_meeting_started', { meetingId });
     } catch (error) {
-      console.error('Failed to track meeting started:', error);
+      logger.error('Failed to track meeting started:', error);
     }
   }
 
@@ -547,7 +548,7 @@ export class Analytics {
     try {
       await invoke('track_recording_started', { meetingId });
     } catch (error) {
-      console.error('Failed to track recording started:', error);
+      logger.error('Failed to track recording started:', error);
     }
   }
 
@@ -557,7 +558,7 @@ export class Analytics {
     try {
       await invoke('track_recording_stopped', { meetingId, durationSeconds });
     } catch (error) {
-      console.error('Failed to track recording stopped:', error);
+      logger.error('Failed to track recording stopped:', error);
     }
   }
 
@@ -567,7 +568,7 @@ export class Analytics {
     try {
       await invoke('track_meeting_deleted', { meetingId });
     } catch (error) {
-      console.error('Failed to track meeting deleted:', error);
+      logger.error('Failed to track meeting deleted:', error);
     }
   }
 
@@ -577,7 +578,7 @@ export class Analytics {
     try {
       await invoke('track_settings_changed', { settingType, newValue });
     } catch (error) {
-      console.error('Failed to track settings changed:', error);
+      logger.error('Failed to track settings changed:', error);
     }
   }
 
@@ -587,7 +588,7 @@ export class Analytics {
     try {
       await invoke('track_feature_used', { featureName });
     } catch (error) {
-      console.error('Failed to track feature used:', error);
+      logger.error('Failed to track feature used:', error);
     }
   }
 
@@ -646,12 +647,12 @@ export class Analytics {
     // Wait for analytics to be initialized
     const isInitialized = await this.waitForInitialization();
     if (!isInitialized) {
-      console.warn('Analytics not initialized within timeout, skipping backend connection tracking');
+      logger.warn('Analytics not initialized within timeout, skipping backend connection tracking');
       return;
     }
 
     try {
-      console.log('Tracking backend connection event:', { success, error });
+      logger.log('Tracking backend connection event:', { success, error });
       await invoke('track_event', {
         eventName: 'backend_connection',
         properties: {
@@ -660,21 +661,21 @@ export class Analytics {
           timestamp: new Date().toISOString()
         }
       });
-      console.log('Backend connection event tracked successfully');
+      logger.log('Backend connection event tracked successfully');
     } catch (error) {
-      console.error('Failed to track backend connection:', error);
+      logger.error('Failed to track backend connection:', error);
     }
   }
 
   // Track transcription errors
   static async trackTranscriptionError(errorMessage: string) {
     if (!this.initialized) {
-      console.warn('Analytics not initialized, skipping transcription error tracking');
+      logger.warn('Analytics not initialized, skipping transcription error tracking');
       return;
     }
 
     try {
-      console.log('Tracking transcription error event:', { errorMessage });
+      logger.log('Tracking transcription error event:', { errorMessage });
       await invoke('track_event', {
         eventName: 'transcription_error',
         properties: {
@@ -682,21 +683,21 @@ export class Analytics {
           timestamp: new Date().toISOString()
         }
       });
-      console.log('Transcription error event tracked successfully');
+      logger.log('Transcription error event tracked successfully');
     } catch (error) {
-      console.error('Failed to track transcription error:', error);
+      logger.error('Failed to track transcription error:', error);
     }
   }
 
   // Track transcription success
   static async trackTranscriptionSuccess(duration?: number) {
     if (!this.initialized) {
-      console.warn('Analytics not initialized, skipping transcription success tracking');
+      logger.warn('Analytics not initialized, skipping transcription success tracking');
       return;
     }
 
     try {
-      console.log('Tracking transcription success event:', { duration });
+      logger.log('Tracking transcription success event:', { duration });
       await invoke('track_event', {
         eventName: 'transcription_success',
         properties: {
@@ -704,9 +705,9 @@ export class Analytics {
           timestamp: new Date().toISOString()
         }
       });
-      console.log('Transcription success event tracked successfully');
+      logger.log('Transcription success event tracked successfully');
     } catch (error) {
-      console.error('Failed to track transcription success:', error);
+      logger.error('Failed to track transcription success:', error);
     }
   }
 
@@ -718,13 +719,13 @@ export class Analytics {
     timeSinceRecordingMinutes?: number
   ) {
     if (!this.initialized) {
-      console.warn('Analytics not initialized, skipping summary generation started tracking');
+      logger.warn('Analytics not initialized, skipping summary generation started tracking');
       return;
     }
 
     try {
       const deviceInfo = await this.getDeviceInfo();
-      console.log('Tracking summary generation started event:', {
+      logger.log('Tracking summary generation started event:', {
         modelProvider,
         modelName,
         transcriptLength,
@@ -744,9 +745,9 @@ export class Analytics {
       }
 
       await this.track('summary_generation_started', properties);
-      console.log('Summary generation started event tracked successfully');
+      logger.log('Summary generation started event tracked successfully');
     } catch (error) {
-      console.error('Failed to track summary generation started:', error);
+      logger.error('Failed to track summary generation started:', error);
     }
   }
 
@@ -758,12 +759,12 @@ export class Analytics {
     errorMessage?: string
   ) {
     if (!this.initialized) {
-      console.warn('Analytics not initialized, skipping summary generation completed tracking');
+      logger.warn('Analytics not initialized, skipping summary generation completed tracking');
       return;
     }
 
     try {
-      console.log('Tracking summary generation completed event:', { modelProvider, modelName, success, durationSeconds, errorMessage });
+      logger.log('Tracking summary generation completed event:', { modelProvider, modelName, success, durationSeconds, errorMessage });
       await invoke('track_summary_generation_completed', {
         modelProvider,
         modelName,
@@ -771,64 +772,64 @@ export class Analytics {
         durationSeconds,
         errorMessage
       });
-      console.log('Summary generation completed event tracked successfully');
+      logger.log('Summary generation completed event tracked successfully');
     } catch (error) {
-      console.error('Failed to track summary generation completed:', error);
+      logger.error('Failed to track summary generation completed:', error);
     }
   }
 
   static async trackSummaryRegenerated(modelProvider: string, modelName: string) {
     if (!this.initialized) {
-      console.warn('Analytics not initialized, skipping summary regenerated tracking');
+      logger.warn('Analytics not initialized, skipping summary regenerated tracking');
       return;
     }
 
     try {
-      console.log('Tracking summary regenerated event:', { modelProvider, modelName });
+      logger.log('Tracking summary regenerated event:', { modelProvider, modelName });
       await invoke('track_summary_regenerated', {
         modelProvider,
         modelName
       });
-      console.log('Summary regenerated event tracked successfully');
+      logger.log('Summary regenerated event tracked successfully');
     } catch (error) {
-      console.error('Failed to track summary regenerated:', error);
+      logger.error('Failed to track summary regenerated:', error);
     }
   }
 
   static async trackModelChanged(oldProvider: string, oldModel: string, newProvider: string, newModel: string) {
     if (!this.initialized) {
-      console.warn('Analytics not initialized, skipping model changed tracking');
+      logger.warn('Analytics not initialized, skipping model changed tracking');
       return;
     }
 
     try {
-      console.log('Tracking model changed event:', { oldProvider, oldModel, newProvider, newModel });
+      logger.log('Tracking model changed event:', { oldProvider, oldModel, newProvider, newModel });
       await invoke('track_model_changed', {
         oldProvider,
         oldModel,
         newProvider,
         newModel
       });
-      console.log('Model changed event tracked successfully');
+      logger.log('Model changed event tracked successfully');
     } catch (error) {
-      console.error('Failed to track model changed:', error);
+      logger.error('Failed to track model changed:', error);
     }
   }
 
   static async trackCustomPromptUsed(promptLength: number) {
     if (!this.initialized) {
-      console.warn('Analytics not initialized, skipping custom prompt used tracking');
+      logger.warn('Analytics not initialized, skipping custom prompt used tracking');
       return;
     }
 
     try {
-      console.log('Tracking custom prompt used event:', { promptLength });
+      logger.log('Tracking custom prompt used event:', { promptLength });
       await invoke('track_custom_prompt_used', {
         promptLength
       });
-      console.log('Custom prompt used event tracked successfully');
+      logger.log('Custom prompt used event tracked successfully');
     } catch (error) {
-      console.error('Failed to track custom prompt used:', error);
+      logger.error('Failed to track custom prompt used:', error);
     }
   }
 }

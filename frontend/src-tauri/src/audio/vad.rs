@@ -47,8 +47,8 @@ impl ContinuousVadProcessor {
         // Previous: capped at 400ms, causing VAD to fragment 5-second speech into 40ms segments
         // New: Use full redemption_time from pipeline (2000ms) to bridge natural pauses
         config.redemption_time = Duration::from_millis(redemption_time_ms as u64);
-        config.pre_speech_pad = Duration::from_millis(300);   // Pre-speech padding for context
-        config.post_speech_pad = Duration::from_millis(400);  // Increased: more context at end
+        config.pre_speech_pad = Duration::from_millis(400);   // Match faster-whisper: 400ms context before speech
+        config.post_speech_pad = Duration::from_millis(400);  // Match faster-whisper: 400ms context after speech
 
         // CRITICAL FIX: Increased min_speech_time to prevent tiny 40ms fragments
         // Previous: 100ms allowed too-short segments that Whisper rejects

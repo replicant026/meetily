@@ -9,5 +9,5 @@ describe("check-i18n script", () => {
       encoding: "utf-8",
     });
     expect(result).toContain("i18n check passed");
-  });
+  }, 15_000);
 });

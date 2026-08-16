@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -61,7 +62,7 @@ export function BuiltInModelManager({
         }
       }
     } catch (error) {
-      console.error('Failed to fetch built-in AI models:', error);
+      logger.error('Failed to fetch built-in AI models:', error);
       toast.error('Failed to load models');
     } finally {
       setIsLoading(false);
@@ -205,7 +206,7 @@ export function BuiltInModelManager({
 
       await invoke('builtin_ai_download_model', { modelName });
     } catch (error) {
-      console.error('Failed to download model:', error);
+      logger.error('Failed to download model:', error);
 
       // Check if this is a cancellation error (starts with "CANCELLED:")
       const errorMsg = String(error);
@@ -239,7 +240,7 @@ export function BuiltInModelManager({
         return newSet;
       });
     } catch (error) {
-      console.error('Failed to cancel download:', error);
+      logger.error('Failed to cancel download:', error);
     }
   };
 
@@ -249,7 +250,7 @@ export function BuiltInModelManager({
       toast.success(`Model ${modelName} deleted`);
       fetchModels();
     } catch (error) {
-      console.error('Failed to delete model:', error);
+      logger.error('Failed to delete model:', error);
       toast.error(`Failed to delete ${modelName}`);
     }
   };

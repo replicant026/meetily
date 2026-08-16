@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,6 +23,7 @@ import { TranscriptRecovery } from '@/components/TranscriptRecovery';
 import { indexedDBService } from '@/services/indexedDBService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { HomeDashboard } from '@/app/_components/HomeDashboard';
 
 export default function Home() {
   // Local page state (not moved to contexts)
@@ -38,7 +40,7 @@ export default function Home() {
   const { status, statusMessage, isStopping, isProcessing } = recordingState;
 
   // Hooks
-  const { hasMicrophone } = usePermissionCheck();
+  const { hasMicrophone, hasSystemAudio } = usePermissionCheck();
   const { setIsMeetingActive, isCollapsed: sidebarCollapsed, refetchMeetings } = useSidebar();
   const { modals, messages, showModal, hideModal } = useModalState(transcriptModelConfig);
   const { isRecordingDisabled, setIsRecordingDisabled } = useRecordingStateSync(isRecording, setIsRecordingState, setIsMeetingActive);
@@ -80,7 +82,7 @@ export default function Home() {
           status === RecordingStatus.STOPPING ||
           status === RecordingStatus.PROCESSING_TRANSCRIPTS ||
           status === RecordingStatus.SAVING) {
-          console.log('Skipping recovery check - recording in progress or processing');
+          logger.log('Skipping recovery check - recording in progress or processing');
           return;
         }
 
@@ -88,21 +90,21 @@ export default function Home() {
         try {
           await indexedDBService.deleteOldMeetings(7);
         } catch (error) {
-          console.warn('闂傚倸鍊搁崐椋庣矆娓氣偓閹潡宕惰閺嬫牠鏌￠崶鈺佹瀻闁搞劍妫冮幃妤呮濞戞瑦鍠愮紓?Failed to clean up old meetings:', error);
+          logger.warn('闂傚倸鍊搁崐椋庣矆娓氣偓閹潡宕惰閺嬫牠鏌￠崶鈺佹瀻闁搞劍妫冮幃妤呮濞戞瑦鍠愮紓?Failed to clean up old meetings:', error);
         }
 
         // 2. Clean up saved meetings (24+ hours after save)
         try {
           await indexedDBService.deleteSavedMeetings(24);
         } catch (error) {
-          console.warn('闂傚倸鍊搁崐椋庣矆娓氣偓閹潡宕惰閺嬫牠鏌￠崶鈺佹瀻闁搞劍妫冮幃妤呮濞戞瑦鍠愮紓?Failed to clean up saved meetings:', error);
+          logger.warn('闂傚倸鍊搁崐椋庣矆娓氣偓閹潡宕惰閺嬫牠鏌￠崶鈺佹瀻闁搞劍妫冮幃妤呮濞戞瑦鍠愮紓?Failed to clean up saved meetings:', error);
         }
 
         // 3. Always check for recoverable meetings on startup
         // Don't skip based on sessionStorage - we need to check every time
         await checkForRecoverableTranscripts();
       } catch (error) {
-        console.error('Failed to perform startup checks:', error);
+        logger.error('Failed to perform startup checks:', error);
       }
     };
 
@@ -191,79 +193,90 @@ export default function Home() {
 
   // Computed values using global status
   const isProcessingStop = isStopping || status === RecordingStatus.PROCESSING_TRANSCRIPTS || isProcessing;
+  const isIdle = !recordingState.isRecording && !isProcessingStop && status !== RecordingStatus.SAVING;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex flex-col h-screen bg-gray-50"
-    >
-      {/* All Modals supported*/}
-      <SettingsModals
-        modals={modals}
-        messages={messages}
-        onClose={hideModal}
-      />
-
-      {/* Recovery Dialog */}
-      <TranscriptRecovery
-        isOpen={showRecoveryDialog}
-        onClose={handleDialogClose}
-        recoverableMeetings={recoverableMeetings}
-        onRecover={handleRecovery}
-        onDelete={deleteRecoverableMeeting}
-        onLoadPreview={loadMeetingTranscripts}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <TranscriptPanel
-          isProcessingStop={isProcessingStop}
-          isStopping={isStopping}
-          showModal={showModal}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="flex flex-col h-screen"
+      >
+        {/* All Modals supported*/}
+        <SettingsModals
+          modals={modals}
+          messages={messages}
+          onClose={hideModal}
         />
 
-        {/* Recording controls - only show when permissions are granted or already recording and not showing status messages */}
-        {(hasMicrophone || isRecording) &&
-          status !== RecordingStatus.STOPPING &&
-          status !== RecordingStatus.PROCESSING_TRANSCRIPTS &&
-          status !== RecordingStatus.SAVING && (
-            <div className="fixed bottom-12 left-0 right-0 z-10">
-              <div
-                className="flex justify-center pl-8 transition-[margin] duration-300"
-                style={{
-                  marginLeft: sidebarCollapsed ? '4rem' : '16rem'
-                }}
-              >
-                <div className="w-2/3 max-w-[750px] flex justify-center">
-                  <div className="bg-white rounded-full shadow-lg flex items-center">
-                    <RecordingControls
-                      isRecording={recordingState.isRecording}
-                      onRecordingStop={(callApi = true) => handleRecordingStop(callApi)}
-                      onRecordingStart={handleRecordingStart}
-                      onTranscriptReceived={() => { }} // Not actually used by RecordingControls
-                      onStopInitiated={() => setIsStopping(true)}
-                      barHeights={barHeights}
-                      onTranscriptionError={(message) => {
-                        showModal('errorAlert', message);
-                      }}
-                      isRecordingDisabled={isRecordingDisabled}
-                      isParentProcessing={isProcessingStop}
-                      selectedDevices={selectedDevices}
-                      meetingName={meetingTitle}
-                    />
+        {/* Recovery Dialog */}
+        <TranscriptRecovery
+          isOpen={showRecoveryDialog}
+          onClose={handleDialogClose}
+          recoverableMeetings={recoverableMeetings}
+          onRecover={handleRecovery}
+          onDelete={deleteRecoverableMeeting}
+          onLoadPreview={loadMeetingTranscripts}
+        />
+
+        {isIdle ? (
+          <HomeDashboard
+            hasMicPermission={hasMicrophone}
+            hasSystemAudio={hasSystemAudio}
+            micDeviceName={selectedDevices?.micDevice ?? undefined}
+            systemDeviceName={selectedDevices?.systemDevice ?? undefined}
+            onStartRecording={handleRecordingStart}
+            onConfigureAudio={() => showModal('deviceSettings')}
+            recoverableMeetings={recoverableMeetings.map((m) => ({ id: m.meetingId, title: m.title }))}
+            processingMeetings={[]}
+            onRecover={handleRecovery}
+          />
+        ) : (
+          <div className="flex flex-1 overflow-hidden">
+            <TranscriptPanel
+              isProcessingStop={isProcessingStop}
+              isStopping={isStopping}
+              showModal={showModal}
+            />
+
+            {/* Recording controls - only show when permissions are granted or already recording and not showing status messages */}
+            {(hasMicrophone || isRecording) &&
+              status !== RecordingStatus.STOPPING &&
+              status !== RecordingStatus.PROCESSING_TRANSCRIPTS &&
+              status !== RecordingStatus.SAVING && (
+                <div className="fixed bottom-12 left-0 right-0 z-[var(--z-sticky)]">
+                  <div className="flex justify-center pl-8 transition-[margin] duration-300">
+                    <div className="w-2/3 max-w-[750px] flex justify-center">
+                      <div className="bg-[rgb(var(--app-surface))] rounded-full shadow-lg flex items-center">
+                        <RecordingControls
+                          isRecording={recordingState.isRecording}
+                          onRecordingStop={(callApi = true) => handleRecordingStop(callApi)}
+                          onRecordingStart={handleRecordingStart}
+                          onTranscriptReceived={() => { }} // Not actually used by RecordingControls
+                          onStopInitiated={() => setIsStopping(true)}
+                          barHeights={barHeights}
+                          onTranscriptionError={(message) => {
+                            showModal('errorAlert', message);
+                          }}
+                          isRecordingDisabled={isRecordingDisabled}
+                          isParentProcessing={isProcessingStop}
+                          selectedDevices={selectedDevices}
+                          meetingName={meetingTitle}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-        {/* Status Overlays - Processing and Saving */}
-        <StatusOverlays
-          status={status}
-          statusMessage={statusMessage}
-          sidebarCollapsed={sidebarCollapsed}
-        />
-      </div>
-    </motion.div>
+            {/* Status Overlays - Processing and Saving */}
+            <StatusOverlays
+              status={status}
+              statusMessage={statusMessage}
+              sidebarCollapsed={false}
+            />
+          </div>
+        )}
+      </motion.div>
   );
 }

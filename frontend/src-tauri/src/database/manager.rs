@@ -32,6 +32,11 @@ impl DatabaseManager {
 
         let pool = SqlitePool::connect(tauri_db_path).await?;
 
+        // Enable foreign key enforcement so CASCADE/SET NULL in schema work
+        sqlx::query("PRAGMA foreign_keys = ON")
+            .execute(&pool)
+            .await?;
+
         sqlx::migrate!("./migrations").run(&pool).await?;
 
         Ok(DatabaseManager { pool })

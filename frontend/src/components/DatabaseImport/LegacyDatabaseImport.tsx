@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 'use client';
 
 import { useState } from 'react';
@@ -48,7 +49,7 @@ export function LegacyDatabaseImport({ isOpen, onComplete }: LegacyDatabaseImpor
         setTimeout(() => setImportState('idle'), 3000);
       }
     } catch (error) {
-      console.error('Error browsing for database:', error);
+      logger.error('Error browsing for database:', error);
       setErrorMessage(String(error));
       setImportState('error');
       setTimeout(() => setImportState('idle'), 3000);
@@ -73,7 +74,7 @@ export function LegacyDatabaseImport({ isOpen, onComplete }: LegacyDatabaseImpor
         window.location.reload();
       }, 1000);
     } catch (error) {
-      console.error('Error importing database:', error);
+      logger.error('Error importing database:', error);
       setErrorMessage(String(error));
       setImportState('error');
       toast.error(`Import failed: ${error}`);
@@ -95,7 +96,7 @@ export function LegacyDatabaseImport({ isOpen, onComplete }: LegacyDatabaseImpor
         window.location.reload();
       }, 1000);
     } catch (error) {
-      console.error('Error initializing database:', error);
+      logger.error('Error initializing database:', error);
       setErrorMessage(String(error));
       setImportState('error');
       toast.error(`Initialization failed: ${error}`);

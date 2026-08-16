@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import React, { useEffect, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Mic, Volume2 } from 'lucide-react';
@@ -7,15 +8,15 @@ import { PermissionRow } from '../shared';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 
 export function PermissionsStep() {
-  const { setPermissionStatus, setPermissionsSkipped, permissions, completeOnboarding } = useOnboarding();
+  const { setPermissionStatus, setPermissionsSkipped, permissions, goNext } = useOnboarding();
   const [isPending, setIsPending] = useState(false);
 
   // Check permissions - only logs current state, doesn't auto-authorize
   // Actual permission checks are done via explicit user actions (clicking Enable)
   const checkPermissions = useCallback(async () => {
-    console.log('[PermissionsStep] Current permission states:');
-    console.log(`  - Microphone: ${permissions.microphone}`);
-    console.log(`  - System Audio: ${permissions.systemAudio}`);
+    logger.log('[PermissionsStep] Current permission states:');
+    logger.log(`  - Microphone: ${permissions.microphone}`);
+    logger.log(`  - System Audio: ${permissions.systemAudio}`);
     // Don't auto-set permissions based on device availability
     // Permissions should only be set after explicit user action via Enable button
   }, [permissions.microphone, permissions.systemAudio]);
@@ -39,9 +40,9 @@ export function PermissionsStep() {
 
     setIsPending(true);
     try {
-      console.log('[PermissionsStep] Triggering microphone permission...');
+      logger.log('[PermissionsStep] Triggering microphone permission...');
       const granted = await invoke<boolean>('trigger_microphone_permission');
-      console.log('[PermissionsStep] Microphone permission result:', granted);
+      logger.log('[PermissionsStep] Microphone permission result:', granted);
 
       if (granted) {
         setPermissionStatus('microphone', 'authorized');
@@ -50,7 +51,7 @@ export function PermissionsStep() {
         setPermissionStatus('microphone', 'denied');
       }
     } catch (err) {
-      console.error('[PermissionsStep] Failed to request microphone permission:', err);
+      logger.error('[PermissionsStep] Failed to request microphone permission:', err);
       setPermissionStatus('microphone', 'denied');
     } finally {
       setIsPending(false);
@@ -71,22 +72,22 @@ export function PermissionsStep() {
 
     setIsPending(true);
     try {
-      console.log('[PermissionsStep] Triggering Audio Capture permission...');
+      logger.log('[PermissionsStep] Triggering Audio Capture permission...');
       // Backend creates Core Audio tap, captures audio, and verifies it's not silence
       // Returns true if permission granted and audio verified, false if denied (silence)
       const granted = await invoke<boolean>('trigger_system_audio_permission_command');
-      console.log('[PermissionsStep] System audio permission result:', granted);
+      logger.log('[PermissionsStep] System audio permission result:', granted);
 
       if (granted) {
         setPermissionStatus('systemAudio', 'authorized');
-        console.log('[PermissionsStep] Audio Capture permission verified - audio is not silence');
+        logger.log('[PermissionsStep] Audio Capture permission verified - audio is not silence');
       } else {
         // Permission was denied (audio is silence)
         setPermissionStatus('systemAudio', 'denied');
-        console.log('[PermissionsStep] Audio Capture permission denied - audio is silence');
+        logger.log('[PermissionsStep] Audio Capture permission denied - audio is silence');
       }
     } catch (err) {
-      console.error('[PermissionsStep] Failed to request system audio permission:', err);
+      logger.error('[PermissionsStep] Failed to request system audio permission:', err);
       setPermissionStatus('systemAudio', 'denied');
     } finally {
       setIsPending(false);
@@ -94,17 +95,13 @@ export function PermissionsStep() {
   };
 
   const handleFinish = async () => {
-    try {
-      await completeOnboarding();
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to complete onboarding:', error);
-    }
+    // Proceed to ReadyStep
+    goNext();
   };
 
   const handleSkip = async () => {
     setPermissionsSkipped(true);
-    await handleFinish();
+    goNext();
   };
 
   const allPermissionsGranted =
@@ -116,7 +113,7 @@ export function PermissionsStep() {
       title="Grant Permissions"
       description="Meetily needs access to your microphone and system audio to record meetings"
       step={4}
-      hideProgress={true}
+      totalSteps={5}
       showNavigation={allPermissionsGranted}
       canGoNext={allPermissionsGranted}
     >
@@ -154,12 +151,12 @@ export function PermissionsStep() {
             onClick={handleSkip}
             className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
           >
-            I'll do this later
+            I&apos;ll do this later
           </button>
 
           {!allPermissionsGranted && (
             <p className="text-xs text-center text-muted-foreground">
-              Recording won't work without permissions. You can grant them later in settings.
+              Recording won&apos;t work without permissions. You can grant them later in settings.
             </p>
           )}
         </div>

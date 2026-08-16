@@ -1,8 +1,60 @@
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 // Removed unused import
+
+use crate::diarization::speaker_preferences::SpeakerRecognitionPreferences;
+
+// ── Voice snippet commands ─────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateVoiceReferenceRequest {
+    pub speaker_id: String,
+    pub meeting_id: String,
+    pub segment_ids: Vec<String>,
+    pub channel: Option<String>,
+}
+
+#[tauri::command]
+async fn create_speaker_voice_reference(
+    state: tauri::State<'_, crate::state::AppState>,
+    request: CreateVoiceReferenceRequest,
+) -> Result<String, String> {
+    let pool = state.db_manager.pool();
+    crate::diarization::voice_references::create_voice_reference_from_segments(
+        pool,
+        &request.speaker_id,
+        &request.meeting_id,
+        &request.segment_ids,
+        request.channel,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_speaker_voice_reference_audio_path(
+    state: tauri::State<'_, crate::state::AppState>,
+    reference_id: String,
+) -> Result<Option<String>, String> {
+    let pool = state.db_manager.pool();
+    crate::diarization::voice_references::get_voice_reference_audio_path(pool, &reference_id)
+        .await
+        .map(|opt| opt.map(|p| p.to_string_lossy().into_owned()))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_speaker_voice_reference(
+    state: tauri::State<'_, crate::state::AppState>,
+    reference_id: String,
+) -> Result<(), String> {
+    let pool = state.db_manager.pool();
+    crate::diarization::voice_references::delete_voice_reference(pool, &reference_id)
+        .await
+        .map_err(|e| e.to_string())
+}
 
 // Performance optimization: Conditional logging macros for hot paths
 #[cfg(debug_assertions)]
@@ -66,8 +118,6 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::RwLock;
 
-static RECORDING_FLAG: AtomicBool = AtomicBool::new(false);
-
 // Global language preference storage (default to "auto-translate" for automatic translation to English)
 static LANGUAGE_PREFERENCE: std::sync::LazyLock<StdMutex<String>> =
     std::sync::LazyLock::new(|| StdMutex::new("auto-translate".to_string()));
@@ -114,7 +164,6 @@ async fn start_recording<R: Runtime>(
     .await
     {
         Ok(_) => {
-            RECORDING_FLAG.store(true, Ordering::SeqCst);
             tray::update_tray_menu(&app);
 
             log_info!("Recording started successfully");
@@ -166,7 +215,6 @@ async fn stop_recording<R: Runtime>(app: AppHandle<R>, args: RecordingArgs) -> R
     .await
     {
         Ok(_) => {
-            RECORDING_FLAG.store(false, Ordering::SeqCst);
             tray::update_tray_menu(&app);
 
             // Create the save directory if it doesn't exist
@@ -202,8 +250,6 @@ async fn stop_recording<R: Runtime>(app: AppHandle<R>, args: RecordingArgs) -> R
         }
         Err(e) => {
             log_error!("Failed to stop audio recording: {}", e);
-            // Still update the flag even if stopping failed
-            RECORDING_FLAG.store(false, Ordering::SeqCst);
             tray::update_tray_menu(&app);
             Err(format!("Failed to stop recording: {}", e))
         }
@@ -226,6 +272,11 @@ fn get_transcription_status() -> TranscriptionStatus {
 
 #[tauri::command]
 fn read_audio_file(file_path: String) -> Result<Vec<u8>, String> {
+    // Prevent path traversal
+    let path = std::path::Path::new(&file_path);
+    if file_path.contains("..") || path.is_absolute() {
+        return Err("Invalid path".into());
+    }
     match std::fs::read(&file_path) {
         Ok(data) => Ok(data),
         Err(e) => Err(format!("Failed to read audio file: {}", e)),
@@ -234,6 +285,11 @@ fn read_audio_file(file_path: String) -> Result<Vec<u8>, String> {
 
 #[tauri::command]
 async fn save_transcript(file_path: String, content: String) -> Result<(), String> {
+    // Prevent path traversal
+    let path = std::path::Path::new(&file_path);
+    if file_path.contains("..") || path.is_absolute() {
+        return Err("Invalid path".into());
+    }
     log_info!("Saving transcript to: {}", file_path);
 
     // Ensure parent directory exists
@@ -393,6 +449,57 @@ async fn set_language_preference(language: String) -> Result<(), String> {
 // Internal helper function to get language preference (for use within Rust code)
 pub fn get_language_preference_internal() -> Option<String> {
     LANGUAGE_PREFERENCE.lock().ok().map(|lang| lang.clone())
+}
+
+// ── JotBird export ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn export_to_jotbird(
+    markdown: String,
+    title: Option<String>,
+    api_key: String,
+) -> Result<String, String> {
+    if api_key.is_empty() {
+        return Err("JotBird API key is required".to_string());
+    }
+    if !api_key.starts_with("jb_") {
+        return Err("Invalid JotBird API key format (must start with jb_)".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    let mut body = serde_json::json!({
+        "markdown": markdown,
+    });
+    if let Some(t) = title {
+        body["title"] = serde_json::json!(t);
+    }
+
+    let resp = client
+        .post("https://www.jotbird.com/api/v1/documents")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("JotBird API request failed: {}", e))?;
+
+    let status = resp.status();
+    let text = resp.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(format!("JotBird API error ({}): {}", status, text));
+    }
+
+    let parsed: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| format!("Failed to parse JotBird response: {}", e))?;
+
+    parsed["url"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| format!("No URL in JotBird response: {}", text))
 }
 
 pub fn run() {
@@ -687,7 +794,17 @@ pub fn run() {
             api::api_get_meeting_transcripts,
             get_diarization_status,
             set_diarization_config,
+            get_speaker_tracker_status,
             // Speaker profile commands
+            list_speaker_people,
+            get_speaker_person,
+            create_speaker_person,
+            rename_speaker_person,
+            delete_speaker_person,
+            merge_speaker_people,
+            list_speaker_voice_references,
+            update_speaker_person_email,
+            update_speaker_person_color,
             list_speaker_profiles,
             delete_speaker_profile,
             rename_speaker_profile,
@@ -774,6 +891,7 @@ pub fn run() {
             database::commands::check_homebrew_database,
             database::commands::import_and_initialize_database,
             database::commands::get_meeting_audio_path,
+            database::commands::list_home_meetings,
             database::commands::initialize_fresh_database,
             database::commands::scan_orphan_checkpoints_cmd,
             database::commands::discard_orphan_checkpoint_cmd,
@@ -812,6 +930,25 @@ pub fn run() {
             audio::import::is_import_in_progress_command,
             // Post-save diarization command
             audio::recording_commands::run_meeting_diarization,
+            // Workspace notes & actions
+            database::commands::get_meeting_note,
+            database::commands::save_meeting_note,
+            database::commands::get_meeting_action_states,
+            database::commands::set_meeting_action_completed,
+            // Voice snippet commands
+            create_speaker_voice_reference,
+            get_speaker_voice_reference_audio_path,
+            delete_speaker_voice_reference,
+            // Speaker recognition preferences
+            get_speaker_recognition_preferences,
+            set_speaker_recognition_preferences,
+            list_speaker_suggestions,
+            count_pending_speaker_suggestions,
+            accept_speaker_suggestion,
+            reject_speaker_suggestion,
+            assign_meeting_speaker,
+            // JotBird export
+            export_to_jotbird,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -862,14 +999,350 @@ fn set_diarization_config(
     crate::diarization::status()
 }
 
+#[tauri::command]
+fn get_speaker_tracker_status() -> serde_json::Value {
+    let tracker_arc = crate::audio::recording_commands::current_speaker_tracker();
+    let count = tracker_arc.lock().map(|t| t.speaker_count()).unwrap_or(0);
+    let is_active = count > 0;
+    serde_json::json!({
+        "speaker_count": count,
+        "is_active": is_active,
+    })
+}
+
+// ── Speaker recognition preferences commands ──────────────────────────────
+
+#[tauri::command]
+async fn get_speaker_recognition_preferences() -> Result<SpeakerRecognitionPreferences, String> {
+    Ok(crate::diarization::speaker_preferences::get_preferences())
+}
+
+#[tauri::command]
+async fn set_speaker_recognition_preferences(
+    prefs: SpeakerRecognitionPreferences,
+) -> Result<(), String> {
+    crate::diarization::speaker_preferences::set_preferences(prefs);
+    Ok(())
+}
+
+#[tauri::command]
+async fn count_pending_speaker_suggestions(
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<i64, String> {
+    let pool = state.db_manager.pool();
+    let row: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM speaker_match_suggestions WHERE status = 'pending'",
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(row.0)
+}
+
+#[tauri::command]
+async fn list_speaker_suggestions(
+    state: tauri::State<'_, crate::state::AppState>,
+    meeting_id: String,
+) -> Result<Vec<crate::database::repositories::voice_reference::SpeakerSuggestionDto>, String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::voice_reference::VoiceReferenceRepository::list_suggestions(
+        pool,
+        &meeting_id,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn accept_speaker_suggestion(
+    state: tauri::State<'_, crate::state::AppState>,
+    suggestion_id: String,
+) -> Result<(), String> {
+    use crate::database::repositories::voice_reference::VoiceReferenceRepository;
+
+    let pool = state.db_manager.pool();
+
+    // Fetch the suggestion to get segment IDs and speaker ID
+    let suggestions = sqlx::query_as::<_, (String, String, String, String, f32, Option<String>, String, String, String, Option<String>)>(
+        "SELECT id, meeting_id, source_label, speaker_id, confidence, reference_id, segment_ids_json, status, created_at, resolved_at FROM speaker_match_suggestions WHERE id = ?",
+    )
+    .bind(&suggestion_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let (_id, meeting_id, _source_label, speaker_id, _confidence, _ref_id, segment_ids_json, _status, _created, _resolved) = suggestions.ok_or_else(|| format!("suggestion {} not found", suggestion_id))?;
+
+    let seg_ids: Vec<String> =
+        serde_json::from_str(&segment_ids_json)
+            .map_err(|e| format!("Invalid segment_ids_json: {}", e))?;
+
+    // speaker_id is now a UUID (FK to speaker_people).  Look up the display
+    // name for transcript labels.
+    let person = crate::database::repositories::speaker::SpeakerRepository::get_person(pool, &speaker_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("person {} not found", speaker_id))?;
+
+    if !seg_ids.is_empty() {
+        // Update transcript labels with the person's display name
+        let mapping: Vec<(String, String)> = seg_ids
+            .iter()
+            .map(|sid| (sid.clone(), person.display_name.clone()))
+            .collect();
+        crate::database::repositories::transcript::TranscriptsRepository::update_segment_speakers(
+            pool,
+            &mapping,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+        // Create a voice reference so future diarizations match better
+        if let Err(e) = crate::diarization::voice_references::create_voice_reference_from_segments(
+            pool,
+            &speaker_id,
+            &meeting_id,
+            &seg_ids,
+            None,
+        )
+        .await
+        {
+            log::warn!(
+                "Accepted suggestion for {} but could not create voice reference: {}",
+                person.display_name, e
+            );
+        }
+    }
+
+    // Mark suggestion as accepted
+    VoiceReferenceRepository::resolve_suggestion(pool, &suggestion_id, "accepted", None)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn reject_speaker_suggestion(
+    state: tauri::State<'_, crate::state::AppState>,
+    suggestion_id: String,
+) -> Result<(), String> {
+    use crate::database::repositories::voice_reference::VoiceReferenceRepository;
+
+    let pool = state.db_manager.pool();
+    VoiceReferenceRepository::resolve_suggestion(pool, &suggestion_id, "rejected", None)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn assign_meeting_speaker(
+    state: tauri::State<'_, crate::state::AppState>,
+    meeting_id: String,
+    speaker_id: String,
+    segment_ids: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    use crate::database::repositories::speaker::SpeakerRepository;
+
+    let pool = state.db_manager.pool();
+
+    // Look up the speaker's display name
+    let person = SpeakerRepository::get_person(pool, &speaker_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("speaker {} not found", speaker_id))?;
+
+    // Update transcript labels for the selected segments
+    let mapping: Vec<(String, String)> = segment_ids
+        .iter()
+        .map(|sid| (sid.clone(), person.display_name.clone()))
+        .collect();
+    crate::database::repositories::transcript::TranscriptsRepository::update_segment_speakers(
+        pool,
+        &mapping,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // A manual assignment is also a confirmed voice example.  The People
+    // directory derives its meeting/reference counts from these rows, so only
+    // changing the display label made assigned people look unused.
+    let reference_result = if segment_ids.is_empty() {
+        Ok(None)
+    } else {
+        crate::diarization::voice_references::create_voice_reference_from_segments(
+            pool,
+            &speaker_id,
+            &meeting_id,
+            &segment_ids,
+            None,
+        )
+        .await
+        .map(Some)
+    };
+
+    let (reference_created, reference_id, reference_error) = match reference_result {
+        Ok(reference_id) => (reference_id.is_some(), reference_id, None),
+        Err(error) => {
+            log::warn!(
+                "Assigned speaker {} to meeting {} but could not save a voice reference: {}",
+                speaker_id,
+                meeting_id,
+                error
+            );
+            (false, None, Some(error.to_string()))
+        }
+    };
+
+    Ok(serde_json::json!({
+        "speakerId": speaker_id,
+        "segmentIds": segment_ids,
+        "referenceCreated": reference_created,
+        "referenceId": reference_id,
+        "referenceError": reference_error,
+    }))
+}
+
 // ── Speaker profile commands ──────────────────────────────────────────────
+
+#[tauri::command]
+async fn list_speaker_people(
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<Vec<crate::database::repositories::speaker::SpeakerPersonDto>, String> {
+    crate::database::repositories::speaker::SpeakerRepository::list_people(state.db_manager.pool())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_speaker_person(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+) -> Result<crate::database::repositories::speaker::SpeakerPersonDto, String> {
+    crate::database::repositories::speaker::SpeakerRepository::get_person(state.db_manager.pool(), &id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("speaker person {} not found", id))
+}
+
+#[tauri::command]
+async fn create_speaker_person(
+    state: tauri::State<'_, crate::state::AppState>,
+    display_name: String,
+    email: Option<String>,
+    color: Option<String>,
+) -> Result<String, String> {
+    let display_name = display_name.trim();
+    if display_name.is_empty() {
+        return Err("display name cannot be empty".into());
+    }
+
+    crate::database::repositories::speaker::SpeakerRepository::create_person(
+        state.db_manager.pool(),
+        display_name,
+        email.as_deref(),
+        color.as_deref(),
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn rename_speaker_person(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+    new_name: String,
+) -> Result<(), String> {
+    let new_name = new_name.trim();
+    if new_name.is_empty() {
+        return Err("display name cannot be empty".into());
+    }
+
+    crate::database::repositories::speaker::SpeakerRepository::rename_person(
+        state.db_manager.pool(),
+        &id,
+        new_name,
+    )
+    .await
+    .map(|_| ())
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_speaker_person(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+) -> Result<(), String> {
+    crate::database::repositories::speaker::SpeakerRepository::delete_person(state.db_manager.pool(), &id)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn merge_speaker_people(
+    state: tauri::State<'_, crate::state::AppState>,
+    source_id: String,
+    target_id: String,
+) -> Result<(), String> {
+    if source_id == target_id {
+        return Err("Cannot merge a person with themselves".into());
+    }
+    crate::database::repositories::speaker::SpeakerRepository::merge_people(
+        state.db_manager.pool(),
+        &source_id,
+        &target_id,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn list_speaker_voice_references(
+    state: tauri::State<'_, crate::state::AppState>,
+    person_id: String,
+) -> Result<Vec<crate::database::repositories::voice_reference::VoiceReferenceDto>, String> {
+    crate::database::repositories::voice_reference::VoiceReferenceRepository::list_for_person(
+        state.db_manager.pool(),
+        &person_id,
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_speaker_person_email(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+    email: String,
+) -> Result<(), String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::update_email(pool, &id, &email)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn update_speaker_person_color(
+    state: tauri::State<'_, crate::state::AppState>,
+    id: String,
+    color: String,
+) -> Result<(), String> {
+    let pool = state.db_manager.pool();
+    crate::database::repositories::speaker::SpeakerRepository::update_color(pool, &id, &color)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 #[tauri::command]
 async fn list_speaker_profiles(
     state: tauri::State<'_, crate::state::AppState>,
-) -> Result<Vec<crate::database::repositories::speaker::SpeakerProfile>, String> {
+) -> Result<Vec<crate::database::repositories::speaker::SpeakerPersonDto>, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::list_profiles(pool)
+    crate::database::repositories::speaker::SpeakerRepository::list_people(pool)
         .await
         .map_err(|e| e.to_string())
 }
@@ -880,9 +1353,15 @@ async fn delete_speaker_profile(
     display_name: String,
 ) -> Result<u64, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::delete_by_name(pool, &display_name)
+    match crate::database::repositories::speaker::SpeakerRepository::find_person_by_name(pool, &display_name)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?
+    {
+        Some((id, _)) => crate::database::repositories::speaker::SpeakerRepository::delete_person(pool, &id)
+            .await
+            .map_err(|e| e.to_string()),
+        None => Ok(0),
+    }
 }
 
 #[tauri::command]
@@ -892,9 +1371,18 @@ async fn rename_speaker_profile(
     new_name: String,
 ) -> Result<u64, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::rename(pool, &old_name, &new_name)
+    match crate::database::repositories::speaker::SpeakerRepository::find_person_by_name(pool, &old_name)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?
+    {
+        Some((id, _)) => {
+            let renamed = crate::database::repositories::speaker::SpeakerRepository::rename_person(pool, &id, &new_name)
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(if renamed { 1 } else { 0 })
+        }
+        None => Ok(0),
+    }
 }
 
 #[tauri::command]
@@ -904,10 +1392,26 @@ async fn enroll_speaker(
     embedding: Vec<f32>,
 ) -> Result<String, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::upsert_profile(
+    // Ensure person exists, then create a voice reference
+    let person_id = crate::database::repositories::speaker::SpeakerRepository::get_or_create_person(pool, &display_name)
+        .await
+        .map_err(|e| e.to_string())?;
+    crate::database::repositories::voice_reference::VoiceReferenceRepository::create(
         pool,
-        &display_name,
-        &embedding,
+        &person_id,
+        &crate::database::repositories::voice_reference::CreateReferenceParams {
+            meeting_id: None,
+            embedding,
+            audio_relative_path: None,
+            waveform_peaks: None,
+            source_start_ms: 0,
+            source_end_ms: 0,
+            duration_ms: 0,
+            channel: "unknown".into(),
+            quality_score: 0.0,
+            status: "confirmed".into(),
+            origin: "manual".into(),
+        },
     )
     .await
     .map_err(|e| e.to_string())
@@ -926,6 +1430,7 @@ async fn match_speaker(
         threshold,
     )
     .await
+    .map(|opt| opt.map(|(name, sim, _ref_id)| (name, sim)))
     .map_err(|e| e.to_string())
 }
 
@@ -934,9 +1439,10 @@ async fn list_speaker_names(
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<Vec<String>, String> {
     let pool = state.db_manager.pool();
-    crate::database::repositories::speaker::SpeakerRepository::get_all_names(pool)
+    let people = crate::database::repositories::speaker::SpeakerRepository::list_people(pool)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok(people.into_iter().map(|p| p.display_name).collect())
 }
 
 #[tauri::command]
@@ -953,9 +1459,9 @@ async fn rename_speaker_in_meeting(
     )
     .await
     .map_err(|e| e.to_string())?;
-    // 2. Enroll speaker profile (name-only, embedding populated later by diarization)
-    let _ = crate::database::repositories::speaker::SpeakerRepository::upsert_profile(
-        pool, &new_name, &[],
+    // 2. Ensure person exists (voice references added later by diarization)
+    let _ = crate::database::repositories::speaker::SpeakerRepository::get_or_create_person(
+        pool, &new_name,
     )
     .await;
     Ok(rows)
