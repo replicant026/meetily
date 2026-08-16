@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 "use client";
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Summary, SummaryResponse } from '@/types';

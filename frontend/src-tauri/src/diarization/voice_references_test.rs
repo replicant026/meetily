@@ -145,8 +145,13 @@ fn reference_window_duration_ms_is_correct() {
 
 #[tokio::test]
 async fn delete_reference_removes_only_managed_file() {
+    // Ensure references_dir is set (first call wins via OnceLock).
+    // Use a unique subdirectory so parallel tests writing to the same global
+    // dir don't collide on speaker subdirectories.
     let tmp = tempfile::tempdir().unwrap();
-    set_references_dir(tmp.path().to_path_buf());
+    let test_subdir = tmp.path().join("managed_file_test");
+    std::fs::create_dir_all(&test_subdir).unwrap();
+    let _ = set_references_dir(test_subdir.clone());
 
     let pool = test_pool().await;
 
@@ -203,12 +208,14 @@ async fn delete_reference_removes_only_managed_file() {
     .await
     .unwrap();
 
-    // Write audio files on disk
-    let alice_dir = tmp.path().join(&alice);
+    // Write audio files on disk under the test-specific directory.
+    // Use references_dir() because OnceLock may already be set by a parallel test.
+    let base = references_dir().unwrap();
+    let alice_dir = base.join(&alice);
     std::fs::create_dir_all(&alice_dir).unwrap();
     std::fs::write(alice_dir.join("ref-a.wav"), b"RIFF fake").unwrap();
 
-    let bob_dir = tmp.path().join(&bob);
+    let bob_dir = base.join(&bob);
     std::fs::create_dir_all(&bob_dir).unwrap();
     std::fs::write(bob_dir.join("ref-b.wav"), b"RIFF fake").unwrap();
 

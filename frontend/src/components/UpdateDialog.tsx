@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 'use client';
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { AppDialog } from './ui/app-dialog';

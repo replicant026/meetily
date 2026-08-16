@@ -1,5 +1,5 @@
-import { logger } from "@/lib/logger";
 "use client";
+import { logger } from "@/lib/logger";
 
 import { Summary, SummaryResponse, Transcript } from '@/types';
 import { EditableTitle } from '@/components/EditableTitle';

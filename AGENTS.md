@@ -413,16 +413,16 @@ $env:RUST_LOG="debug"; ./clean_run_windows.bat
 
 This repository is indexed by Repowise. Use the Repowise MCP tools for codebase orientation, discovery, implementation context, modification risk, design rationale, and cleanup planning. MCP data reflects the last index run; verify against source files before editing.
 
-Last indexed: 2026-08-15 (commit cd6030b). Confidence: 100%.
+Last indexed: 2026-08-16 (commit 2e5fb1569b8414bfd26389a42c3a129dfd2aba2c). Confidence: 100%.
 ### Architecture
-Meetily é um assistente de reunião com IA focado em privacidade: captura áudio (mic + sistema), transcreve localmente via Whisper/Parakeet, diariza falantes, gera resumos via LLM local/externo, e persiste tudo em SQLite local — sem nuvem.
+Meetily é um assistente de reunião com IA focado em privacidade: captura áudio (mic + sistema), transcreve localmente via Whisper/Parakeet, diariza falantes, gera resumos via LLM local/externo, e persiste tudo em SQLite local — sem nuvem. Detalhes completos em `docs/repositories/meetily.md`.
 ### Key Modules
 | Module | Purpose | Owner |
 |--------|---------|-------|
 | `frontend/src` | Frontend/src é o principal módulo de interface do usuário do Meetily — gerencia configuração global, estado de gravação, tradução, e… | - |
 | `frontend/src/components` | Components module hosts UI components for Meetily's Tauri desktop app — renders meeting workspace, sidebar, settings panels, and audio… | - |
 | `frontend/src-tauri/src/audio` | Áudio subsystem ingestion pipeline — captura streams mic & system, mixa via FFmpeg adaptativo, orquestra gravação & persistência para disco | - |
-| `frontend/src-tauri/src` | Tauri app core — hosts entry points into this subsystem | - |
+| `frontend/src-tauri/src` | src-tauri é a camada de integração de infraestrutura do Tauri — gerencia adaptadores de provedores LLM, utilitários de console, estado… | - |
 | `frontend/src/components/ui` | UI component library for Meetily app — wraps Radix primitives with app-specific styling and behavior | - |
 | `frontend/src-tauri/src/summary` | Sumário module — gerencia templates de sumário de reunião, orquestra geração de sumário via LLM, e gerencia preferências de idioma | - |
 | `frontend/src-tauri/src/diarization` | Diarization module: speaker-labeling pipeline orchestrator — consumes audio embeddings → produces stable speaker assignments via… | - |
@@ -432,15 +432,14 @@ Meetily é um assistente de reunião com IA focado em privacidade: captura áudi
 - `backend/whisper-custom/server/server.cpp`
 - `frontend/src-tauri/src/main.rs`
 - `frontend/src-tauri/src/lib.rs`
-- `frontend/src-tauri/src/audio_v2/lib.rs`
 ### Risk Hotspots
 | File | Churn | 90d Commits | Owner |
 |------|-------|-------------|-------|
 | `frontend/src-tauri/src/summary/processor.rs` | 100.0th percentile | 12 | Replicant026 |
-| `frontend/src/app/page.tsx` | 99.8th percentile | 5 | Mohammed Safvan |
-| `frontend/src-tauri/src/lib.rs` | 99.6th percentile | 33 | Replicant026 |
-| `frontend/src/app/meeting-details/page-content.tsx` | 99.2th percentile | 15 | Replicant026 |
-| `frontend/src-tauri/src/summary/service.rs` | 99.0th percentile | 5 | Replicant026 |
+| `frontend/src-tauri/src/lib.rs` | 99.9th percentile | 33 | Replicant026 |
+| `frontend/src/app/meeting-details/page-content.tsx` | 99.7th percentile | 16 | Replicant026 |
+| `frontend/pnpm-lock.yaml` | 99.6th percentile | 7 | Replicant026 |
+| `frontend/src/components/ModelSettingsModal.tsx` | 99.4th percentile | 3 | Replicant026 |
 
 ### Repowise MCP Workflow
 
