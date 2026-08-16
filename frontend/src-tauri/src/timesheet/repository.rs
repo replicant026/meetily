@@ -105,11 +105,12 @@ impl TimesheetRepository {
         entry: &TimesheetEntry,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "UPDATE timesheet_entries SET client=?1, project=?2, description=?3, start_time=?4, end_time=?5, duration_minutes=?6, is_extra=?7, launched=?8, updated_at=?9 WHERE id=?10",
+            "UPDATE timesheet_entries SET client=?1, project=?2, description=?3, date=?4, start_time=?5, end_time=?6, duration_minutes=?7, is_extra=?8, launched=?9, updated_at=?10 WHERE id=?11",
         )
         .bind(&entry.client)
         .bind(&entry.project)
         .bind(&entry.description)
+        .bind(&entry.date)
         .bind(&entry.start_time)
         .bind(&entry.end_time)
         .bind(entry.duration_minutes)

@@ -1,8 +1,9 @@
 use crate::database::repositories::search::SearchRepository;
 use crate::database::repositories::setting::SettingsRepository;
 use crate::state::AppState;
+use crate::summary::llm_client::{generate_summary, LLMProvider};
 use serde::{Deserialize, Serialize};
-use tauri::Runtime;
+use tauri::{Manager, Runtime};
 
 #[derive(Debug, Deserialize)]
 pub struct ChatMessage {
@@ -27,7 +28,7 @@ pub struct ChatSource {
 
 #[tauri::command]
 pub async fn chat_about_meetings<R: Runtime>(
-    _app: tauri::AppHandle<R>,
+    app: tauri::AppHandle<R>,
     state: tauri::State<'_, AppState>,
     question: String,
     history: Option<Vec<ChatMessage>>,
@@ -58,67 +59,108 @@ pub async fn chat_about_meetings<R: Runtime>(
         .collect::<Vec<_>>()
         .join("\n---\n\n");
 
-    // 3. Build messages for LLM
-    let mut messages: Vec<serde_json::Value> = vec![];
-
-    // Add history (last 10 messages)
-    if let Some(hist) = history {
-        for m in hist.iter().take(10) {
-            messages.push(serde_json::json!({
-                "role": m.role,
-                "content": m.content,
-            }));
-        }
-    }
-
+    // 3. Build system prompt with meeting context
     let system_prompt = format!(
         "You are a meeting assistant. Answer questions based on the following meeting transcripts:\n\n{}\n\nBe concise and cite specific meetings when possible. If the context doesn't contain enough information, say so.",
         context
     );
 
-    messages.push(serde_json::json!({
-        "role": "system",
-        "content": system_prompt,
-    }));
-    messages.push(serde_json::json!({
-        "role": "user",
-        "content": question,
-    }));
+    // 4. Build conversation history — take only the LAST 10 messages
+    let history_text = if let Some(hist) = history {
+        let last_n: Vec<String> = hist
+            .iter()
+            .rev()
+            .take(10)
+            .rev()
+            .map(|m| format!("{}: {}", m.role, m.content))
+            .collect();
+        if last_n.is_empty() {
+            String::new()
+        } else {
+            format!("Conversation so far:\n{}\n\n", last_n.join("\n"))
+        }
+    } else {
+        String::new()
+    };
 
-    // 4. Get LLM settings
+    let user_prompt = if history_text.is_empty() {
+        question.clone()
+    } else {
+        format!("{}User: {}", history_text, question)
+    };
+
+    // 5. Get LLM settings and route through configured provider
     let settings = SettingsRepository::get_model_config(pool)
         .await
         .map_err(|e| format!("Failed to get settings: {}", e))?
         .ok_or_else(|| "No model settings configured".to_string())?;
 
-    let endpoint = settings
-        .ollama_endpoint
-        .as_deref()
-        .unwrap_or("http://localhost:11434");
+    let provider = LLMProvider::from_str(&settings.provider)
+        .map_err(|e| format!("Unsupported provider: {}", e))?;
 
-    // 5. Call LLM (Ollama chat API)
+    // Get API key for the configured provider
+    let api_key = if provider == LLMProvider::Ollama
+        || provider == LLMProvider::BuiltInAI
+        || provider == LLMProvider::CustomOpenAI
+    {
+        String::new()
+    } else {
+        SettingsRepository::get_api_key(pool, &settings.provider)
+            .await
+            .map_err(|e| format!("Failed to get API key: {}", e))?
+            .unwrap_or_default()
+    };
+
+    // Get Ollama endpoint if applicable
+    let ollama_endpoint = if provider == LLMProvider::Ollama {
+        settings.ollama_endpoint.clone()
+    } else {
+        None
+    };
+
+    // Get CustomOpenAI config if applicable
+    let (custom_openai_endpoint, custom_openai_key) =
+        if provider == LLMProvider::CustomOpenAI {
+            match settings.get_custom_openai_config() {
+                Some(cfg) => (Some(cfg.endpoint), cfg.api_key.unwrap_or_default()),
+                None => (None, String::new()),
+            }
+        } else {
+            (None, String::new())
+        };
+
+    let final_api_key = if provider == LLMProvider::CustomOpenAI {
+        custom_openai_key
+    } else {
+        api_key
+    };
+
+    // Get app data dir for BuiltInAI
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .ok();
+
     let client = reqwest::Client::new();
-    let response = client
-        .post(format!("{}/api/chat", endpoint))
-        .timeout(std::time::Duration::from_secs(120))
-        .json(&serde_json::json!({
-            "model": settings.model,
-            "messages": messages,
-            "stream": false,
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("LLM request failed: {}", e))?;
 
-    let body: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse LLM response: {}", e))?;
-
-    let answer = body["message"]["content"]
-        .as_str()
-        .unwrap_or("No response from LLM")
-        .to_string();
+    // 6. Call LLM through the provider-agnostic summary module
+    let answer = generate_summary(
+        &client,
+        &provider,
+        &settings.model,
+        &final_api_key,
+        &system_prompt,
+        &user_prompt,
+        ollama_endpoint.as_deref(),
+        custom_openai_endpoint.as_deref(),
+        None,   // max_tokens
+        None,   // temperature
+        None,   // top_p
+        app_data_dir.as_ref(),
+        None,   // cancellation_token
+    )
+    .await
+    .map_err(|e| format!("LLM request failed: {}", e))?;
 
     Ok(ChatResponse {
         answer,

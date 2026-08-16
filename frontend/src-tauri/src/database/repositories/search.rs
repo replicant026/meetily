@@ -14,28 +14,30 @@ pub struct MeetingSearchResult {
 pub struct SearchRepository;
 
 impl SearchRepository {
-    /// Initialize FTS5 virtual table and sync triggers.
-    /// Safe to call repeatedly (IF NOT EXISTS / IF NOT triggers).
+    /// Initialize FTS5 virtual table for full-text search.
+    /// Content-backed (not contentless) so snippet(), DELETE, and column reads work.
+    /// Safe to call repeatedly (IF NOT EXISTS).
     pub async fn ensure_fts(pool: &SqlitePool) -> Result<(), sqlx::Error> {
-        // FTS5 content table backed by transcripts + meetings
         sqlx::query(
             "CREATE VIRTUAL TABLE IF NOT EXISTS meetings_fts USING fts5(
                 meeting_id,
                 meeting_title,
-                transcript_text,
-                content='',
-                content_rowid=rowid
+                transcript_text
             )",
         )
         .execute(pool)
         .await?;
 
-        // Triggers removed: FTS content is now external (content='').
-        // We populate manually via reindex() and keep it in sync at write
-        // time in the application layer.  Triggers on contentless FTS5
-        // tables cause "content表 is not a table" errors anyway.
-
         Ok(())
+    }
+
+    /// Sanitize a user query string for FTS5 MATCH.
+    /// Wraps the entire query in double-quotes so special FTS5 characters
+    /// (", *, :, ^, AND/OR, parentheses) are treated as literals.
+    fn sanitize_fts_query(query: &str) -> String {
+        // Escape any double-quotes inside the query by doubling them
+        let escaped = query.replace('"', "\"\"");
+        format!("\"{}\"", escaped)
     }
 
     /// Full-text search across all meetings.
@@ -46,21 +48,23 @@ impl SearchRepository {
         limit: u32,
     ) -> Result<Vec<MeetingSearchResult>, sqlx::Error> {
         let limit = limit.clamp(1, 100) as i64;
+        let safe_query = Self::sanitize_fts_query(query);
 
         let rows = sqlx::query_as::<_, (String, String, String, String, f64)>(
             "SELECT f.meeting_id,
-                    m.title,
+                    f.meeting_title,
                     snippet(meetings_fts, 2, '<mark>', '</mark>', '...', 40),
-                    t.timestamp,
+                    COALESCE(
+                        (SELECT t.timestamp FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
+                        ''
+                    ),
                     rank
              FROM meetings_fts f
-             JOIN meetings m ON m.id = f.meeting_id
-             JOIN transcripts t ON t.meeting_id = f.meeting_id
              WHERE meetings_fts MATCH ?1
              ORDER BY rank
              LIMIT ?2",
         )
-        .bind(query)
+        .bind(safe_query)
         .bind(limit)
         .fetch_all(pool)
         .await?;
@@ -84,14 +88,14 @@ impl SearchRepository {
     /// Rebuild the FTS index from scratch by copying all transcripts into it.
     /// Returns the number of rows inserted.
     pub async fn reindex(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
-        // Wipe existing index
+        // Clear existing index
         sqlx::query("DELETE FROM meetings_fts")
             .execute(pool)
             .await?;
 
         let res = sqlx::query(
             "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
-             SELECT t.rowid, t.meeting_id, COALESCE(m.title, ''), t.transcript
+             SELECT abs(random()) % 9223372036854775807, m.id, COALESCE(m.title, ''), t.transcript
              FROM transcripts t
              JOIN meetings m ON m.id = t.meeting_id",
         )
@@ -101,39 +105,52 @@ impl SearchRepository {
         Ok(res.rows_affected())
     }
 
+    /// Derive a deterministic rowid from a meeting_id string.
+    /// Uses a simple hash so re-indexing the same meeting replaces the old row.
+    fn meeting_rowid(meeting_id: &str) -> i64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        meeting_id.hash(&mut hasher);
+        // FTS5 rowids must be positive; mask off sign bit
+        (hasher.finish() as i64).abs() % 9223372036854775807 + 1
+    }
+
     /// Add a single transcript to the FTS index (call after insert).
+    /// Uses a deterministic rowid so re-indexing replaces the old entry.
     pub async fn index_transcript(
         pool: &SqlitePool,
         meeting_id: &str,
         meeting_title: &str,
         transcript: &str,
     ) -> Result<(), sqlx::Error> {
-        // Get the rowid of the transcript we just inserted
-        let row: Option<(i64,)> =
-            sqlx::query_as("SELECT rowid FROM transcripts WHERE meeting_id = ?1 LIMIT 1")
-                .bind(meeting_id)
-                .fetch_optional(pool)
-                .await?;
+        let rowid = Self::meeting_rowid(meeting_id);
 
-        if let Some((rowid,)) = row {
-            sqlx::query(
-                "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
-                 VALUES (?1, ?2, ?3, ?4)",
-            )
+        // Delete old entry for this meeting (idempotent re-index)
+        sqlx::query("DELETE FROM meetings_fts WHERE rowid = ?1")
             .bind(rowid)
-            .bind(meeting_id)
-            .bind(meeting_title)
-            .bind(transcript)
             .execute(pool)
             .await?;
-        }
+
+        sqlx::query(
+            "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
+             VALUES (?1, ?2, ?3, ?4)",
+        )
+        .bind(rowid)
+        .bind(meeting_id)
+        .bind(meeting_title)
+        .bind(transcript)
+        .execute(pool)
+        .await?;
+
         Ok(())
     }
 
     /// Remove a meeting from the FTS index (call before delete).
     pub async fn remove_meeting(pool: &SqlitePool, meeting_id: &str) -> Result<(), sqlx::Error> {
-        sqlx::query("DELETE FROM meetings_fts WHERE meeting_id = ?1")
-            .bind(meeting_id)
+        let rowid = Self::meeting_rowid(meeting_id);
+        sqlx::query("DELETE FROM meetings_fts WHERE rowid = ?1")
+            .bind(rowid)
             .execute(pool)
             .await?;
         Ok(())

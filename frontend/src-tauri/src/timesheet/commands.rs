@@ -105,6 +105,14 @@ pub async fn timesheet_update_entry<R: Runtime>(
         return Err("End time must be after start time".to_string());
     }
 
+    // Read existing entry to preserve launched and created_at
+    let existing: Option<TimesheetEntry> =
+        sqlx::query_as("SELECT * FROM timesheet_entries WHERE id = ?1")
+            .bind(&request.id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
     let entry = TimesheetEntry {
         id: request.id,
         meeting_id: request.meeting_id,
@@ -116,8 +124,15 @@ pub async fn timesheet_update_entry<R: Runtime>(
         end_time: request.end_time,
         duration_minutes: duration,
         is_extra: request.is_extra.unwrap_or(false),
-        launched: request.launched.unwrap_or(false),
-        created_at: now.clone(),
+        // Preserve launched status from DB unless explicitly provided in request
+        launched: request.launched.unwrap_or_else(|| {
+            existing.as_ref().map(|e| e.launched).unwrap_or(false)
+        }),
+        // Preserve original created_at
+        created_at: existing
+            .as_ref()
+            .map(|e| e.created_at.clone())
+            .unwrap_or_else(|| now.clone()),
         updated_at: now,
     };
 
