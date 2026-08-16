@@ -13,7 +13,7 @@ pub struct MeetingDetectionConfig {
 impl Default for MeetingDetectionConfig {
     fn default() -> Self {
         Self {
-            enabled: true,
+            enabled: false,
             auto_record: true,
             browser_titles: vec![
                 "Meet".to_string(),

@@ -54,8 +54,12 @@ impl TimesheetRepository {
     ) -> Result<Vec<TimesheetEntry>, sqlx::Error> {
         let entries = match month {
             Some(m) => {
-                // Validate month format strictly as YYYY-MM to prevent LIKE wildcard injection
-                if !m.chars().all(|c| c.is_ascii_digit() || c == '-') || m.len() != 7 {
+                // Validate month format strictly as YYYY-MM
+                let valid = m.len() == 7
+                    && m.as_bytes()[4] == b'-'
+                    && m.as_bytes()[0..4].iter().all(|b| b.is_ascii_digit())
+                    && m.as_bytes()[5..7].iter().all(|b| b.is_ascii_digit());
+                if !valid {
                     return Ok(vec![]);
                 }
                 sqlx::query_as::<_, TimesheetEntry>(

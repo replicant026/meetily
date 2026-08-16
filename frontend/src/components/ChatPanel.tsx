@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { MessageSquare, Send, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -23,6 +24,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = useTranslations('chat');
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -77,7 +79,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center"
+      className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/50"
       onClick={onClose}
     >
       <div
@@ -88,7 +90,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         <div className="flex items-center justify-between border-b border-[rgb(var(--app-border))] px-4 py-3">
           <div className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4 text-[rgb(var(--app-muted-fg))]" />
-            <span className="text-sm font-medium text-[rgb(var(--app-fg))]">Chat about meetings</span>
+            <span className="text-sm font-medium text-[rgb(var(--app-fg))]">{t('title')}</span>
           </div>
           <button onClick={onClose} className="rounded p-1 hover:bg-[rgb(var(--app-muted))]">
             <X className="h-4 w-4 text-[rgb(var(--app-muted-fg))]" />
@@ -99,7 +101,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 && (
             <div className="flex h-full items-center justify-center text-sm text-[rgb(var(--app-muted-fg))]">
-              Ask questions about your meeting transcripts...
+              {t('empty')}
             </div>
           )}
           {messages.map((msg, i) => (
@@ -114,7 +116,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
                 <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-2 border-t border-[rgb(var(--app-border))] pt-2 text-xs opacity-70">
-                    Sources: {msg.sources.map((s) => s.meetingTitle).join(', ')}
+                    {t('sources')}: {msg.sources.map((s) => s.meetingTitle).join(', ')}
                   </div>
                 )}
               </div>
@@ -130,7 +132,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            placeholder="Ask about your meetings..."
+            placeholder={t('placeholder')}
             disabled={isLoading}
             className="flex-1"
           />
