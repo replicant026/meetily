@@ -48,7 +48,6 @@ impl WindowsMeetingDetector {
                             if mic_start_time.is_none() {
                                 mic_start_time = Some(std::time::Instant::now());
                                 call_detected = false;
-                                grace_start_time = None;
                             }
 
                             // Check if call duration threshold reached

@@ -136,9 +136,12 @@ pub async fn timesheet_update_entry<R: Runtime>(
         updated_at: now,
     };
 
-    TimesheetRepository::update_entry(pool, &entry)
+    let updated = TimesheetRepository::update_entry(pool, &entry)
         .await
         .map_err(|e| e.to_string())?;
+    if !updated {
+        return Err(format!("Timesheet entry '{}' not found", entry.id));
+    }
     Ok(entry)
 }
 

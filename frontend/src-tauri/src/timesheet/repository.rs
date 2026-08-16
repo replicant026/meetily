@@ -54,10 +54,12 @@ impl TimesheetRepository {
     ) -> Result<Vec<TimesheetEntry>, sqlx::Error> {
         let entries = match month {
             Some(m) => {
+                // Escape SQL LIKE wildcards in the month parameter
+                let escaped = m.replace('%', "\\%").replace('_', "\\_");
                 sqlx::query_as::<_, TimesheetEntry>(
-                    "SELECT * FROM timesheet_entries WHERE date LIKE ?1 ORDER BY date, start_time",
+                    "SELECT * FROM timesheet_entries WHERE date LIKE ?1 ESCAPE '\\\\' ORDER BY date, start_time",
                 )
-                .bind(format!("{}%", m))
+                .bind(format!("{}%", escaped))
                 .fetch_all(pool)
                 .await?
             }
@@ -99,12 +101,12 @@ impl TimesheetRepository {
         Ok(())
     }
 
-    /// Update an existing timesheet entry.
+    /// Update an existing timesheet entry. Returns true if a row was updated.
     pub async fn update_entry(
         pool: &SqlitePool,
         entry: &TimesheetEntry,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query(
+    ) -> Result<bool, sqlx::Error> {
+        let res = sqlx::query(
             "UPDATE timesheet_entries SET meeting_id=?1, client=?2, project=?3, description=?4, date=?5, start_time=?6, end_time=?7, duration_minutes=?8, is_extra=?9, launched=?10, updated_at=?11 WHERE id=?12",
         )
         .bind(&entry.meeting_id)
@@ -121,7 +123,7 @@ impl TimesheetRepository {
         .bind(&entry.id)
         .execute(pool)
         .await?;
-        Ok(())
+        Ok(res.rows_affected() > 0)
     }
 
     /// Delete a timesheet entry. Returns true if a row was deleted.

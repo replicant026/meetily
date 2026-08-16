@@ -71,7 +71,7 @@ impl SearchRepository {
     }
 
     /// Full-text search across all meetings.
-    /// Returns ranked snippets with <mark> highlighting.
+    /// Returns ranked snippets with «» delimiters for matched terms.
     pub async fn search(
         pool: &SqlitePool,
         query: &str,
