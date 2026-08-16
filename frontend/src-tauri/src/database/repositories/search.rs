@@ -27,7 +27,7 @@ impl SearchRepository {
 
         sqlx::query(
             "CREATE VIRTUAL TABLE IF NOT EXISTS meetings_fts USING fts5(
-                meeting_id,
+                meeting_id UNINDEXED,
                 meeting_title,
                 transcript_text
             )",
@@ -54,24 +54,30 @@ impl SearchRepository {
         Ok(())
     }
 
-    /// Sanitize a user query string for FTS5 MATCH.
-    /// Splits into words, quotes each independently, and appends * to the
-    /// last token for prefix matching (partial-as-you-type search).
+    /// Filter out non-alphanumeric tokens that would cause FTS5 syntax errors.
+    fn filter_tokens(words: Vec<&str>) -> Vec<String> {
+        words
+            .into_iter()
+            .filter(|w| w.chars().any(|c| c.is_alphanumeric()))
+            .map(|w| w.replace('"', "\"\""))
+            .collect()
+    }
+
+    /// Sanitize a user query string for FTS5 MATCH with AND semantics.
     fn sanitize_fts_query(query: &str) -> String {
-        let words: Vec<&str> = query.split_whitespace().collect();
+        let words = Self::filter_tokens(query.split_whitespace().collect());
         if words.is_empty() {
             return String::new();
         }
+        let last = words.len() - 1;
         words
             .iter()
             .enumerate()
             .map(|(i, word)| {
-                let escaped = word.replace('"', "\"\"");
-                if i == words.len() - 1 {
-                    // Last token: prefix match (partial typing)
-                    format!("\"{}\"*", escaped)
+                if i == last {
+                    format!("\"{}\"*", word) // prefix match on last token
                 } else {
-                    format!("\"{}\"", escaped)
+                    format!("\"{}\"", word)
                 }
             })
             .collect::<Vec<_>>()
@@ -81,18 +87,61 @@ impl SearchRepository {
     /// Sanitize a user query string for FTS5 MATCH with OR semantics.
     /// Used by chat/RAG where any word matching is acceptable.
     fn sanitize_fts_query_or(query: &str) -> String {
-        let words: Vec<&str> = query.split_whitespace().collect();
+        let words = Self::filter_tokens(query.split_whitespace().collect());
         if words.is_empty() {
             return String::new();
         }
         words
             .iter()
-            .map(|word| {
-                let escaped = word.replace('"', "\"\"");
-                format!("\"{}\"*", escaped)
-            })
+            .map(|word| format!("\"{}\"*", word))
             .collect::<Vec<_>>()
             .join(" OR ")
+    }
+
+    /// Execute an FTS5 search with the given sanitized query.
+    /// Shared by search() and search_or() to avoid duplication.
+    async fn execute_search(
+        pool: &SqlitePool,
+        safe_query: &str,
+        limit: i64,
+    ) -> Result<Vec<MeetingSearchResult>, sqlx::Error> {
+        if safe_query.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let rows = sqlx::query_as::<_, (String, String, String, String, f64)>(
+            "SELECT f.meeting_id,
+                    f.meeting_title,
+                    snippet(meetings_fts, 2, '«', '»', '…', 40),
+                    COALESCE(
+                        (SELECT COALESCE(t.timestamp, '') FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
+                        ''
+                    ),
+                    rank
+             FROM meetings_fts f
+             WHERE meetings_fts MATCH ?1
+             ORDER BY rank
+             LIMIT ?2",
+        )
+        .bind(safe_query)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(
+                |(meeting_id, meeting_title, snippet, timestamp, rank)| {
+                    MeetingSearchResult {
+                        meeting_id,
+                        meeting_title,
+                        snippet,
+                        timestamp,
+                        rank,
+                    }
+                },
+            )
+            .collect())
     }
 
     /// Full-text search across all meetings with AND semantics.
@@ -102,47 +151,8 @@ impl SearchRepository {
         query: &str,
         limit: u32,
     ) -> Result<Vec<MeetingSearchResult>, sqlx::Error> {
-        let limit = limit.clamp(1, 100) as i64;
         let safe_query = Self::sanitize_fts_query(query);
-
-        // Return empty results for empty queries instead of passing invalid MATCH
-        if safe_query.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let rows = sqlx::query_as::<_, (String, String, String, String, f64)>(
-            "SELECT f.meeting_id,
-                    f.meeting_title,
-                    snippet(meetings_fts, 2, '«', '»', '…', 40),
-                    COALESCE(
-                        (SELECT COALESCE(t.timestamp, '') FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
-                        ''
-                    ),
-                    rank
-             FROM meetings_fts f
-             WHERE meetings_fts MATCH ?1
-             ORDER BY rank
-             LIMIT ?2",
-        )
-        .bind(safe_query)
-        .bind(limit)
-        .fetch_all(pool)
-        .await?;
-
-        Ok(rows
-            .into_iter()
-            .map(
-                |(meeting_id, meeting_title, snippet, timestamp, rank)| {
-                    MeetingSearchResult {
-                        meeting_id,
-                        meeting_title,
-                        snippet,
-                        timestamp,
-                        rank,
-                    }
-                },
-            )
-            .collect())
+        Self::execute_search(pool, &safe_query, limit.clamp(1, 100) as i64).await
     }
 
     /// Full-text search across all meetings with OR semantics.
@@ -152,46 +162,8 @@ impl SearchRepository {
         query: &str,
         limit: u32,
     ) -> Result<Vec<MeetingSearchResult>, sqlx::Error> {
-        let limit = limit.clamp(1, 100) as i64;
         let safe_query = Self::sanitize_fts_query_or(query);
-
-        if safe_query.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let rows = sqlx::query_as::<_, (String, String, String, String, f64)>(
-            "SELECT f.meeting_id,
-                    f.meeting_title,
-                    snippet(meetings_fts, 2, '«', '»', '…', 40),
-                    COALESCE(
-                        (SELECT COALESCE(t.timestamp, '') FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
-                        ''
-                    ),
-                    rank
-             FROM meetings_fts f
-             WHERE meetings_fts MATCH ?1
-             ORDER BY rank
-             LIMIT ?2",
-        )
-        .bind(safe_query)
-        .bind(limit)
-        .fetch_all(pool)
-        .await?;
-
-        Ok(rows
-            .into_iter()
-            .map(
-                |(meeting_id, meeting_title, snippet, timestamp, rank)| {
-                    MeetingSearchResult {
-                        meeting_id,
-                        meeting_title,
-                        snippet,
-                        timestamp,
-                        rank,
-                    }
-                },
-            )
-            .collect())
+        Self::execute_search(pool, &safe_query, limit.clamp(1, 100) as i64).await
     }
 
     /// Rebuild the FTS index from scratch by copying all transcripts into it.
@@ -242,7 +214,7 @@ impl SearchRepository {
             hash ^= *byte as u64;
             hash = hash.wrapping_mul(0x100000001b3); // FNV prime
         }
-        // FTS5 rowids must be positive; clear sign bit (no abs overflow)
+        // FTS5 rowids must be positive; clear sign bit and prevent i64::MAX overflow
         ((hash & 0x7FFFFFFFFFFFFFFF) % 0x7FFFFFFFFFFFFFFF) as i64 + 1
     }
 
