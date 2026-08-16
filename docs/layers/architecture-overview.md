@@ -174,7 +174,7 @@ User click "Stop" (Frontend)
 User clicks "Summarize" (Frontend)
   → invoke('api_get_summary')
   → summary/processor.rs → LLM call (Ollama/OpenAI/etc)
-  → emit("summary-updated") → Frontend
+  → frontend polls api_get_summary until status=completed
 ```
 
 ## Ciclos Fortemente Conectados

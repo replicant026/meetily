@@ -24,7 +24,7 @@ Ferramenta de avaliação — benchmark de modelos ASR. Mede latência e qualida
 
 ### Step 5: Serviço de transcrição — `frontend/src/lib/whisper.ts`
 
-Adapter de serviço — abstrai comunicação com backends de transcrição. Ponte entre React (Steps 6-7, 9, 11) e Rust (Step 3). Exporta funções que o frontend chama; internamente invoca Tauri commands. Step 2 (servidor legado) e Step 3 (helper Rust) são as origens dos dados que este módulo normaliza. Âncora da camada Service — mais importado que qualquer outro módulo em `frontend/src/lib/`.
+Adapter de serviço — abstrai comunicação com backends de transcrição. Ponte entre React (Steps 6-7, 9, 11) e Rust (Step 3). Exporta funções que o frontend chama; internamente invoca Tauri commands. Step 2 (servidor legado de transcrição) é a origem histórica dos dados que este módulo normaliza; Step 3 (helper LLM) não é consumido aqui. Âncora da camada Service — mais importado que qualquer outro módulo em `frontend/src/lib/`.
 
 ### Step 6: Indicador de progresso — `frontend/src/components/onboarding/shared/ProgressIndicator.tsx`
 

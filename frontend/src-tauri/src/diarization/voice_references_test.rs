@@ -145,11 +145,13 @@ fn reference_window_duration_ms_is_correct() {
 
 #[tokio::test]
 async fn delete_reference_removes_only_managed_file() {
+    // Ensure references_dir is set (first call wins via OnceLock).
+    // Use a unique subdirectory so parallel tests writing to the same global
+    // dir don't collide on speaker subdirectories.
     let tmp = tempfile::tempdir().unwrap();
-    // Use a unique subdirectory under tmp to avoid OnceLock collisions with
-    // parallel tests that may already hold the global references_dir().
-    let test_dir = tmp.path().join("test_managed_file");
-    set_references_dir(test_dir.clone());
+    let test_subdir = tmp.path().join("managed_file_test");
+    std::fs::create_dir_all(&test_subdir).unwrap();
+    let _ = set_references_dir(test_subdir.clone());
 
     let pool = test_pool().await;
 
