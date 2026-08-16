@@ -564,11 +564,13 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     useEffect(() => {
         if (!activeSearchSegmentId) return;
         if (useVirtualization) {
+            // Virtualized mode: target row may not be mounted yet, use auto for reliable jump
             const idx = segments.findIndex(s => s.id === activeSearchSegmentId);
             if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center', behavior: 'auto' });
         } else {
+            // Non-virtualized mode: element exists, smooth scroll for better UX
             const el = document.getElementById(`segment-${activeSearchSegmentId}`);
-            if (el) el.scrollIntoView({ block: 'center' });
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, [activeSearchSegmentId, useVirtualization, segments, virtualizer]);
 

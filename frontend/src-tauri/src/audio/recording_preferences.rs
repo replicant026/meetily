@@ -110,11 +110,13 @@ pub async fn load_recording_preferences<R: Runtime>(
         match serde_json::from_value::<RecordingPreferences>(value.clone()) {
             Ok(mut p) => {
                 info!("Loaded recording preferences from store");
-                // Update macOS backend to current value if needed
+                // Only set macOS backend from in-memory state if not already stored
                 #[cfg(target_os = "macos")]
                 {
-                    let backend = crate::audio::capture::get_current_backend();
-                    p.system_audio_backend = Some(backend.as_id().to_string());
+                    if p.system_audio_backend.is_none() {
+                        let backend = crate::audio::capture::get_current_backend();
+                        p.system_audio_backend = Some(backend.as_id().to_string());
+                    }
                 }
                 p
             }
