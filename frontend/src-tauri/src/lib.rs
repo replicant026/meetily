@@ -638,6 +638,21 @@ pub fn run() {
             })
             .expect("Failed to initialize database");
 
+            // Restore persisted macOS audio backend from preferences (one-time at startup)
+            #[cfg(target_os = "macos")]
+            {
+                if let Ok(prefs) = tauri::async_runtime::block_on(
+                    crate::audio::recording_preferences::load_recording_preferences(&_app.handle())
+                ) {
+                    if let Some(ref backend_str) = prefs.system_audio_backend {
+                        if let Some(backend) = crate::audio::capture::AudioCaptureBackend::from_string(backend_str) {
+                            log::info!("Restoring audio backend from preferences: {:?}", backend);
+                            crate::audio::capture::set_current_backend(backend);
+                        }
+                    }
+                }
+            }
+
             // PR-A: hand the SQLite pool to the hotword hit-rate counter so both
             // streaming and one-shot ASR paths can record per-hotword hits.
             if let Some(state) = _app.try_state::<state::AppState>() {

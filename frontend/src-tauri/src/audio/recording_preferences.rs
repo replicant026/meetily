@@ -110,17 +110,6 @@ pub async fn load_recording_preferences<R: Runtime>(
         match serde_json::from_value::<RecordingPreferences>(value.clone()) {
             Ok(p) => {
                 info!("Loaded recording preferences from store");
-                // On macOS, apply stored backend to global state (fixes restart
-                // where default is used instead of persisted choice)
-                #[cfg(target_os = "macos")]
-                {
-                    if let Some(ref backend_str) = p.system_audio_backend {
-                        if let Some(backend) = AudioCaptureBackend::from_string(backend_str) {
-                            info!("Restoring audio backend from preferences: {:?}", backend);
-                            crate::audio::capture::set_current_backend(backend);
-                        }
-                    }
-                }
                 p
             }
             Err(e) => {
