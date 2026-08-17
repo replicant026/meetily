@@ -47,6 +47,7 @@ pub async fn chat_about_meetings<R: Runtime>(
         });
     }
 
+    use tracing::warn;
     // 2. Fetch actual transcript content for each matched meeting (not just FTS snippets)
     let mut context_parts: Vec<String> = Vec::new();
     for r in &results {
@@ -56,7 +57,10 @@ pub async fn chat_about_meetings<R: Runtime>(
         .bind(&r.meeting_id)
         .fetch_optional(pool)
         .await
-        .ok()
+        .unwrap_or_else(|e| {
+            warn!("Failed to fetch transcript for meeting {}: {}", r.meeting_id, e);
+            None
+        })
         .flatten();
 
         // Strip FTS highlight markers «» from snippet and use full transcript instead
