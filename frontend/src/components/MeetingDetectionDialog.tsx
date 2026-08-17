@@ -23,8 +23,8 @@ interface MeetingDetectionDialogProps {
 export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProps) {
   const [event, setEvent] = useState<DetectionEvent | null>(null);
   const [isStarting, setIsStarting] = useState(false);
-  const { isRecording } = useRecordingState();
-  const { handleRecordingStart } = useRecordingStart();
+  const { isRecording, setIsRecording } = useRecordingState();
+  const { handleRecordingStart } = useRecordingStart(isRecording, setIsRecording);
   const t = useTranslations('detection');
 
   useEffect(() => {
