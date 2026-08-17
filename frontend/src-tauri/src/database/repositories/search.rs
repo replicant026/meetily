@@ -198,7 +198,7 @@ impl SearchRepository {
              LEFT JOIN transcripts t ON t.meeting_id = m.id
              GROUP BY m.id",
         )
-        .fetch_all(pool)
+        .fetch_all(&mut *tx)
         .await?;
 
         let mut count: u64 = 0;
