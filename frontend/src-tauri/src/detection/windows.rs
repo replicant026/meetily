@@ -139,6 +139,27 @@ fn check_key_recursive(key: &winreg::RegKey) -> bool {
 }
 
 #[cfg(target_os = "windows")]
+fn check_key_recursive_with_exclusion(key: &winreg::RegKey, exclude: &str) -> bool {
+    use winreg::enums::*;
+    if let Ok(val) = key.get_value::<u64, _>("LastUsedTimeStop") {
+        if val == 0 {
+            return true;
+        }
+    }
+    for sub_name in key.enum_keys().filter_map(|r| r.ok()) {
+        if sub_name.to_lowercase().contains(exclude) {
+            continue;
+        }
+        if let Ok(sub) = key.open_subkey_with_flags(&sub_name, KEY_READ) {
+            if check_key_recursive_with_exclusion(&sub, exclude) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "windows")]
 fn check_mic_usage() -> bool {
     use winreg::enums::*;
     use winreg::RegKey;
@@ -154,12 +175,12 @@ fn check_mic_usage() -> bool {
 
     if let Ok(key) = hkcu.open_subkey_with_flags(base_path, KEY_READ) {
         for subkey_name in key.enum_keys().filter_map(|r| r.ok()) {
-            // Skip our own process
-            if subkey_name.to_lowercase() == own_name {
+            // Skip our own process — check top-level and recursive children
+            if subkey_name.to_lowercase().contains(&own_name) {
                 continue;
             }
             if let Ok(subkey) = key.open_subkey_with_flags(&subkey_name, KEY_READ) {
-                if check_key_recursive(&subkey) {
+                if check_key_recursive_with_exclusion(&subkey, &own_name) {
                     return true;
                 }
             }
