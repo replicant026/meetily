@@ -47,17 +47,36 @@ pub async fn chat_about_meetings<R: Runtime>(
         });
     }
 
-    // 2. Build context from search results
-    let context: String = results
-        .iter()
-        .map(|r| {
-            format!(
-                "Meeting: {} ({})\n{}\n",
-                r.meeting_title, r.timestamp, r.snippet
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n---\n\n");
+    // 2. Fetch actual transcript content for each matched meeting (not just FTS snippets)
+    let mut context_parts: Vec<String> = Vec::new();
+    for r in &results {
+        let full_text: Option<(String,)> = sqlx::query_as(
+            "SELECT GROUP_CONCAT(transcript, ' ') FROM transcripts WHERE meeting_id = ?1",
+        )
+        .bind(&r.meeting_id)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten();
+
+        // Strip FTS highlight markers «» from snippet and use full transcript instead
+        let content = full_text
+            .and_then(|(txt,)| if txt.is_empty() { None } else { Some(txt) })
+            .unwrap_or_else(|| r.snippet.replace('«', "").replace('»', ""));
+
+        // Truncate to ~2000 chars per meeting to stay within LLM context limits
+        let truncated = if content.len() > 2000 {
+            format!("{}…", &content[..2000])
+        } else {
+            content
+        };
+
+        context_parts.push(format!(
+            "Meeting: {} ({})\n{}\n",
+            r.meeting_title, r.timestamp, truncated
+        ));
+    }
+    let context: String = context_parts.join("\n---\n\n");
 
     // 3. Build system prompt with meeting context
     let system_prompt = format!(

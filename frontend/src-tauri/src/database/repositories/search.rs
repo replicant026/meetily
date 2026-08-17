@@ -179,11 +179,15 @@ impl SearchRepository {
 
     /// Rebuild the FTS index from scratch by copying all transcripts into it.
     /// Aggregates all transcript segments per meeting into a single FTS row.
+    /// Uses a single transaction so a mid-way failure does not leave the index empty.
     /// Returns the number of rows inserted.
     pub async fn reindex(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+        use sqlx::Connection;
+        let mut tx = pool.begin().await?;
+
         // Clear existing index
         sqlx::query("DELETE FROM meetings_fts")
-            .execute(pool)
+            .execute(&mut *tx)
             .await?;
 
         // Fetch aggregated transcripts per meeting
@@ -208,11 +212,12 @@ impl SearchRepository {
             .bind(meeting_id)
             .bind(title)
             .bind(transcript.as_deref().unwrap_or(""))
-            .execute(pool)
+            .execute(&mut *tx)
             .await?;
             count += 1;
         }
 
+        tx.commit().await?;
         Ok(count)
     }
 
