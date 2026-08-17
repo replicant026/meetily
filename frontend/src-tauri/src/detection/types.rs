@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 pub struct MeetingDetectionConfig {
     pub enabled: bool,
     pub auto_record: bool,
-    pub browser_titles: Vec<String>,
     pub min_call_seconds: u32,
     pub grace_seconds: u32,
 }
@@ -15,12 +14,6 @@ impl Default for MeetingDetectionConfig {
         Self {
             enabled: false,
             auto_record: true,
-            browser_titles: vec![
-                "Meet".to_string(),
-                "Microsoft Teams".to_string(),
-                "Zoom".to_string(),
-                "Webex".to_string(),
-            ],
             min_call_seconds: 30,
             grace_seconds: 8,
         }

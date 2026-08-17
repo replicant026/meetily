@@ -150,13 +150,19 @@ async fn delete_reference_removes_only_managed_file() {
 
     let pool = test_pool().await;
 
+    // Unique names per run to avoid collisions in parallel test execution.
+    let uid = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+
     let alice = crate::database::repositories::speaker::SpeakerRepository::create_person(
-        &pool, "Alice", None, None,
+        &pool, &format!("Alice-{uid}"), None, None,
     )
     .await
     .unwrap();
     let bob = crate::database::repositories::speaker::SpeakerRepository::create_person(
-        &pool, "Bob", None, None,
+        &pool, &format!("Bob-{uid}"), None, None,
     )
     .await
     .unwrap();

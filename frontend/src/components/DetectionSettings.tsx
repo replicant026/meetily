@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 interface DetectionConfig {
   enabled: boolean;
   autoRecord: boolean;
-  browserTitles: string[];
   minCallSeconds: number;
   graceSeconds: number;
 }
@@ -18,7 +17,6 @@ interface DetectionConfig {
 const defaultConfig: DetectionConfig = {
   enabled: false,
   autoRecord: true,
-  browserTitles: ['Meet', 'Microsoft Teams', 'Zoom', 'Webex'],
   minCallSeconds: 30,
   graceSeconds: 8,
 };
@@ -35,6 +33,7 @@ export function DetectionSettings() {
       })
       .catch((e) => {
         console.error('Failed to load detection config:', e);
+        toast.error('Failed to load detection settings');
         setLoading(false);
       });
   }, []);
@@ -114,22 +113,10 @@ export function DetectionSettings() {
         <Input
           type="number"
           value={config.graceSeconds}
-          onChange={(e) => setConfig({ ...config, graceSeconds: parseInt(e.target.value) || 8 })}
+          onChange={(e) => { const n = Number(e.target.value); setConfig({ ...config, graceSeconds: Number.isNaN(n) ? 8 : n }); }}
           className="w-24"
           min={0}
           max={60}
-          disabled={!config.enabled}
-        />
-      </div>
-
-      {/* Browser titles */}
-      <div>
-        <label className="text-sm font-medium">Meeting app titles</label>
-        <p className="text-xs text-gray-500 mb-1">Window titles to look for (one per line)</p>
-        <textarea
-          value={config.browserTitles.join('\n')}
-          onChange={(e) => setConfig({ ...config, browserTitles: e.target.value.split('\n').filter(Boolean) })}
-          className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={!config.enabled}
         />
       </div>

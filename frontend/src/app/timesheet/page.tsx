@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Plus, Trash2, Check, Clock, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -56,6 +57,7 @@ function formatDuration(minutes: number): string {
 }
 
 export default function TimesheetPage() {
+  const t = useTranslations('timesheet');
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [form, setForm] = useState<FormData>(makeEmptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export default function TimesheetPage() {
   }, [loadEntries, loadClients]);
 
   const handleSubmit = async () => {
-    if (!form.client.trim() || !form.description.trim()) return;
+    if (!form.client.trim() || !form.description.trim() || !form.date) return;
 
     try {
       if (editingId) {
@@ -172,9 +174,9 @@ export default function TimesheetPage() {
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[rgb(var(--app-fg))]">Timesheet</h1>
+          <h1 className="text-2xl font-bold text-[rgb(var(--app-fg))]">{t('title')}</h1>
           <p className="text-sm text-[rgb(var(--app-muted-fg))]">
-            {entries.length} entries &middot; {formatDuration(totalMinutes)} total
+            {t('entries_count', { count: entries.length })} &middot; {t('total', { duration: formatDuration(totalMinutes) })}
           </p>
         </div>
         <div className="flex gap-2">
@@ -185,7 +187,7 @@ export default function TimesheetPage() {
             className="w-40"
           />
           <Button onClick={() => { setForm(makeEmptyForm()); setEditingId(null); setShowForm(true); }}>
-            <Plus className="h-4 w-4 mr-1" /> Add Entry
+            <Plus className="h-4 w-4 mr-1" /> {t('add_entry')}
           </Button>
         </div>
       </div>
@@ -194,16 +196,16 @@ export default function TimesheetPage() {
       {showForm && (
         <div className="mb-6 p-4 border border-[rgb(var(--app-border))] rounded-lg bg-[rgb(var(--app-muted))]">
           <h3 className="font-medium mb-3 text-[rgb(var(--app-fg))]">
-            {editingId ? 'Edit Entry' : 'New Entry'}
+            {editingId ? t('edit_entry') : t('new_entry')}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">Client *</label>
+              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">{t('client')} *</label>
               <Input
                 list="client-list"
                 value={form.client}
                 onChange={(e) => setForm({ ...form, client: e.target.value })}
-                placeholder="Client name"
+                placeholder={t('client_placeholder')}
               />
               <datalist id="client-list">
                 {clients.map((c) => (
@@ -212,23 +214,23 @@ export default function TimesheetPage() {
               </datalist>
             </div>
             <div>
-              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">Project</label>
+              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">{t('project')}</label>
               <Input
                 value={form.project}
                 onChange={(e) => setForm({ ...form, project: e.target.value })}
-                placeholder="Project name"
+                placeholder={t('project_placeholder')}
               />
             </div>
             <div>
-              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">Description *</label>
+              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">{t('description')} *</label>
               <Input
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="What was done"
+                placeholder={t('description_placeholder')}
               />
             </div>
             <div>
-              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">Date</label>
+              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">{t('date')}</label>
               <Input
                 type="date"
                 value={form.date}
@@ -236,7 +238,7 @@ export default function TimesheetPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">Start Time</label>
+              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">{t('start_time')}</label>
               <Input
                 type="time"
                 value={form.startTime}
@@ -244,7 +246,7 @@ export default function TimesheetPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">End Time</label>
+              <label className="block text-xs text-[rgb(var(--app-muted-fg))] mb-1">{t('end_time')}</label>
               <Input
                 type="time"
                 value={form.endTime}
@@ -259,19 +261,19 @@ export default function TimesheetPage() {
                   onChange={(e) => setForm({ ...form, isExtra: e.target.checked })}
                   className="rounded"
                 />
-                Overtime
+                {t('overtime')}
               </label>
             </div>
             <div className="flex items-end gap-2">
               <Button onClick={handleSubmit} size="sm">
-                {editingId ? 'Update' : 'Add'}
+                {editingId ? t('update') : t('add')}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => { setShowForm(false); setEditingId(null); setForm(makeEmptyForm()); }}
                 size="sm"
               >
-                Cancel
+                {t('cancel')}
               </Button>
             </div>
           </div>
@@ -283,9 +285,9 @@ export default function TimesheetPage() {
         <table className="w-full text-sm">
           <thead className="bg-[rgb(var(--app-muted))]">
             <tr>
-              <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">Date</th>
-              <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">Client</th>
-              <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">Description</th>
+              <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">{t('date')}</th>
+              <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">{t('client')}</th>
+              <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">{t('description')}</th>
               <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">Time</th>
               <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">Duration</th>
               <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">Status</th>
@@ -322,7 +324,7 @@ export default function TimesheetPage() {
                     }`}
                   >
                     {entry.launched ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                    {entry.launched ? 'Exported' : 'Pending'}
+                    {entry.launched ? t('exported') : t('pending')}
                   </button>
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -344,7 +346,7 @@ export default function TimesheetPage() {
             {entries.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-3 py-8 text-center text-[rgb(var(--app-muted-fg))]">
-                  No timesheet entries for this month.
+                  {t('no_entries')}
                 </td>
               </tr>
             )}

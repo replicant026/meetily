@@ -643,7 +643,10 @@ pub fn run() {
                                 "Detection event: type={}, confidence={:.1}",
                                 event.event_type, event.confidence
                             );
-                            // TODO: When auto-record feature is implemented, call start_recording command here
+                            // Emit event to frontend so it can show a notification dialog
+                            if let Err(e) = app_handle_for_detection.emit("meeting-detected", &event) {
+                                log::warn!("Failed to emit meeting-detected event: {}", e);
+                            }
                         }
                         // Keep detector alive for the lifetime of the polling loop
                         drop(detector);
@@ -1544,7 +1547,10 @@ async fn search_meetings(
         limit.unwrap_or(20),
     )
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| {
+        log::warn!("Search failed: {}", e);
+        "Search failed".to_string()
+    })
 }
 
 #[tauri::command]
