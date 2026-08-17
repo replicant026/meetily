@@ -86,7 +86,15 @@ impl WindowsMeetingDetector {
                                 // Mic just went inactive — start grace timer
                                 grace_start_time = Some(std::time::Instant::now());
                             } else {
-                                // No active session, no grace needed — fully reset
+                                // No grace configured (or no session) — end immediately
+                                if call_detected {
+                                    let _ = tx.send(DetectionEvent {
+                                        event_type: "meeting_ended".to_string(),
+                                        app_name: None,
+                                        timestamp: chrono::Utc::now().to_rfc3339(),
+                                        confidence: 0.8,
+                                    });
+                                }
                                 mic_start_time = None;
                                 call_detected = false;
                             }

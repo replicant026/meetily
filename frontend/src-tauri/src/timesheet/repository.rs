@@ -52,9 +52,10 @@ impl TimesheetRepository {
         pool: &SqlitePool,
         month: Option<&str>,
     ) -> Result<Vec<TimesheetEntry>, sqlx::Error> {
+        // Normalize: treat None or empty string as "no filter"
+        let month = month.filter(|m| !m.is_empty());
         let entries = match month {
-            Some(m) if m.is_empty() => {
-                // Empty string = no filter, show all entries
+            None => {
                 sqlx::query_as::<_, TimesheetEntry>(
                     "SELECT * FROM timesheet_entries ORDER BY date DESC, start_time LIMIT 100",
                 )
@@ -74,13 +75,6 @@ impl TimesheetRepository {
                     "SELECT * FROM timesheet_entries WHERE date LIKE ?1 ORDER BY date, start_time",
                 )
                 .bind(format!("{}%", m))
-                .fetch_all(pool)
-                .await?
-            }
-            None => {
-                sqlx::query_as::<_, TimesheetEntry>(
-                    "SELECT * FROM timesheet_entries ORDER BY date DESC, start_time LIMIT 100",
-                )
                 .fetch_all(pool)
                 .await?
             }
