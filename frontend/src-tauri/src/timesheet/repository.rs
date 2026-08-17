@@ -53,6 +53,14 @@ impl TimesheetRepository {
         month: Option<&str>,
     ) -> Result<Vec<TimesheetEntry>, sqlx::Error> {
         let entries = match month {
+            Some(m) if m.is_empty() => {
+                // Empty string = no filter, show all entries
+                sqlx::query_as::<_, TimesheetEntry>(
+                    "SELECT * FROM timesheet_entries ORDER BY date DESC, start_time LIMIT 100",
+                )
+                .fetch_all(pool)
+                .await?
+            }
             Some(m) => {
                 // Validate month format strictly as YYYY-MM
                 let valid = m.len() == 7

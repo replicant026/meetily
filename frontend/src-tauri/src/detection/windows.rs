@@ -69,6 +69,14 @@ impl WindowsMeetingDetector {
                             if let Some(grace_start) = grace_start_time {
                                 // Grace timer is running — check if it expired
                                 if grace_start.elapsed().as_secs() >= config.grace_seconds as u64 {
+                                    if call_detected {
+                                        let _ = tx.send(DetectionEvent {
+                                            event_type: "meeting_ended".to_string(),
+                                            app_name: None,
+                                            timestamp: chrono::Utc::now().to_rfc3339(),
+                                            confidence: 0.8,
+                                        });
+                                    }
                                     mic_start_time = None;
                                     call_detected = false;
                                     grace_start_time = None;
