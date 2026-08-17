@@ -123,10 +123,9 @@ pub async fn chat_about_meetings<R: Runtime>(
         if provider == LLMProvider::CustomOpenAI {
             match settings.get_custom_openai_config() {
                 Some(cfg) => {
-                    // Strip trailing slashes first, then /v1, then any remaining slash
-                    let endpoint = cfg.endpoint.trim_end_matches('/').trim_end_matches("/v1").trim_end_matches('/').to_string();
+                    // Endpoint normalization (stripping /v1, trailing slashes) is done in llm_client.rs
                     (
-                        Some(endpoint),
+                        Some(cfg.endpoint.clone()),
                         cfg.api_key.unwrap_or_default(),
                         Some(cfg.model),
                         cfg.max_tokens.map(|v| v as u32),

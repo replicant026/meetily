@@ -337,7 +337,9 @@ pub async fn generate_summary(
         LLMProvider::CustomOpenAI => {
             let endpoint = custom_openai_endpoint
                 .ok_or_else(|| LLMError::Other("custom_openai_endpoint is required for CustomOpenAI provider".to_string()))?;
-            (format!("{}/v1/chat/completions", endpoint), header::HeaderMap::new())
+            // Normalize: strip trailing slashes and /v1 suffix before appending /v1/chat/completions
+            let base = endpoint.trim_end_matches('/').trim_end_matches("/v1").trim_end_matches('/');
+            (format!("{}/v1/chat/completions", base), header::HeaderMap::new())
         }
         LLMProvider::BuiltInAI => {
             // This case is handled earlier with early returns
