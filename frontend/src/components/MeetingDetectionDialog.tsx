@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { useRecordingState } from '@/contexts/RecordingStateContext';
-import { useRecordingStart } from '@/hooks/useRecordingStart';
+import { recordingService } from '@/services/recordingService';
+import { useConfig } from '@/contexts/ConfigContext';
 
 interface DetectionEvent {
   eventType: string;
@@ -23,8 +24,8 @@ interface MeetingDetectionDialogProps {
 export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProps) {
   const [event, setEvent] = useState<DetectionEvent | null>(null);
   const [isStarting, setIsStarting] = useState(false);
-  const { isRecording, setIsRecording } = useRecordingState();
-  const { handleRecordingStart } = useRecordingStart(isRecording, setIsRecording);
+  const { isRecording } = useRecordingState();
+  const { selectedDevices } = useConfig();
   const t = useTranslations('detection');
 
   useEffect(() => {
@@ -39,7 +40,14 @@ export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProp
   const handleStartRecording = async () => {
     setIsStarting(true);
     try {
-      await handleRecordingStart();
+      const now = new Date();
+      const title = `Meeting ${now.getDate().toString().padStart(2, '0')}_${(now.getMonth()+1).toString().padStart(2, '0')}_${now.getFullYear().toString().slice(-2)}_${now.getHours().toString().padStart(2, '0')}_${now.getMinutes().toString().padStart(2, '0')}_${now.getSeconds().toString().padStart(2, '0')}`;
+      await recordingService.startRecordingWithDevices(
+        selectedDevices?.micDevice || null,
+        selectedDevices?.systemDevice || null,
+        title,
+        false
+      );
       toast.success(t('recording_started'));
     } catch (e) {
       toast.error(t('recording_failed', { error: String(e) }));
