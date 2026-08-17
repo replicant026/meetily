@@ -145,7 +145,7 @@ export default function TimesheetPage() {
       await invoke('timesheet_delete_entry', { entryId: id });
       loadEntries();
     } catch (e) {
-      const msg = typeof e === 'string' ? e : (e as any)?.message || 'Failed to delete entry';
+      const msg = typeof e === 'string' ? e : (e as any)?.message || t('delete_failed');
       toast.error(msg);
     }
   };
@@ -155,7 +155,7 @@ export default function TimesheetPage() {
       await invoke('timesheet_mark_launched', { entryId: id, launched: !current });
       loadEntries();
     } catch (e) {
-      const msg = typeof e === 'string' ? e : (e as any)?.message || 'Failed to toggle status';
+      const msg = typeof e === 'string' ? e : (e as any)?.message || t('toggle_failed');
       toast.error(msg);
     }
   };
@@ -295,10 +295,10 @@ export default function TimesheetPage() {
               <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">{t('date')}</th>
               <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">{t('client')}</th>
               <th className="px-3 py-2 text-left text-[rgb(var(--app-muted-fg))]">{t('description')}</th>
-              <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">Time</th>
-              <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">Duration</th>
-              <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">Status</th>
-              <th className="px-3 py-2 text-right text-[rgb(var(--app-muted-fg))]">Actions</th>
+              <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">{t('time')}</th>
+              <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">{t('duration')}</th>
+              <th className="px-3 py-2 text-center text-[rgb(var(--app-muted-fg))]">{t('status')}</th>
+              <th className="px-3 py-2 text-right text-[rgb(var(--app-muted-fg))]">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>

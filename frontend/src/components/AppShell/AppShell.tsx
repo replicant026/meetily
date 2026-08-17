@@ -5,7 +5,6 @@ import { SidebarNavigation } from './SidebarNavigation';
 import { SidebarActions } from './SidebarActions';
 import { SidebarSearchDialog } from './SidebarSearchDialog';
 import { ChatPanel } from '@/components/ChatPanel';
-import { MeetingDetectionDialog } from '@/components/MeetingDetectionDialog';
 import { useMeetingDirectory } from '@/hooks/useMeetingDirectory';
 
 interface AppShellProps {
@@ -56,9 +55,6 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* Chat panel */}
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
-
-      {/* Meeting detection notification */}
-      <MeetingDetectionDialog />
 
       {/* Main content area */}
       <main className="flex-1 min-w-0 overflow-y-auto">{children}</main>

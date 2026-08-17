@@ -20,5 +20,11 @@
   "add": "Add",
   "no_entries": "No timesheet entries for this month.",
   "exported": "Exported",
-  "pending": "Pending"
+  "pending": "Pending",
+  "time": "Time",
+  "duration": "Duration",
+  "status": "Status",
+  "actions": "Actions",
+  "delete_failed": "Failed to delete entry",
+  "toggle_failed": "Failed to toggle status"
 }

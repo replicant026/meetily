@@ -20,5 +20,11 @@
   "add": "추가",
   "no_entries": "이번 달 타임시트 기록이 없습니다.",
   "exported": "내보내기 완료",
-  "pending": "대기 중"
+  "pending": "대기 중",
+  "time": "시간",
+  "duration": "소요 시간",
+  "status": "상태",
+  "actions": "작업",
+  "delete_failed": "항목 삭제 실패",
+  "toggle_failed": "상태 전환 실패"
 }

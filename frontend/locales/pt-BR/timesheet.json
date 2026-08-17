@@ -20,5 +20,11 @@
   "add": "Adicionar",
   "no_entries": "Nenhum registro de timesheet para este mês.",
   "exported": "Exportado",
-  "pending": "Pendente"
+  "pending": "Pendente",
+  "time": "Horário",
+  "duration": "Duração",
+  "status": "Status",
+  "actions": "Ações",
+  "delete_failed": "Falha ao excluir registro",
+  "toggle_failed": "Falha ao alterar status"
 }

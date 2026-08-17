@@ -20,5 +20,11 @@
   "add": "新增",
   "no_entries": "本月暫無工時記錄。",
   "exported": "已匯出",
-  "pending": "待處理"
+  "pending": "待處理",
+  "time": "時間",
+  "duration": "時長",
+  "status": "狀態",
+  "actions": "操作",
+  "delete_failed": "刪除條目失敗",
+  "toggle_failed": "切換狀態失敗"
 }

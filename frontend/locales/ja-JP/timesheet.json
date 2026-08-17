@@ -20,5 +20,11 @@
   "add": "追加",
   "no_entries": "今月のタイムシート記録はありません。",
   "exported": "エクスポート済",
-  "pending": "保留中"
+  "pending": "保留中",
+  "time": "時間",
+  "duration": "所要時間",
+  "status": "ステータス",
+  "actions": "操作",
+  "delete_failed": "エントリの削除に失敗しました",
+  "toggle_failed": "ステータスの切り替えに失敗しました"
 }
