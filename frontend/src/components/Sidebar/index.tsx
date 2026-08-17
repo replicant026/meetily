@@ -31,7 +31,6 @@ import Logo from '../Logo';
 import Info from '../Info';
 import { useTranslations } from "next-intl";
 import { ComplianceNotification } from '../ComplianceNotification';
-import { ChatPanel } from '../ChatPanel';
 import { Input } from '../ui/input';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group';
 
@@ -828,9 +827,6 @@ const Sidebar: React.FC = () => {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteModalState({ isOpen: false, itemId: null })}
       />
-
-      {/* Chat Panel */}
-      <ChatPanel open={showChat} onClose={() => setShowChat(false)} />
 
       {/* Edit Meeting Title Modal */}
       <Dialog open={editModalState.isOpen} onOpenChange={(open) => {
