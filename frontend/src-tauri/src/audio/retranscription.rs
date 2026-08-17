@@ -491,20 +491,27 @@ async fn run_retranscription<R: Runtime>(
         .map_err(|e| anyhow!("Failed to commit transaction: {}", e))?;
 
     // Re-sync FTS5 index for this meeting (fire-and-forget, non-fatal)
+    // index_transcript is idempotent — it deletes the old FTS row by the same
+    // deterministic rowid before inserting, so no separate remove_meeting call.
     {
         let full_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
-        if let Err(e) = crate::database::repositories::search::SearchRepository::remove_meeting(pool, &meeting_id).await {
-            warn!("Failed to remove meeting {} from FTS index: {}", meeting_id, e);
-        }
-        // Look up meeting title for FTS
-        if let Ok(Some((title,))) = sqlx::query_as::<_, (String,)>("SELECT title FROM meetings WHERE id = ?1")
+        match sqlx::query_as::<_, (String,)>("SELECT title FROM meetings WHERE id = ?1")
             .bind(&meeting_id)
             .fetch_optional(pool)
-            .await {
-            if let Err(e) = crate::database::repositories::search::SearchRepository::index_transcript(
-                pool, &meeting_id, &title, &full_text,
-            ).await {
-                warn!("Failed to reindex meeting {} for search: {}", meeting_id, e);
+            .await
+        {
+            Ok(Some((title,))) => {
+                if let Err(e) = crate::database::repositories::search::SearchRepository::index_transcript(
+                    pool, &meeting_id, &title, &full_text,
+                ).await {
+                    warn!("Failed to reindex meeting {} for search: {}", meeting_id, e);
+                }
+            }
+            Ok(None) => {
+                warn!("Meeting {} not found in DB — cannot reindex for search", meeting_id);
+            }
+            Err(e) => {
+                warn!("Failed to query title for meeting {}: {} — skipping FTS reindex", meeting_id, e);
             }
         }
     }
