@@ -149,10 +149,12 @@ impl TimesheetRepository {
         id: &str,
         launched: bool,
     ) -> Result<(), sqlx::Error> {
+        let now = chrono::Utc::now().to_rfc3339();
         sqlx::query(
-            "UPDATE timesheet_entries SET launched=?1, updated_at=datetime('now') WHERE id=?2",
+            "UPDATE timesheet_entries SET launched=?1, updated_at=?2 WHERE id=?3",
         )
-        .bind(launched as i64)
+        .bind(lunched as i64)
+        .bind(&now)
         .bind(id)
         .execute(pool)
         .await?;
