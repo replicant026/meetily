@@ -86,7 +86,7 @@ impl SearchRepository {
 
     /// Sanitize a user query string for FTS5 MATCH with OR semantics.
     /// Used by chat/RAG where any word matching is acceptable.
-    /// Drops single-character Latin tokens (stopwords like "o", "a", "i", "de")
+    /// Drops single-character ASCII tokens (stopwords like "o", "a", "i")
     /// while preserving meaningful short non-ASCII tokens ("AI", "会议", "SLA").
     fn sanitize_fts_query_or(query: &str) -> String {
         let words: Vec<&str> = query
