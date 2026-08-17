@@ -1,0 +1,9 @@
+{
+  "title": "미팅 감지됨",
+  "description": "마이크가 일정 시간 동안 활성 상태입니다. 녹화를 시작하시겠습니까?",
+  "start_recording": "녹화 시작",
+  "starting": "시작 중...",
+  "dismiss": "무시",
+  "recording_started": "녹화가 시작되었습니다",
+  "recording_failed": "녹화 시작 실패: {error}"
+}

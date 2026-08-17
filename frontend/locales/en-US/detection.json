@@ -1,0 +1,9 @@
+{
+  "title": "Meeting detected",
+  "description": "Microphone has been active for a while. Start recording?",
+  "start_recording": "Start Recording",
+  "starting": "Starting...",
+  "dismiss": "Dismiss",
+  "recording_started": "Recording started",
+  "recording_failed": "Failed to start recording: {error}"
+}

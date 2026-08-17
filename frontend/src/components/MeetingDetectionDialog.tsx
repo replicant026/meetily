@@ -6,6 +6,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
+import { useRecordingState } from '@/contexts/RecordingStateContext';
 
 interface DetectionEvent {
   eventType: string;
@@ -21,24 +23,25 @@ interface MeetingDetectionDialogProps {
 export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProps) {
   const [event, setEvent] = useState<DetectionEvent | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const { isRecording } = useRecordingState();
+  const t = useTranslations('detection');
 
   useEffect(() => {
     const unlisten = listen<DetectionEvent>('meeting-detected', (e) => {
-      // Only show dialog for meeting_detected events
-      if (e.payload.eventType === 'meeting_detected') {
+      if (e.payload.eventType === 'meeting_detected' && !isRecording) {
         setEvent(e.payload);
       }
     });
     return () => { unlisten.then((fn) => fn()); };
-  }, []);
+  }, [isRecording]);
 
   const handleStartRecording = async () => {
     setIsStarting(true);
     try {
       await invoke('start_recording');
-      toast.success('Recording started');
+      toast.success(t('recording_started'));
     } catch (e) {
-      toast.error(`Failed to start recording: ${e}`);
+      toast.error(t('recording_failed', { error: String(e) }));
     } finally {
       setIsStarting(false);
       setEvent(null);
@@ -61,10 +64,10 @@ export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProp
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-[rgb(var(--app-fg))]">
-            Meeting detected
+            {t('title')}
           </p>
           <p className="text-xs text-[rgb(var(--app-muted-fg))] mt-1">
-            Microphone has been active for a while. Start recording?
+            {t('description')}
           </p>
           <div className="flex gap-2 mt-3">
             <Button
@@ -73,7 +76,7 @@ export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProp
               disabled={isStarting}
               className="h-7 text-xs"
             >
-              {isStarting ? 'Starting...' : 'Start Recording'}
+              {isStarting ? t('starting') : t('start_recording')}
             </Button>
             <Button
               size="sm"
@@ -81,7 +84,7 @@ export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProp
               onClick={handleDismiss}
               className="h-7 text-xs"
             >
-              Dismiss
+              {t('dismiss')}
             </Button>
           </div>
         </div>

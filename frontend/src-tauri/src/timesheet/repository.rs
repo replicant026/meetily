@@ -153,7 +153,7 @@ impl TimesheetRepository {
         sqlx::query(
             "UPDATE timesheet_entries SET launched=?1, updated_at=?2 WHERE id=?3",
         )
-        .bind(lunched as i64)
+        .bind(launched as i64)
         .bind(&now)
         .bind(id)
         .execute(pool)

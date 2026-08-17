@@ -1,0 +1,9 @@
+{
+  "title": "會議已偵測到",
+  "description": "麥克風已活躍一段時間。要開始錄製嗎？",
+  "start_recording": "開始錄製",
+  "starting": "正在啟動...",
+  "dismiss": "忽略",
+  "recording_started": "錄製已開始",
+  "recording_failed": "啟動錄製失敗：{error}"
+}

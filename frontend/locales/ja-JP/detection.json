@@ -1,0 +1,9 @@
+{
+  "title": "ミーティングを検出しました",
+  "description": "マイクがしばらくアクティブです。録画を開始しますか？",
+  "start_recording": "録画開始",
+  "starting": "開始中...",
+  "dismiss": "無視",
+  "recording_started": "録画を開始しました",
+  "recording_failed": "録画の開始に失敗しました: {error}"
+}

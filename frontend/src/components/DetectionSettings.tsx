@@ -113,7 +113,7 @@ export function DetectionSettings() {
         <Input
           type="number"
           value={config.graceSeconds}
-          onChange={(e) => { const n = Number(e.target.value); setConfig({ ...config, graceSeconds: Number.isNaN(n) ? 8 : n }); }}
+          onChange={(e) => { const n = Number(e.target.value); setConfig({ ...config, graceSeconds: e.target.value === '' || Number.isNaN(n) ? 8 : n }); }}
           className="w-24"
           min={0}
           max={60}
