@@ -33,6 +33,20 @@ vi.mock('@/hooks/useMeetingDirectory', () => ({
   }),
 }));
 
+vi.mock('@/contexts/RecordingStateContext', () => ({
+  useRecordingState: () => ({
+    isRecording: false,
+    isPaused: false,
+    activeDuration: null,
+    status: 'idle',
+    statusMessage: null,
+  }),
+}));
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn().mockResolvedValue(vi.fn()),
+}));
+
 import { AppShell } from './AppShell';
 
 describe('AppShell accessibility', () => {

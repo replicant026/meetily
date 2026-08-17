@@ -98,7 +98,7 @@ export function DetectionSettings() {
         <Input
           type="number"
           value={config.minCallSeconds}
-          onChange={(e) => setConfig({ ...config, minCallSeconds: parseInt(e.target.value) || 30 })}
+          onChange={(e) => { const n = Number(e.target.value); setConfig({ ...config, minCallSeconds: e.target.value === '' || Number.isNaN(n) ? 30 : n }); }}
           className="w-24"
           min={5}
           max={300}

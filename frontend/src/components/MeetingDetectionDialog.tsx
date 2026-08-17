@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
 import { Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { useRecordingState } from '@/contexts/RecordingStateContext';
+import { useRecordingStart } from '@/hooks/useRecordingStart';
 
 interface DetectionEvent {
   eventType: string;
@@ -24,6 +24,7 @@ export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProp
   const [event, setEvent] = useState<DetectionEvent | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const { isRecording } = useRecordingState();
+  const { handleRecordingStart } = useRecordingStart();
   const t = useTranslations('detection');
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProp
   const handleStartRecording = async () => {
     setIsStarting(true);
     try {
-      await invoke('start_recording');
+      await handleRecordingStart();
       toast.success(t('recording_started'));
     } catch (e) {
       toast.error(t('recording_failed', { error: String(e) }));
