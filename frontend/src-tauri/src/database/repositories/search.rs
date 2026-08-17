@@ -86,12 +86,15 @@ impl SearchRepository {
 
     /// Sanitize a user query string for FTS5 MATCH with OR semantics.
     /// Used by chat/RAG where any word matching is acceptable.
-    /// Keeps all alphanumeric tokens (including short/CJK) — no minimum length filter
-    /// to avoid dropping meaningful terms like "AI", "会议", "SLA".
+    /// Drops single-character Latin tokens (stopwords like "o", "a", "i", "de")
+    /// while preserving meaningful short non-ASCII tokens ("AI", "会议", "SLA").
     fn sanitize_fts_query_or(query: &str) -> String {
         let words: Vec<&str> = query
             .split_whitespace()
-            .filter(|w| w.chars().any(|c| c.is_alphanumeric()))
+            .filter(|w| {
+                w.chars().any(|c| c.is_alphanumeric())
+                    && !(w.chars().count() == 1 && w.is_ascii())
+            })
             .collect();
         if words.is_empty() {
             return String::new();
