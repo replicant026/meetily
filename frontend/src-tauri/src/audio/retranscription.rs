@@ -508,10 +508,20 @@ async fn run_retranscription<R: Runtime>(
                 }
             }
             Ok(None) => {
-                warn!("Meeting {} not found in DB — keeping existing FTS entry without reindex", meeting_id);
+                warn!("Meeting {} not found in DB — reindexing transcript but keeping stale title", meeting_id);
+                if let Err(e) = crate::database::repositories::search::SearchRepository::index_transcript(
+                    pool, &meeting_id, "", &full_text,
+                ).await {
+                    warn!("Failed to reindex meeting {} for search: {}", meeting_id, e);
+                }
             }
             Err(e) => {
-                warn!("Failed to query title for meeting {}: {} — keeping existing FTS entry without reindex", meeting_id, e);
+                warn!("Failed to query title for meeting {}: {} — reindexing transcript but keeping stale title", meeting_id, e);
+                if let Err(e2) = crate::database::repositories::search::SearchRepository::index_transcript(
+                    pool, &meeting_id, "", &full_text,
+                ).await {
+                    warn!("Failed to reindex meeting {} for search: {}", meeting_id, e2);
+                }
             }
         }
     }
