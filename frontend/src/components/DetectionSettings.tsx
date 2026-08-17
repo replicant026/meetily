@@ -98,7 +98,7 @@ export function DetectionSettings() {
         <Input
           type="number"
           value={config.minCallSeconds}
-          onChange={(e) => { const n = Number(e.target.value); setConfig({ ...config, minCallSeconds: e.target.value === '' || Number.isNaN(n) ? 30 : n }); }}
+          onChange={(e) => { const n = Number(e.target.value); const clamped = Number.isNaN(n) || e.target.value === '' ? 30 : Math.max(5, Math.min(300, n)); setConfig({ ...config, minCallSeconds: clamped }); }}
           className="w-24"
           min={5}
           max={300}

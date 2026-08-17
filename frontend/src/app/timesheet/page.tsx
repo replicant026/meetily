@@ -126,7 +126,12 @@ export default function TimesheetPage() {
       setForm(makeEmptyForm());
       setEditingId(null);
       setShowForm(false);
-      loadEntries();
+      // If the entry's date is in the current month, just reload; otherwise show all
+      if (form.date.startsWith(month)) {
+        loadEntries();
+      } else {
+        setMonth(''); // show all entries so the new one is visible
+      }
       loadClients();
     } catch (e: any) {
       console.error('Failed to save entry:', e);
