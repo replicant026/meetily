@@ -57,7 +57,7 @@ function formatDuration(minutes: number): string {
 
 export default function TimesheetPage() {
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
-  const [form, setForm] = useState<FormData>(emptyForm);
+  const [form, setForm] = useState<FormData>(makeEmptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [clients, setClients] = useState<string[]>([]);
@@ -121,7 +121,7 @@ export default function TimesheetPage() {
           },
         });
       }
-      setForm(emptyForm);
+      setForm(makeEmptyForm());
       setEditingId(null);
       setShowForm(false);
       loadEntries();
@@ -184,7 +184,7 @@ export default function TimesheetPage() {
             onChange={(e) => setMonth(e.target.value)}
             className="w-40"
           />
-          <Button onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}>
+          <Button onClick={() => { setForm(makeEmptyForm()); setEditingId(null); setShowForm(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add Entry
           </Button>
         </div>
@@ -268,7 +268,7 @@ export default function TimesheetPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => { setShowForm(false); setEditingId(null); setForm(emptyForm); }}
+                onClick={() => { setShowForm(false); setEditingId(null); setForm(makeEmptyForm()); }}
                 size="sm"
               >
                 Cancel

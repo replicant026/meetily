@@ -90,7 +90,7 @@ impl SearchRepository {
     fn sanitize_fts_query_or(query: &str) -> String {
         let words: Vec<&str> = query
             .split_whitespace()
-            .filter(|w| w.len() >= 3 && w.chars().any(|c| c.is_alphanumeric()))
+            .filter(|w| w.chars().count() >= 4 && w.chars().any(|c| c.is_alphanumeric()))
             .collect();
         if words.is_empty() {
             return String::new();
