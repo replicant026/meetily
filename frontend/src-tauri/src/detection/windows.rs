@@ -38,7 +38,9 @@ impl WindowsMeetingDetector {
                 tokio::select! {
                     _ = &mut stop_rx => break,
                     _ = tokio::time::sleep(std::time::Duration::from_secs(2)) => {
-                        let mic_in_use = check_mic_usage();
+                        let mic_in_use = tokio::task::spawn_blocking(|| check_mic_usage())
+                            .await
+                            .unwrap_or(false);
 
                         if mic_in_use {
                             // Mic is active — cancel any grace period

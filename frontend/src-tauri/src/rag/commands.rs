@@ -51,7 +51,7 @@ pub async fn chat_about_meetings<R: Runtime>(
     let mut context_parts: Vec<String> = Vec::new();
     for r in &results {
         let full_text: Option<(String,)> = sqlx::query_as(
-            "SELECT GROUP_CONCAT(transcript, ' ') FROM transcripts WHERE meeting_id = ?1",
+            "SELECT GROUP_CONCAT(transcript, ' ') FROM (SELECT transcript FROM transcripts WHERE meeting_id = ?1 ORDER BY audio_start_time ASC, id ASC)",
         )
         .bind(&r.meeting_id)
         .fetch_optional(pool)
@@ -65,8 +65,8 @@ pub async fn chat_about_meetings<R: Runtime>(
             .unwrap_or_else(|| r.snippet.replace('«', "").replace('»', ""));
 
         // Truncate to ~2000 chars per meeting to stay within LLM context limits
-        let truncated = if content.len() > 2000 {
-            format!("{}…", &content[..2000])
+        let truncated = if content.chars().count() > 2000 {
+            format!("{}…", content.chars().take(2000).collect::<String>())
         } else {
             content
         };
