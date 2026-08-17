@@ -287,7 +287,8 @@ pub async fn get_current_audio_backend() -> Result<String, String> {
     }
 }
 
-/// Set audio capture backend
+/// Set audio capture backend. Normalizes legacy CamelCase IDs (e.g. "Core Audio")
+/// to the lowercase form expected by from_string().
 #[tauri::command]
 pub async fn set_audio_backend(backend: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]

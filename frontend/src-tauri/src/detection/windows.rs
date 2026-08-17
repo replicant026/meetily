@@ -143,11 +143,21 @@ fn check_mic_usage() -> bool {
     use winreg::enums::*;
     use winreg::RegKey;
 
+    // Exclude our own process name to avoid false positives during recording
+    let own_name = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().to_lowercase()))
+        .unwrap_or_default();
+
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let base_path = r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone";
 
     if let Ok(key) = hkcu.open_subkey_with_flags(base_path, KEY_READ) {
         for subkey_name in key.enum_keys().filter_map(|r| r.ok()) {
+            // Skip our own process
+            if subkey_name.to_lowercase() == own_name {
+                continue;
+            }
             if let Ok(subkey) = key.open_subkey_with_flags(&subkey_name, KEY_READ) {
                 if check_key_recursive(&subkey) {
                     return true;

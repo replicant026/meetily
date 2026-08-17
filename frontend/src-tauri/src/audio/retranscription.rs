@@ -508,12 +508,10 @@ async fn run_retranscription<R: Runtime>(
                 }
             }
             Ok(None) => {
-                warn!("Meeting {} not found in DB — removing stale FTS entry", meeting_id);
-                let _ = crate::database::repositories::search::SearchRepository::remove_meeting(pool, &meeting_id).await;
+                warn!("Meeting {} not found in DB — keeping existing FTS entry", meeting_id);
             }
             Err(e) => {
-                warn!("Failed to query title for meeting {}: {} — removing stale FTS entry", meeting_id, e);
-                let _ = crate::database::repositories::search::SearchRepository::remove_meeting(pool, &meeting_id).await;
+                warn!("Failed to query title for meeting {}: {} — keeping existing FTS entry", meeting_id, e);
             }
         }
     }

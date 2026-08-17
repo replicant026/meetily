@@ -814,20 +814,6 @@ const Sidebar: React.FC = () => {
               <Settings className="w-4 h-4 mr-2" />
               <span>{t("nav.settings")}</span>
             </button>
-            <button
-              onClick={() => setShowChat(true)}
-              className="w-full flex items-center justify-center px-3 py-1.5 mb-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors shadow-sm"
-            >
-              <MessageSquare className="w-4 h-4 mr-2" />
-              <span>Chat</span>
-            </button>
-            <button
-              onClick={() => router.push('/timesheet')}
-              className="w-full flex items-center justify-center px-3 py-1.5 mb-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors shadow-sm"
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              <span>Timesheet</span>
-            </button>
             <Info isCollapsed={isCollapsed} />
             <div className="w-full flex items-center justify-center px-3 py-1 text-xs text-gray-400">
               v0.4.0

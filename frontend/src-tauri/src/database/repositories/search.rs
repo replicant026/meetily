@@ -125,7 +125,7 @@ impl SearchRepository {
                     f.meeting_title,
                     snippet(meetings_fts, 2, '«', '»', '…', 40),
                     COALESCE(
-                        (SELECT COALESCE(t.timestamp, '') FROM transcripts t WHERE t.meeting_id = f.meeting_id LIMIT 1),
+                        (SELECT COALESCE(t.timestamp, '') FROM transcripts t WHERE t.meeting_id = f.meeting_id ORDER BY t.audio_start_time ASC LIMIT 1),
                         ''
                     ),
                     rank
@@ -275,17 +275,31 @@ impl SearchRepository {
     }
 
     /// Update only the meeting_title in the FTS index (call after rename).
+    /// If the meeting is not yet indexed, indexes it with empty transcript.
     pub async fn update_title(
         pool: &SqlitePool,
         meeting_id: &str,
         new_title: &str,
     ) -> Result<(), sqlx::Error> {
         let rowid = Self::meeting_rowid(meeting_id);
-        sqlx::query("UPDATE meetings_fts SET meeting_title = ?1 WHERE rowid = ?2")
+        let affected = sqlx::query("UPDATE meetings_fts SET meeting_title = ?1 WHERE rowid = ?2")
             .bind(new_title)
             .bind(rowid)
             .execute(pool)
+            .await?
+            .rows_affected();
+        if affected == 0 {
+            // Meeting not yet in FTS — insert with empty transcript so title is searchable
+            sqlx::query(
+                "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
+                 VALUES (?1, ?2, ?3, '')",
+            )
+            .bind(rowid)
+            .bind(meeting_id)
+            .bind(new_title)
+            .execute(pool)
             .await?;
+        }
         Ok(())
     }
 }

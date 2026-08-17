@@ -100,12 +100,15 @@ pub async fn timesheet_update_entry<R: Runtime>(
     let end = chrono::NaiveTime::parse_from_str(&request.end_time, "%H:%M")
         .or_else(|_| chrono::NaiveTime::parse_from_str(&request.end_time, "%H:%M:%S"))
         .map_err(|e| format!("Invalid end time: {}", e))?;
-    let duration = (end - start).num_minutes();
+    let duration = if end < start {
+        // Overnight entry (e.g., 23:00 → 00:30): add 24 hours
+        (end + chrono::Duration::hours(24) - start).num_minutes()
+    } else {
+        (end - start).num_minutes()
+    };
     if duration <= 0 {
         return Err("End time must be after start time".to_string());
     }
-
-    // Read existing entry to preserve launched and created_at
     let existing: Option<TimesheetEntry> =
         sqlx::query_as("SELECT * FROM timesheet_entries WHERE id = ?1")
             .bind(&request.id)

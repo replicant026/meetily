@@ -76,16 +76,16 @@ export function DetectionSettings() {
         />
       </div>
 
-      {/* Auto-record */}
+      {/* Auto-detect */}
       <div className="flex items-center justify-between">
         <div>
-          <label className="text-sm font-medium">Auto-record</label>
-          <p className="text-xs text-gray-500">Start recording when a meeting is detected</p>
+          <label className="text-sm font-medium">Identify automatically</label>
+          <p className="text-xs text-gray-500">Show notification when a meeting is detected</p>
         </div>
         <input
           type="checkbox"
           checked={config.autoRecord}
-          onChange={(e) => setConfig({ ...config, autoRecord: e.target.checked })}
+          onChange={(e) => setConfig({ ...config, autoRecord: e.target.checked, enabled: config.enabled })}
           className="h-4 w-4 rounded"
           disabled={!config.enabled}
         />
