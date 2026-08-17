@@ -119,26 +119,6 @@ impl WindowsMeetingDetector {
 /// An app is actively capturing audio when its `LastUsedTimeStop` value is 0.
 /// Recursively check a registry key and its subkeys for active mic usage.
 #[cfg(target_os = "windows")]
-fn check_key_recursive(key: &winreg::RegKey) -> bool {
-    use winreg::enums::*;
-    // Check this key's LastUsedTimeStop
-    if let Ok(val) = key.get_value::<u64, _>("LastUsedTimeStop") {
-        if val == 0 {
-            return true;
-        }
-    }
-    // Recurse into child keys (e.g. NonPackaged\<app-path>)
-    for sub_name in key.enum_keys().filter_map(|r| r.ok()) {
-        if let Ok(sub) = key.open_subkey_with_flags(&sub_name, KEY_READ) {
-            if check_key_recursive(&sub) {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-#[cfg(target_os = "windows")]
 fn check_key_recursive_with_exclusion(key: &winreg::RegKey, exclude: &str) -> bool {
     use winreg::enums::*;
     if let Ok(val) = key.get_value::<u64, _>("LastUsedTimeStop") {
@@ -147,7 +127,7 @@ fn check_key_recursive_with_exclusion(key: &winreg::RegKey, exclude: &str) -> bo
         }
     }
     for sub_name in key.enum_keys().filter_map(|r| r.ok()) {
-        if sub_name.to_lowercase().contains(exclude) {
+        if !exclude.is_empty() && sub_name.to_lowercase().contains(exclude) {
             continue;
         }
         if let Ok(sub) = key.open_subkey_with_flags(&sub_name, KEY_READ) {
