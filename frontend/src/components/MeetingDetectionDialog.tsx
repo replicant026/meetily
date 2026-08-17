@@ -6,7 +6,7 @@ import { Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import { useRecordingState } from '@/contexts/RecordingStateContext';
+import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
 import { recordingService } from '@/services/recordingService';
 import { useConfig } from '@/contexts/ConfigContext';
 
@@ -24,7 +24,7 @@ interface MeetingDetectionDialogProps {
 export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProps) {
   const [event, setEvent] = useState<DetectionEvent | null>(null);
   const [isStarting, setIsStarting] = useState(false);
-  const { isRecording } = useRecordingState();
+  const { isRecording, setStatus } = useRecordingState();
   const { selectedDevices } = useConfig();
   const t = useTranslations('detection');
 
@@ -48,6 +48,8 @@ export function MeetingDetectionDialog({ onDismiss }: MeetingDetectionDialogProp
         title,
         false
       );
+      // Sync the global recording state so UI reflects the active recording
+      setStatus(RecordingStatus.RECORDING);
       toast.success(t('recording_started'));
     } catch (e) {
       toast.error(t('recording_failed', { error: String(e) }));

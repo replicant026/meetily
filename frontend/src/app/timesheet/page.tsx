@@ -145,7 +145,8 @@ export default function TimesheetPage() {
       await invoke('timesheet_delete_entry', { entryId: id });
       loadEntries();
     } catch (e) {
-      console.error('Failed to delete entry:', e);
+      const msg = typeof e === 'string' ? e : (e as any)?.message || 'Failed to delete entry';
+      toast.error(msg);
     }
   };
 
@@ -154,7 +155,8 @@ export default function TimesheetPage() {
       await invoke('timesheet_mark_launched', { entryId: id, launched: !current });
       loadEntries();
     } catch (e) {
-      console.error('Failed to toggle launched:', e);
+      const msg = typeof e === 'string' ? e : (e as any)?.message || 'Failed to toggle status';
+      toast.error(msg);
     }
   };
 
