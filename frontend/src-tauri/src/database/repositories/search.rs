@@ -177,13 +177,9 @@ impl SearchRepository {
         Self::execute_search(pool, &safe_query, limit.clamp(1, 100) as i64).await
     }
 
-    /// Rebuild the FTS index from scratch by copying all transcripts into it.
-    /// Aggregates all transcript segments per meeting into a single FTS row.
-    /// Commits per batch so a rebuild of a large DB does not hold SQLite's
-    /// single writer transaction for the entire duration and block concurrent
-    /// transcript / FTS writes. Each batch is its own transaction so a failure
-    /// is bounded to the in-flight batch and the caller can retry `reindex`
-    /// to recover the missing rows.
+    /// Number of meetings re-indexed per transaction. Smaller batches keep
+    /// individual writes short so the SQLite writer lock is released between
+    /// batches and concurrent transcript / FTS writes are not starved.
     const REINDEX_BATCH_SIZE: i64 = 50;
 
     /// Rebuild the FTS index from scratch by copying all transcripts into it.

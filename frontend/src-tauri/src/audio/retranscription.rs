@@ -490,11 +490,13 @@ async fn run_retranscription<R: Runtime>(
     tx.commit().await
         .map_err(|e| anyhow!("Failed to commit transaction: {}", e))?;
 
-    // Re-sync FTS5 index for this meeting (fire-and-forget, non-fatal)
-    // On success we overwrite the FTS row via index_transcript().
-    // On lookup failures we do NOT touch the FTS row: either we remove the
-    // stale entry (meeting not found) or we keep the existing indexed text
-    // and title rather than risk blanking it with a failed reread.
+    // Re-sync FTS5 index for this meeting (fire-and-forget, non-fatal).
+    // - Success: overwrite the FTS row via index_transcript().
+    // - Meeting not found (Ok(None)): remove the now-stale FTS entry so it
+    //   does not surface in search results for a deleted meeting.
+    // - Lookup error (Err): leave the existing FTS row alone — a transient
+    //   SQL failure (busy conn, lock timeout, etc.) should not blank the
+    //   meeting from search; the next reindex will reconcile.
     {
         let full_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
         match sqlx::query_as::<_, (String,)>("SELECT title FROM meetings WHERE id = ?1")
@@ -517,11 +519,10 @@ async fn run_retranscription<R: Runtime>(
                 .await;
             }
             Err(e) => {
-                warn!("Failed to query title for meeting {}: {} — removing stale FTS entry", meeting_id, e);
-                let _ = crate::database::repositories::search::SearchRepository::remove_meeting(
-                    pool, &meeting_id,
-                )
-                .await;
+                warn!("Failed to query title for meeting {}: {} — leaving existing FTS entry in place", meeting_id, e);
+                // Intentionally do NOT remove the FTS row on a transient
+                // lookup failure; risk of blanking a searchable meeting is
+                // worse than briefly stale title until the next reindex.
             }
         }
     }
