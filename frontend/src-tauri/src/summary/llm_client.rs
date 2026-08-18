@@ -347,13 +347,14 @@ pub async fn generate_summary(
         }
     };
 
+    let trimmed_api_key = api_key.trim();
+
     // Add authorization header — Claude uses x-api-key, others use Authorization: Bearer
     match provider {
         LLMProvider::Claude => {
-            let trimmed = api_key.trim().to_string();
             headers.insert(
                 "x-api-key",
-                trimmed
+                trimmed_api_key
                     .parse()
                     .map_err(|_| LLMError::Other("Invalid x-api-key header".to_string()))?,
             );
@@ -361,7 +362,7 @@ pub async fn generate_summary(
         _ => {
             headers.insert(
                 header::AUTHORIZATION,
-                format!("Bearer {}", api_key)
+                format!("Bearer {}", trimmed_api_key)
                     .parse()
                     .map_err(|_| LLMError::Other("Invalid authorization header".to_string()))?,
             );
