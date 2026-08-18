@@ -123,7 +123,10 @@ impl SearchRepository {
         let rows = sqlx::query_as::<_, (String, String, String, String, f64)>(
             "SELECT f.meeting_id,
                     f.meeting_title,
-                    snippet(meetings_fts, 2, '«', '»', '…', 40),
+                    COALESCE(
+                        snippet(meetings_fts, 2, '«', '»', '…', 40),
+                        snippet(meetings_fts, 1, '«', '»', '…', 40)
+                    ),
                     COALESCE(
                         (SELECT COALESCE(t.timestamp, '') FROM transcripts t WHERE t.meeting_id = f.meeting_id ORDER BY t.audio_start_time ASC LIMIT 1),
                         ''
