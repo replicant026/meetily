@@ -158,7 +158,7 @@ fn check_mic_usage() -> bool {
             // Skip our own process — check top-level and recursive children
             // Guard against empty own_name: current_exe()/file_stem() can fail,
             // and contains("") would match every subkey and disable detection.
-            if own_name.is_empty() || subkey_name.to_lowercase().contains(&own_name) {
+            if !own_name.is_empty() && subkey_name.to_lowercase().contains(&own_name) {
                 continue;
             }
             if let Ok(subkey) = key.open_subkey_with_flags(&subkey_name, KEY_READ) {
