@@ -124,7 +124,7 @@ impl SearchRepository {
             "SELECT f.meeting_id,
                     f.meeting_title,
                     COALESCE(
-                        snippet(meetings_fts, 2, '«', '»', '…', 40),
+                        NULLIF(snippet(meetings_fts, 2, '«', '»', '…', 40), ''),
                         snippet(meetings_fts, 1, '«', '»', '…', 40)
                     ),
                     COALESCE(
