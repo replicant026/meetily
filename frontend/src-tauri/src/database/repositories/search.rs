@@ -224,8 +224,13 @@ impl SearchRepository {
                 .fetch_one(&mut *tx)
                 .await?;
 
+                // INSERT OR REPLACE is used instead of plain INSERT to handle
+                // the race condition where index_transcript() writes a row between
+                // the initial DELETE and this batch's INSERT. Without REPLACE, a
+                // concurrent transcript insert would cause a UNIQUE constraint
+                // failure and abort the entire batch.
                 sqlx::query(
-                    "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
+                    "INSERT OR REPLACE INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
                      VALUES (?1, ?2, ?3, ?4)",
                 )
                 .bind(rowid)
