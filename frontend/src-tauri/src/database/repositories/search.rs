@@ -189,7 +189,7 @@ impl SearchRepository {
     /// batch short so writes don't hold a single transaction open for long.
     /// Returns the number of rows inserted.
     pub async fn reindex(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
-let mut tx = pool.begin().await?;
+        let mut tx = pool.begin().await?;
 
         // Clear existing index
         sqlx::query("DELETE FROM meetings_fts")
