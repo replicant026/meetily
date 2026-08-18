@@ -58,11 +58,13 @@ pub async fn timesheet_create_entry<R: Runtime>(
     let end = chrono::NaiveTime::parse_from_str(&request.end_time, "%H:%M")
         .or_else(|_| chrono::NaiveTime::parse_from_str(&request.end_time, "%H:%M:%S"))
         .map_err(|e| format!("Invalid end time: {}", e))?;
-    let duration = if end < start {
+    let start_min = (start.num_seconds_from_midnight() / 60) as i64;
+    let end_min = (end.num_seconds_from_midnight() / 60) as i64;
+    let duration = if end_min < start_min {
         // Overnight entry (e.g., 23:00 → 00:30): add 24 hours
-        (end + chrono::Duration::hours(24) - start).num_minutes()
+        end_min + 24 * 60 - start_min
     } else {
-        (end - start).num_minutes()
+        end_min - start_min
     };
     if duration <= 0 {
         return Err("End time must be after start time".to_string());
