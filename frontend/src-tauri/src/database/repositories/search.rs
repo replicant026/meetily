@@ -213,7 +213,11 @@ impl SearchRepository {
 
             for meeting_id in chunk {
                 let rowid = Self::meeting_rowid(meeting_id);
-                let (title, transcript) = sqlx::query_as::<_, (String, Option<String>)>(
+
+                // fetch_optional handles the race where a meeting is deleted
+                // between the ID snapshot and this batch's processing.
+                // If the meeting no longer exists, we skip it gracefully.
+                let opt = sqlx::query_as::<_, (String, Option<String>)>(
                     "SELECT COALESCE(m.title, ''),
                             COALESCE(GROUP_CONCAT(t.transcript, ' '), '')
                      FROM meetings m
@@ -221,8 +225,14 @@ impl SearchRepository {
                      WHERE m.id = ?1",
                 )
                 .bind(meeting_id)
-                .fetch_one(&mut *tx)
+                .fetch_optional(&mut *tx)
                 .await?;
+
+                let Some((title, transcript)) = opt else {
+                    // Meeting was deleted after the ID snapshot; skip it.
+                    // The DELETE FROM meetings_fts earlier ensures no stale rows remain.
+                    continue;
+                };
 
                 // INSERT OR REPLACE is used instead of plain INSERT to handle
                 // the race condition where index_transcript() writes a row between
@@ -239,10 +249,11 @@ impl SearchRepository {
                 .bind(transcript)
                 .execute(&mut *tx)
                 .await?;
+
+                count += 1;
             }
 
             tx.commit().await?;
-            count += chunk.len() as u64;
         }
 
         Ok(count)
