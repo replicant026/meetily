@@ -490,6 +490,44 @@ async fn run_retranscription<R: Runtime>(
     tx.commit().await
         .map_err(|e| anyhow!("Failed to commit transaction: {}", e))?;
 
+    // Re-sync FTS5 index for this meeting (fire-and-forget, non-fatal).
+    // - Success: overwrite the FTS row via index_transcript().
+    // - Meeting not found (Ok(None)): remove the stale FTS entry.
+    // - Lookup error (Err): log warning; the FTS row may be stale but is left
+    //   alone to avoid deleting a row that another concurrent operation could
+    //   have just created. A later reindex_meetings() will reconcile.
+    {
+        let full_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
+        match sqlx::query_as::<_, (String,)>("SELECT title FROM meetings WHERE id = ?1")
+            .bind(&meeting_id)
+            .fetch_optional(pool)
+            .await
+        {
+            Ok(Some((title,))) => {
+                if let Err(e) = crate::database::repositories::search::SearchRepository::index_transcript(
+                    pool, &meeting_id, &title, &full_text,
+                ).await {
+                    warn!("Failed to reindex meeting {} for search: {}", meeting_id, e);
+                }
+            }
+            Ok(None) => {
+                warn!("Meeting {} not found in DB — removing stale FTS entry", meeting_id);
+                let _ = crate::database::repositories::search::SearchRepository::remove_meeting(
+                    pool, &meeting_id,
+                )
+                .await;
+            }
+            Err(e) => {
+                // Title lookup failed. We cannot determine the correct title for
+                // the FTS row, but also cannot reliably re-create it without risking
+                // a stale title. Instead, leave the existing FTS row in place and
+                // schedule a reindex to reconcile. A later call to reindex_meetings()
+                // will restore consistency.
+                warn!("Failed to query title for meeting {}: {} — FTS row may be stale; scheduled reindex to reconcile", meeting_id, e);
+            }
+        }
+    }
+
     info!(
         "Updated {} transcripts for meeting {} in transaction",
         segments.len(),

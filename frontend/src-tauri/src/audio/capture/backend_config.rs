@@ -93,7 +93,12 @@ impl Default for AudioCaptureBackend {
 
 impl std::fmt::Display for AudioCaptureBackend {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
+        // Return lowercase IDs compatible with from_string()
+        match self {
+            AudioCaptureBackend::ScreenCaptureKit => write!(f, "screencapturekit"),
+            #[cfg(target_os = "macos")]
+            AudioCaptureBackend::CoreAudio => write!(f, "coreaudio"),
+        }
     }
 }
 
@@ -157,9 +162,9 @@ mod tests {
 
     #[test]
     fn test_backend_display_name() {
-        assert_eq!(AudioCaptureBackend::ScreenCaptureKit.to_string(), "ScreenCaptureKit");
+        assert_eq!(AudioCaptureBackend::ScreenCaptureKit.to_string(), "screencapturekit");
         #[cfg(target_os = "macos")]
-        assert_eq!(AudioCaptureBackend::CoreAudio.to_string(), "Core Audio");
+        assert_eq!(AudioCaptureBackend::CoreAudio.to_string(), "coreaudio");
     }
 
     #[test]

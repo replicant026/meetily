@@ -4,7 +4,9 @@
     "meetings": "會議",
     "import_audio": "匯入音訊",
     "notes": "筆記",
-    "settings": "設定"
+    "settings": "設定",
+    "chat": "聊天",
+    "timesheet": "工時表"
   },
   "meeting_list": {
     "list": "會議列表",

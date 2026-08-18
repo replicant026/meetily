@@ -265,7 +265,7 @@ const Sidebar: React.FC = () => {
     // If we have search results, highlight matching meetings
     if (searchResults.length > 0) {
       // Get the IDs of meetings that matched in transcripts
-      const matchedMeetingIds = new Set(searchResults.map(result => result.id));
+      const matchedMeetingIds = new Set(searchResults.map(result => result.meetingId));
 
       return sidebarItems
         .map(folder => {
@@ -551,7 +551,7 @@ const Sidebar: React.FC = () => {
   // Find matching transcript snippet for a meeting item
   const findMatchingSnippet = (itemId: string) => {
     if (!searchQuery.trim() || !searchResults.length) return null;
-    return searchResults.find(result => result.id === itemId);
+    return searchResults.find(result => result.meetingId === itemId);
   };
 
   const renderItem = (item: SidebarItem, depth = 0) => {
@@ -648,7 +648,7 @@ const Sidebar: React.FC = () => {
               {/* Show transcript match snippet if available */}
               {hasTranscriptMatch && (
                 <div className="mt-1 ml-8 text-xs text-gray-500 bg-yellow-50 p-1.5 rounded border border-yellow-100 line-clamp-2">
-                  <span className="font-medium text-yellow-600">Match:</span> {matchingResult.matchContext}
+                  <span className="font-medium text-yellow-600">Match:</span> {matchingResult.snippet}
                 </div>
               )}
             </div>

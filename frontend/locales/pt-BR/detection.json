@@ -1,0 +1,9 @@
+{
+  "title": "Reunião detectada",
+  "description": "O microfone está ativo há algum tempo. Iniciar gravação?",
+  "start_recording": "Iniciar Gravação",
+  "starting": "Iniciando...",
+  "dismiss": "Dispensar",
+  "recording_started": "Gravação iniciada",
+  "recording_failed": "Falha ao iniciar gravação: {error}"
+}

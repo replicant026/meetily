@@ -879,6 +879,14 @@ async fn create_meeting_with_transcripts(
         .await
         .map_err(|e| anyhow!("Failed to commit transaction: {}", e))?;
 
+    // Sync FTS5 index (fire-and-forget, non-fatal)
+    let full_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
+    if let Err(e) = crate::database::repositories::search::SearchRepository::index_transcript(
+        pool, &meeting_id, title, &full_text,
+    ).await {
+        warn!("Failed to index meeting {} for search: {}", meeting_id, e);
+    }
+
     info!(
         "Created meeting '{}' with {} transcripts",
         meeting_id,

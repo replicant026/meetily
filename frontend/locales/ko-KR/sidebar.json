@@ -4,7 +4,9 @@
     "meetings": "회의",
     "import_audio": "오디오 가져오기",
     "notes": "회의 메모",
-    "settings": "설정"
+    "settings": "설정",
+    "chat": "채팅",
+    "timesheet": "타임시트"
   },
   "meeting_list": {
     "list": "회의 목록",

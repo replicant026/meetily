@@ -319,7 +319,6 @@ pub async fn generate_summary(
             "https://api.anthropic.com/v1/messages".to_string(),
             {
                 let mut h = header::HeaderMap::new();
-                h.insert("x-api-key", header::HeaderValue::from_static(""));
                 h.insert("anthropic-version", header::HeaderValue::from_static("2023-06-01"));
                 h
             },
@@ -338,7 +337,9 @@ pub async fn generate_summary(
         LLMProvider::CustomOpenAI => {
             let endpoint = custom_openai_endpoint
                 .ok_or_else(|| LLMError::Other("custom_openai_endpoint is required for CustomOpenAI provider".to_string()))?;
-            (format!("{}/v1/chat/completions", endpoint), header::HeaderMap::new())
+            // Normalize: strip trailing slashes and /v1 suffix before appending /v1/chat/completions
+            let base = endpoint.trim_end_matches('/').trim_end_matches("/v1").trim_end_matches('/');
+            (format!("{}/v1/chat/completions", base), header::HeaderMap::new())
         }
         LLMProvider::BuiltInAI => {
             // This case is handled earlier with early returns
@@ -346,14 +347,26 @@ pub async fn generate_summary(
         }
     };
 
-    // Add authorization header for non-Claude providers
-    if provider != &LLMProvider::Claude {
-        headers.insert(
-            header::AUTHORIZATION,
-            format!("Bearer {}", api_key)
-                .parse()
-                .map_err(|_| LLMError::Other("Invalid authorization header".to_string()))?,
-        );
+    let trimmed_api_key = api_key.trim();
+
+    // Add authorization header — Claude uses x-api-key, others use Authorization: Bearer
+    match provider {
+        LLMProvider::Claude => {
+            headers.insert(
+                "x-api-key",
+                trimmed_api_key
+                    .parse()
+                    .map_err(|_| LLMError::Other("Invalid x-api-key header".to_string()))?,
+            );
+        }
+        _ => {
+            headers.insert(
+                header::AUTHORIZATION,
+                format!("Bearer {}", trimmed_api_key)
+                    .parse()
+                    .map_err(|_| LLMError::Other("Invalid authorization header".to_string()))?,
+            );
+        }
     }
     headers.insert(
         header::CONTENT_TYPE,

@@ -93,6 +93,7 @@ pub mod diarization;
 pub mod config;
 pub mod console_utils;
 pub mod database;
+pub mod detection;
 pub mod notifications;
 pub mod ollama;
 pub mod i18n;
@@ -105,8 +106,10 @@ pub mod anthropic;
 pub mod groq;
 pub mod openrouter;
 pub mod parakeet_engine;
+pub mod rag;
 pub mod state;
 pub mod summary;
+pub mod timesheet;
 pub mod tray;
 pub mod utils;
 pub mod whisper_engine;
@@ -603,6 +606,54 @@ pub fn run() {
                 }
             });
 
+            // Initialize meeting auto-detection on Windows (if enabled in config)
+            #[cfg(target_os = "windows")]
+            {
+                let app_handle_for_detection = _app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    use tauri_plugin_store::StoreExt;
+                    let store = match app_handle_for_detection.store("detection.json") {
+                        Ok(s) => s,
+                        Err(e) => {
+                            log::warn!("Failed to access detection store: {}", e);
+                            return;
+                        }
+                    };
+                    let config: crate::detection::MeetingDetectionConfig =
+                        if let Some(value) = store.get(DETECTION_STORE_KEY) {
+                            serde_json::from_value(value.clone()).unwrap_or_default()
+                        } else {
+                            crate::detection::MeetingDetectionConfig::default()
+                        };
+                    if !config.enabled {
+                        log::info!("Meeting auto-detection is disabled");
+                        return;
+                    }
+                    log::info!(
+                        "Starting meeting auto-detection: enabled={}, auto_record={}, min_call={}s",
+                        config.enabled, config.auto_record, config.min_call_seconds
+                    );
+                    let (mut detector, mut rx) = crate::detection::windows::WindowsMeetingDetector::new(config);
+                    detector.start();
+                    // Consume detection events — detector must live in the same task as rx
+                    // so that dropping it doesn't fire the oneshot stop channel.
+                    tokio::spawn(async move {
+                        while let Some(event) = rx.recv().await {
+                            log::info!(
+                                "Detection event: type={}, confidence={:.1}",
+                                event.event_type, event.confidence
+                            );
+                            // Emit event to frontend so it can show a notification dialog
+                            if let Err(e) = app_handle_for_detection.emit("meeting-detected", &event) {
+                                log::warn!("Failed to emit meeting-detected event: {}", e);
+                            }
+                        }
+                        // Keep detector alive for the lifetime of the polling loop
+                        drop(detector);
+                    });
+                });
+            }
+
             // Trigger system audio permission request on startup (similar to microphone permission)
             // #[cfg(target_os = "macos")]
             // {
@@ -969,6 +1020,21 @@ pub fn run() {
             assign_meeting_speaker,
             // JotBird export
             export_to_jotbird,
+            // FTS5 search
+            search_meetings,
+            reindex_meetings,
+            // Chat RAG
+            rag::commands::chat_about_meetings,
+            // Timesheet
+            timesheet::commands::timesheet_list_entries,
+            timesheet::commands::timesheet_create_entry,
+            timesheet::commands::timesheet_update_entry,
+            timesheet::commands::timesheet_delete_entry,
+            timesheet::commands::timesheet_mark_launched,
+            timesheet::commands::timesheet_list_clients,
+            // Auto-detection
+            get_detection_config,
+            set_detection_config,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -1485,4 +1551,83 @@ async fn rename_speaker_in_meeting(
     )
     .await;
     Ok(rows)
+}
+
+// ── FTS5 Search commands ─────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn search_meetings(
+    state: tauri::State<'_, crate::state::AppState>,
+    query: String,
+    limit: Option<u32>,
+) -> Result<Vec<crate::database::repositories::search::MeetingSearchResult>, String> {
+    crate::database::repositories::search::SearchRepository::search(
+        state.db_manager.pool(),
+        &query,
+        limit.unwrap_or(20),
+    )
+    .await
+    .map_err(|e| {
+        log::warn!("Search failed: {}", e);
+        "Search failed".to_string()
+    })
+}
+
+#[tauri::command]
+async fn reindex_meetings(
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<u64, String> {
+    crate::database::repositories::search::SearchRepository::reindex(state.db_manager.pool())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ── Meeting auto-detection commands ───────────────────────────────────────────
+
+const DETECTION_STORE_KEY: &str = "detection_config";
+
+#[tauri::command]
+async fn get_detection_config(
+    app: tauri::AppHandle,
+) -> Result<crate::detection::MeetingDetectionConfig, String> {
+    use tauri_plugin_store::StoreExt;
+
+    let store = app
+        .store("detection.json")
+        .map_err(|e| format!("Failed to access store: {}", e))?;
+
+    if let Some(value) = store.get(DETECTION_STORE_KEY) {
+        serde_json::from_value(value.clone())
+            .map_err(|e| format!("Failed to parse detection config: {}", e))
+    } else {
+        Ok(crate::detection::MeetingDetectionConfig::default())
+    }
+}
+
+#[tauri::command]
+async fn set_detection_config(
+    app: tauri::AppHandle,
+    config: crate::detection::MeetingDetectionConfig,
+) -> Result<(), String> {
+    use tauri_plugin_store::StoreExt;
+
+    let store = app
+        .store("detection.json")
+        .map_err(|e| format!("Failed to access store: {}", e))?;
+
+    let value = serde_json::to_value(&config)
+        .map_err(|e| format!("Failed to serialize detection config: {}", e))?;
+
+    store.set(DETECTION_STORE_KEY, value);
+
+    store
+        .save()
+        .map_err(|e| format!("Failed to save detection config: {}", e))?;
+
+    log::info!(
+        "Detection config persisted: enabled={}, auto_record={}",
+        config.enabled,
+        config.auto_record
+    );
+    Ok(())
 }

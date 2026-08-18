@@ -3,7 +3,9 @@ import { useTranslations } from 'next-intl';
 import { ModelConfig, ModelSettingsModal } from "./ModelSettingsModal"
 import { TranscriptModelProps, TranscriptSettings } from "./TranscriptSettings"
 import { RecordingSettings, RecordingPreferences } from "./RecordingSettings"
+import { DetectionSettings } from "./DetectionSettings"
 import { About } from "./About";
+import { usePlatform } from "@/hooks/usePlatform";
 
 interface SettingTabsProps {
     modelConfig: ModelConfig;
@@ -28,6 +30,7 @@ export function SettingTabs({
     onSaveTranscript,
 }: SettingTabsProps) {
     const t = useTranslations('settings');
+    const platform = usePlatform();
 
     const handleTabChange = () => {
         setSaveSuccess(null); // Reset save success when tab changes
@@ -39,6 +42,7 @@ export function SettingTabs({
     <TabsTrigger value="transcriptSettings">{t('tabs.transcript')}</TabsTrigger>
     <TabsTrigger value="modelSettings">{t('tabs.summary')}</TabsTrigger>
     <TabsTrigger value="recordingSettings">{t('preference.title')}</TabsTrigger>
+    {platform === 'windows' && <TabsTrigger value="detectionSettings">Detection</TabsTrigger>}
     <TabsTrigger value="about">{t('tabs.about')}</TabsTrigger>
   </TabsList>
   <TabsContent value="modelSettings">
@@ -59,6 +63,11 @@ onSave={onSave}
   <TabsContent value="recordingSettings">
     <RecordingSettings />
   </TabsContent>
+  {platform === 'windows' && (
+  <TabsContent value="detectionSettings">
+    <DetectionSettings />
+  </TabsContent>
+  )}
   <TabsContent value="about">
     <About />
   </TabsContent>

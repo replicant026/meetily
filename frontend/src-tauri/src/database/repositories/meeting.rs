@@ -1,5 +1,6 @@
 use crate::api::{MeetingDetails, MeetingTranscript};
 use crate::database::models::{MeetingModel, Transcript};
+use crate::database::repositories::search::SearchRepository;
 use chrono::Utc;
 use serde::Serialize;
 use sqlx::{Connection, Error as SqlxError, SqliteConnection, SqlitePool};
@@ -291,6 +292,10 @@ impl MeetingsRepository {
             return Ok(false);
         }
         transaction.commit().await?;
+
+        // Sync FTS index title (fire-and-forget, non-fatal)
+        let _ = SearchRepository::update_title(pool, meeting_id, new_title).await;
+
         Ok(true)
     }
 
@@ -324,6 +329,10 @@ impl MeetingsRepository {
             .await?;
 
         transaction.commit().await?;
+
+        // Sync FTS index title (fire-and-forget, non-fatal)
+        let _ = SearchRepository::update_title(pool, meeting_id, new_title).await;
+
         Ok(true)
     }
 }
@@ -362,7 +371,15 @@ async fn delete_meeting_with_transaction(
         .execute(&mut *transaction)
         .await?;
 
-    // 4. Finally, delete the meeting
+    // 4. Remove from FTS index (fire-and-forget, non-fatal)
+    //    Uses the same deterministic rowid as SearchRepository::remove_meeting.
+    let fts_rowid = SearchRepository::meeting_rowid(meeting_id);
+    let _ = sqlx::query("DELETE FROM meetings_fts WHERE rowid = ?1")
+        .bind(fts_rowid)
+        .execute(&mut *transaction)
+        .await;
+
+    // 5. Finally, delete the meeting
     let result = sqlx::query("DELETE FROM meetings WHERE id = ?")
         .bind(meeting_id)
         .execute(&mut *transaction)

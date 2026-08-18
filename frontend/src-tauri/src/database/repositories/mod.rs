@@ -1,4 +1,5 @@
 pub mod meeting;
+pub mod search;
 pub mod setting;
 pub mod speaker;
 pub mod summary;

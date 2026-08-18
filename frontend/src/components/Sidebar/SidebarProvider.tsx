@@ -20,12 +20,13 @@ export interface CurrentMeeting {
   title: string;
 }
 
-// Search result type for transcript search
+// Search result type for FTS5 transcript search
 interface TranscriptSearchResult {
-  id: string;
-  title: string;
-  matchContext: string;
+  meetingId: string;
+  meetingTitle: string;
+  snippet: string;
   timestamp: string;
+  rank: number;
 };
 
 interface SidebarContextType {
@@ -177,7 +178,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       setIsSearching(true);
 
 
-      const results = await invoke('api_search_transcripts', { query }) as TranscriptSearchResult[];
+      const results = await invoke('search_meetings', { query, limit: 20 }) as TranscriptSearchResult[];
       setSearchResults(results);
     } catch (error) {
       logger.error('Error searching transcripts:', error);
