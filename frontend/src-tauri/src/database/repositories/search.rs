@@ -179,27 +179,31 @@ impl SearchRepository {
 
     /// Rebuild the FTS index from scratch by copying all transcripts into it.
     /// Aggregates all transcript segments per meeting into a single FTS row.
-    /// Uses a single transaction so a mid-way failure does not leave the index empty.
-    /// Returns the number of rows inserted.
+    /// Commits per batch so a rebuild of a large DB does not hold SQLite's
+    /// single writer transaction for the entire duration and block concurrent
+    /// transcript / FTS writes. Each batch is its own transaction so a failure
+    /// is bounded to the in-flight batch and the caller can retry `reindex`
+    /// to recover the missing rows.
     const REINDEX_BATCH_SIZE: i64 = 50;
 
     /// Rebuild the FTS index from scratch by copying all transcripts into it.
     /// Aggregates all transcript segments per meeting into a single FTS row.
-    /// Processes meetings in batches to bound memory usage and keeps each
-    /// batch short so writes don't hold a single transaction open for long.
+    /// Processes meetings in batches to bound memory usage and commits each
+    /// batch so the SQLite writer is released between batches.
     /// Returns the number of rows inserted.
     pub async fn reindex(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+        // Clear existing index in its own short transaction so concurrent
+        // searches see an empty (rather than half-built) index during rebuild.
         let mut tx = pool.begin().await?;
-
-        // Clear existing index
         sqlx::query("DELETE FROM meetings_fts")
             .execute(&mut *tx)
             .await?;
+        tx.commit().await?;
 
-        // Fetch all meeting ids first so we can iterate in bounded batches.
+        // Fetch meeting ids without holding a transaction open.
         let meeting_ids: Vec<String> =
-            sqlx::query_as("SELECT id FROM meetings ORDER BY id")
-                .fetch_all(&mut *tx)
+            sqlx::query_as::<_, (String,)>("SELECT id FROM meetings ORDER BY id")
+                .fetch_all(pool)
                 .await?
                 .into_iter()
                 .map(|(id,)| id)
@@ -207,7 +211,10 @@ impl SearchRepository {
 
         let mut count: u64 = 0;
         for chunk in meeting_ids.chunks(Self::REINDEX_BATCH_SIZE as usize) {
-            let mut batch_count: u64 = 0;
+            // One transaction per batch — keeps each write short so normal
+            // transcript/FTS writes do not wait for the whole rebuild.
+            let mut tx = pool.begin().await?;
+
             for meeting_id in chunk {
                 let rowid = Self::meeting_rowid(meeting_id);
                 let (title, transcript) = sqlx::query_as::<_, (String, Option<String>)>(
@@ -231,12 +238,12 @@ impl SearchRepository {
                 .bind(transcript)
                 .execute(&mut *tx)
                 .await?;
-                batch_count += 1;
             }
-            count += batch_count;
+
+            tx.commit().await?;
+            count += chunk.len() as u64;
         }
 
-        tx.commit().await?;
         Ok(count)
     }
 
