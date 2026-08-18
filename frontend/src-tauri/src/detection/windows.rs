@@ -156,7 +156,9 @@ fn check_mic_usage() -> bool {
     if let Ok(key) = hkcu.open_subkey_with_flags(base_path, KEY_READ) {
         for subkey_name in key.enum_keys().filter_map(|r| r.ok()) {
             // Skip our own process — check top-level and recursive children
-            if !own_name.is_empty() && subkey_name.to_lowercase().contains(&own_name) {
+            // Guard against empty own_name: current_exe()/file_stem() can fail,
+            // and contains("") would match every subkey and disable detection.
+            if own_name.is_empty() || subkey_name.to_lowercase().contains(&own_name) {
                 continue;
             }
             if let Ok(subkey) = key.open_subkey_with_flags(&subkey_name, KEY_READ) {

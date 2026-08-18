@@ -48,25 +48,27 @@ pub async fn chat_about_meetings<R: Runtime>(
     }
 
     use tracing::warn;
-    // 2. Fetch actual transcript content for each matched meeting (not just FTS snippets)
-    let mut context_parts: Vec<String> = Vec::new();
-    for r in &results {
-        let full_text: Option<(String,)> = sqlx::query_as(
-            "SELECT GROUP_CONCAT(transcript, ' ') FROM (SELECT transcript FROM transcripts WHERE meeting_id = ?1 ORDER BY audio_start_time ASC, id ASC)",
-        )
-        .bind(&r.meeting_id)
-        .fetch_optional(pool)
-        .await
-        .unwrap_or_else(|e| {
-            warn!("Failed to fetch transcript for meeting {}: {}", r.meeting_id, e);
-            None
-        })
-        .flatten();
+// 2. Fetch actual transcript content for each matched meeting (not just FTS snippets)
+        let mut context_parts: Vec<String> = Vec::new();
+        for r in &results {
+            let full_text: String = sqlx::query_scalar(
+                "SELECT COALESCE(GROUP_CONCAT(transcript, ' '), '') FROM (SELECT transcript FROM transcripts WHERE meeting_id = ?1 ORDER BY audio_start_time ASC, id ASC)",
+            )
+            .bind(&r.meeting_id)
+            .fetch_optional(pool)
+            .await
+            .unwrap_or_else(|e| {
+                warn!("Failed to fetch transcript for meeting {}: {}", r.meeting_id, e);
+                None
+            })
+            .unwrap_or_default();
 
-        // Strip FTS highlight markers «» from snippet and use full transcript instead
-        let content = full_text
-            .and_then(|(txt,)| if txt.is_empty() { None } else { Some(txt) })
-            .unwrap_or_else(|| r.snippet.replace('«', "").replace('»', ""));
+            // Strip FTS highlight markers «» from snippet and use full transcript instead
+            let content = if full_text.is_empty() {
+                r.snippet.replace('«', "").replace('»', "")
+            } else {
+                full_text
+            };
 
         // Truncate to ~2000 chars per meeting to stay within LLM context limits
         let truncated = if content.chars().count() > 2000 {

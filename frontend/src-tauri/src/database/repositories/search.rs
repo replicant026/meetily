@@ -181,40 +181,59 @@ impl SearchRepository {
     /// Aggregates all transcript segments per meeting into a single FTS row.
     /// Uses a single transaction so a mid-way failure does not leave the index empty.
     /// Returns the number of rows inserted.
+    const REINDEX_BATCH_SIZE: i64 = 50;
+
+    /// Rebuild the FTS index from scratch by copying all transcripts into it.
+    /// Aggregates all transcript segments per meeting into a single FTS row.
+    /// Processes meetings in batches to bound memory usage and keeps each
+    /// batch short so writes don't hold a single transaction open for long.
+    /// Returns the number of rows inserted.
     pub async fn reindex(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
-        use sqlx::Connection;
-        let mut tx = pool.begin().await?;
+let mut tx = pool.begin().await?;
 
         // Clear existing index
         sqlx::query("DELETE FROM meetings_fts")
             .execute(&mut *tx)
             .await?;
 
-        // Fetch aggregated transcripts per meeting
-        let rows = sqlx::query_as::<_, (String, String, Option<String>)>(
-            "SELECT m.id, COALESCE(m.title, ''),
-                    GROUP_CONCAT(t.transcript, ' ')
-             FROM meetings m
-             LEFT JOIN transcripts t ON t.meeting_id = m.id
-             GROUP BY m.id",
-        )
-        .fetch_all(&mut *tx)
-        .await?;
+        // Fetch all meeting ids first so we can iterate in bounded batches.
+        let meeting_ids: Vec<String> =
+            sqlx::query_as("SELECT id FROM meetings ORDER BY id")
+                .fetch_all(&mut *tx)
+                .await?
+                .into_iter()
+                .map(|(id,)| id)
+                .collect();
 
         let mut count: u64 = 0;
-        for (meeting_id, title, transcript) in &rows {
-            let rowid = Self::meeting_rowid(meeting_id);
-            sqlx::query(
-                "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
-                 VALUES (?1, ?2, ?3, ?4)",
-            )
-            .bind(rowid)
-            .bind(meeting_id)
-            .bind(title)
-            .bind(transcript.as_deref().unwrap_or(""))
-            .execute(&mut *tx)
-            .await?;
-            count += 1;
+        for chunk in meeting_ids.chunks(Self::REINDEX_BATCH_SIZE as usize) {
+            let mut batch_count: u64 = 0;
+            for meeting_id in chunk {
+                let rowid = Self::meeting_rowid(meeting_id);
+                let (title, transcript) = sqlx::query_as::<_, (String, Option<String>)>(
+                    "SELECT COALESCE(m.title, ''),
+                            COALESCE(GROUP_CONCAT(t.transcript, ' '), '')
+                     FROM meetings m
+                     LEFT JOIN transcripts t ON t.meeting_id = m.id
+                     WHERE m.id = ?1",
+                )
+                .bind(meeting_id)
+                .fetch_one(&mut *tx)
+                .await?;
+
+                sqlx::query(
+                    "INSERT INTO meetings_fts(rowid, meeting_id, meeting_title, transcript_text)
+                     VALUES (?1, ?2, ?3, ?4)",
+                )
+                .bind(rowid)
+                .bind(meeting_id)
+                .bind(&title)
+                .bind(transcript)
+                .execute(&mut *tx)
+                .await?;
+                batch_count += 1;
+            }
+            count += batch_count;
         }
 
         tx.commit().await?;

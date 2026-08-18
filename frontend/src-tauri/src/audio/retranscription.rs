@@ -491,8 +491,10 @@ async fn run_retranscription<R: Runtime>(
         .map_err(|e| anyhow!("Failed to commit transaction: {}", e))?;
 
     // Re-sync FTS5 index for this meeting (fire-and-forget, non-fatal)
-    // index_transcript is idempotent — it deletes the old FTS row by the same
-    // deterministic rowid before inserting, so no separate remove_meeting call.
+    // On success we overwrite the FTS row via index_transcript().
+    // On lookup failures we do NOT touch the FTS row: either we remove the
+    // stale entry (meeting not found) or we keep the existing indexed text
+    // and title rather than risk blanking it with a failed reread.
     {
         let full_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
         match sqlx::query_as::<_, (String,)>("SELECT title FROM meetings WHERE id = ?1")
@@ -508,20 +510,18 @@ async fn run_retranscription<R: Runtime>(
                 }
             }
             Ok(None) => {
-                warn!("Meeting {} not found in DB — reindexing transcript but keeping stale title", meeting_id);
-                if let Err(e) = crate::database::repositories::search::SearchRepository::index_transcript(
-                    pool, &meeting_id, "", &full_text,
-                ).await {
-                    warn!("Failed to reindex meeting {} for search: {}", meeting_id, e);
-                }
+                warn!("Meeting {} not found in DB — removing stale FTS entry", meeting_id);
+                let _ = crate::database::repositories::search::SearchRepository::remove_meeting(
+                    pool, &meeting_id,
+                )
+                .await;
             }
             Err(e) => {
-                warn!("Failed to query title for meeting {}: {} — reindexing transcript but keeping stale title", meeting_id, e);
-                if let Err(e2) = crate::database::repositories::search::SearchRepository::index_transcript(
-                    pool, &meeting_id, "", &full_text,
-                ).await {
-                    warn!("Failed to reindex meeting {} for search: {}", meeting_id, e2);
-                }
+                warn!("Failed to query title for meeting {}: {} — removing stale FTS entry", meeting_id, e);
+                let _ = crate::database::repositories::search::SearchRepository::remove_meeting(
+                    pool, &meeting_id,
+                )
+                .await;
             }
         }
     }
